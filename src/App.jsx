@@ -16,7 +16,7 @@ async function fetchProjects() {
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1000,
-      system: `You are a monday.com API assistant. When given a task, call the monday.com MCP tool to get board items and return ONLY a JSON array (no markdown, no explanation) with objects: {id, name, projectId, techLead, techResource, programmingStatus, schedule}. Use "\u2014" for missing values.`,
+      system: `You are a monday.com API assistant. When given a task, call the monday.com MCP tool to get board items and return ONLY a JSON array (no markdown, no explanation) with objects: {id, name, projectId, techLead, techResource, programmingStatus, schedule}. Use "—" for missing values.`,
       messages: [{ role: "user", content: `Get all items from monday.com board ID ${MONDAY_BOARD_ID} for the "(6) Project Programming" board. Return the project name, project ID (text_mm0vkgrq), tech lead (multiple_person_mm01ew1v), tech resource (multiple_person_mm01eyxg), programming status label (status column), and programming schedule (timerange_mm034yws). Return as a clean JSON array only.` }],
       mcp_servers: [{ type: "url", url: "https://mcp.monday.com/mcp", name: "monday-mcp" }]
     })
@@ -67,7 +67,7 @@ const applyGen = (set, gid, genFn) => set(gs => gs.map(g => g.id === gid ? { ...
 // ── Option lists ──────────────────────────────────────────────────────────────
 const CODECS = ["H.264","H.265","H.265+","MJPEG"];
 const RESS   = ["1MP (720p)","2MP (1080p)","4MP","5MP","6MP","8MP (4K)","12MP"];
-const LENSES = ["2.8mm","4mm","6mm","8mm","2.8\u201312mm VF","Motorized VF","Other"];
+const LENSES = ["2.8mm","4mm","6mm","8mm","2.8–12mm VF","Motorized VF","Other"];
 const CAM_TYPES = ["Indoor Dome","Outdoor Dome","Bullet","PTZ","Fisheye","Multi-Sensor","Box"];
 const READER_TYPES = ["Wiegand","OSDP","RS-485","Bluetooth","Biometric","Keypad","Multi-Tech"];
 const CRED_TYPES = ["Prox Card","Smart Card","Mobile","PIN","Biometric","Dual Auth"];
@@ -143,11 +143,11 @@ function GroupCard({ icon, title, idx, devCount, collapsed, onToggle, onRemove, 
           <span style={{ background: "rgba(0,174,239,0.25)", color: "#7FD9F7", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>
             {devCount} device{devCount !== 1 ? "s" : ""}
           </span>
-          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginLeft: 4 }}>{collapsed ? "\u25B6 expand" : "\u25BC collapse"}</span>
+          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginLeft: 4 }}>{collapsed ? "▶ expand" : "▼ collapse"}</span>
         </div>
         <button onClick={e => { e.stopPropagation(); onRemove(); }}
           style={{ background: "rgba(239,68,68,0.15)", color: "#FCA5A5", border: "none", borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-          \u2715 Remove Group
+          ✕ Remove Group
         </button>
       </div>
       {!collapsed && <div style={{ padding: 16, background: C.surface }}>{children}</div>}
@@ -179,7 +179,7 @@ function DevRow({ num, dev, cols, onRemove, onUpd }) {
         </td>
       ))}
       <td style={{ padding: "4px 6px", textAlign: "center" }}>
-        <button onClick={onRemove} style={{ background: "#FEE2E2", color: C.danger, border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>\u2715</button>
+        <button onClick={onRemove} style={{ background: "#FEE2E2", color: C.danger, border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>✕</button>
       </td>
     </tr>
   );
@@ -189,7 +189,7 @@ function DevTable({ cols, devices, gid, setter, newDevFn }) {
   if (!devices.length) {
     return (
       <div style={{ textAlign: "center", padding: "16px", color: C.muted, fontSize: 12, border: `1px dashed ${C.border}`, borderRadius: 6, marginTop: 8 }}>
-        No devices yet \u2014 click Generate or add one manually.
+        No devices yet — click Generate or add one manually.
         <button onClick={() => addDev(setter, gid, newDevFn())}
           style={{ marginLeft: 10, background: C.accent, color: C.white, border: "none", borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
           + Add One
@@ -285,7 +285,7 @@ function GenerateBar({ group, setter, genFn, showIP = true }) {
       <button
         onClick={() => applyGen(setter, group.id, genFn)}
         style={{ background: C.gold, color: C.navy, border: "none", borderRadius: 6, padding: "7px 18px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", marginBottom: 1 }}>
-        \u26A1 Generate {group.quantity || 1} Device{parseInt(group.quantity) !== 1 ? "s" : ""}
+        ⚡ Generate {group.quantity || 1} Device{parseInt(group.quantity) !== 1 ? "s" : ""}
       </button>
       {group.devices.length > 0 && (
         <span style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>
@@ -294,6 +294,117 @@ function GenerateBar({ group, setter, genFn, showIP = true }) {
       )}
     </div>
   );
+}
+// ── CSV Export ────────────────────────────────────────────────────────────────
+function buildCSV(state, projectMeta) {
+  const esc = (v) => `"${String(v || "").replace(/"/g, '""')}"`;
+  const headers = [
+    "Project Name","Project ID","Customer","Site Address","Tech Lead","Techs","Date",
+    "Category","Group Label","Brand","Model",
+    "Device Name","Location","IP Address","MAC Address","Serial #","Notes",
+    // camera-specific
+    "Codec","Resolution","Lens","Camera Type","HTTP Port","RTSP Port","FPS","Bitrate (kbps)","PTZ","Username","Password","Storage Group",
+    // server-specific
+    "Role","OS / Platform","Storage Config",
+    // switch-specific
+    "Port Count","VLAN Config","Uplink",
+    // access-specific
+    "Reader Type","Credential Type","Lock Type","Card Format","Facility Code","Access Group","Schedule","Controller Name","Controller IP","Controller S/N","Reader S/N",
+    // zone-specific
+    "Zone #","Zone Type","Partitions","Bypassable",
+    // audio-specific
+    "Zone Group","Amp Zone","Volume (%)",
+  ];
+
+  const projCols = [projectMeta.name, projectMeta.projectId, state.customer, state.siteAddress, state.techLead, state.techs, state.date];
+
+  const rows = [headers.map(esc).join(",")];
+
+  const emptyFrom = (start, total) => Array(total - start).fill('""');
+
+  // Cameras (cols 7-16 base, 17-28 camera-specific)
+  state.cameraGroups.forEach(grp => {
+    grp.devices.forEach(d => {
+      const base = [projCols, "Camera", grp.groupLabel || "", grp.brand, grp.model, d.name, d.location, d.ip, d.mac, d.serial, d.notes].flat().map(esc);
+      const cam  = [grp.codec, grp.resolution, grp.lens, grp.type, grp.port, grp.rtspPort, grp.fps, grp.bitrate, grp.ptz ? "Yes" : "No", grp.username, grp.password, grp.storageGroup].map(esc);
+      const rest = Array(headers.length - base.length - cam.length).fill('""');
+      rows.push([...base, ...cam, ...rest].join(","));
+    });
+  });
+
+  // Servers (cols after camera block: Role, OS, Storage = indices 30,31,32)
+  state.serverGroups.forEach(grp => {
+    grp.devices.forEach(d => {
+      const base = [projCols, "Server", grp.groupLabel || "", grp.brand, grp.model, d.name, d.location, d.ip, d.mac, d.serial, d.notes].flat().map(esc);
+      const camEmpty = Array(12).fill('""');
+      const srv = [grp.role, grp.os, grp.storage].map(esc);
+      const rest = Array(headers.length - base.length - camEmpty.length - srv.length).fill('""');
+      rows.push([...base, ...camEmpty, ...srv, ...rest].join(","));
+    });
+  });
+
+  // Switches
+  state.switchGroups.forEach(grp => {
+    grp.devices.forEach(d => {
+      const base = [projCols, "Switch", grp.groupLabel || "", grp.brand, grp.model, d.name, d.location, d.ip, d.mac, d.serial, d.notes].flat().map(esc);
+      const camEmpty = Array(12).fill('""');
+      const srvEmpty = Array(3).fill('""');
+      const sw = [d.ports || "", grp.vlan, grp.uplink].map(esc);
+      const rest = Array(headers.length - base.length - camEmpty.length - srvEmpty.length - sw.length).fill('""');
+      rows.push([...base, ...camEmpty, ...srvEmpty, ...sw, ...rest].join(","));
+    });
+  });
+
+  // Doors
+  state.doorGroups.forEach(grp => {
+    grp.devices.forEach(d => {
+      const base = [projCols, "Access Door", grp.groupLabel || "", grp.brand, grp.model, d.name, d.location, "", "", "", d.notes].flat().map(esc);
+      const camEmpty = Array(12).fill('""');
+      const srvEmpty = Array(3).fill('""');
+      const swEmpty  = Array(3).fill('""');
+      const ac = [grp.readerType, grp.credentialType, grp.lockType, grp.cardFormat, grp.facilityCode, grp.accessGroup, grp.schedule, d.controllerName, d.controllerIP, d.controllerSerial, d.readerSerial].map(esc);
+      const rest = Array(headers.length - base.length - camEmpty.length - srvEmpty.length - swEmpty.length - ac.length).fill('""');
+      rows.push([...base, ...camEmpty, ...srvEmpty, ...swEmpty, ...ac, ...rest].join(","));
+    });
+  });
+
+  // Zones
+  state.zoneGroups.forEach(grp => {
+    grp.devices.forEach(d => {
+      const base = [projCols, "Intrusion Zone", grp.groupLabel || "", "", "", d.name, d.location, "", "", "", d.notes].flat().map(esc);
+      const camEmpty = Array(12).fill('""');
+      const srvEmpty = Array(3).fill('""');
+      const swEmpty  = Array(3).fill('""');
+      const acEmpty  = Array(11).fill('""');
+      const zone = [d.zoneNumber, d.zoneType, d.partitions, d.bypassable ? "Yes" : "No"].map(esc);
+      const rest = Array(headers.length - base.length - camEmpty.length - srvEmpty.length - swEmpty.length - acEmpty.length - zone.length).fill('""');
+      rows.push([...base, ...camEmpty, ...srvEmpty, ...swEmpty, ...acEmpty, ...zone, ...rest].join(","));
+    });
+  });
+
+  // Audio
+  state.speakerGroups.forEach(grp => {
+    grp.devices.forEach(d => {
+      const base = [projCols, "Audio Zone", grp.groupLabel || "", grp.brand, grp.model, d.name, d.location, d.ip, "", "", d.notes].flat().map(esc);
+      const camEmpty = Array(12).fill('""');
+      const srvEmpty = Array(3).fill('""');
+      const swEmpty  = Array(3).fill('""');
+      const acEmpty  = Array(11).fill('""');
+      const zoneEmpty = Array(4).fill('""');
+      const audio = [grp.zoneGroup, grp.ampZone, grp.volume].map(esc);
+      const rest = Array(headers.length - base.length - camEmpty.length - srvEmpty.length - swEmpty.length - acEmpty.length - zoneEmpty.length - audio.length).fill('""');
+      rows.push([...base, ...camEmpty, ...srvEmpty, ...swEmpty, ...acEmpty, ...zoneEmpty, ...audio, ...rest].join(","));
+    });
+  });
+
+  const csv = rows.join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `PCWO_${projectMeta.name.replace(/\s+/g,"_").substring(0,40)}_${state.date}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 // ── PDF Generator ─────────────────────────────────────────────────────────────
 async function buildPDF(state, projectMeta) {
@@ -332,7 +443,7 @@ async function buildPDF(state, projectMeta) {
     pairs.forEach(([k, v], i) => {
       const x = M + i * colW;
       doc.setFont("helvetica", "bold"); doc.setTextColor(107, 126, 150); doc.text(k, x + 2, y);
-      doc.setFont("helvetica", "normal"); doc.setTextColor(20, 20, 20); doc.text(String(v || "\u2014").substring(0, 32), x + 2, y + 4.5);
+      doc.setFont("helvetica", "normal"); doc.setTextColor(20, 20, 20); doc.text(String(v || "—").substring(0, 32), x + 2, y + 4.5);
     });
     y += lineH;
   };
@@ -387,11 +498,11 @@ async function buildPDF(state, projectMeta) {
   const infoR = [["Tech Lead:", state.techLead],["Tech(s):", state.techs],["Date:", state.date],["Submitted By:", state.submittedBy]];
   infoL.forEach(([k, v], i) => {
     doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(107,126,150); doc.text(k, M+4, y+i*7);
-    doc.setFont("helvetica","normal"); doc.setTextColor(20,20,20); doc.text(v||"\u2014", M+36, y+i*7);
+    doc.setFont("helvetica","normal"); doc.setTextColor(20,20,20); doc.text(v||"—", M+36, y+i*7);
   });
   infoR.forEach(([k, v], i) => {
     doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(107,126,150); doc.text(k, M+CW/2+4, y+i*7);
-    doc.setFont("helvetica","normal"); doc.setTextColor(20,20,20); doc.text(v||"\u2014", M+CW/2+28, y+i*7);
+    doc.setFont("helvetica","normal"); doc.setTextColor(20,20,20); doc.text(v||"—", M+CW/2+28, y+i*7);
   });
   y += 38;
   // ─ SERVERS ───────────────────────────────────────────────────────────────
@@ -401,14 +512,14 @@ async function buildPDF(state, projectMeta) {
     state.serverGroups.forEach(grp => {
       if (!grp.devices.length) return;
       const grpLabel = grp.groupLabel || `${grp.brand || "Server"} ${grp.model || "Group"}`.trim();
-      groupBanner(`${grpLabel}  |  Role: ${grp.role || "\u2014"}  |  OS: ${grp.os || "\u2014"}  |  Storage: ${grp.storage || "\u2014"}`);
+      groupBanner(`${grpLabel}  |  Role: ${grp.role || "—"}  |  OS: ${grp.os || "—"}  |  Storage: ${grp.storage || "—"}`);
       grp.devices.forEach((s, i) => {
         chk(22);
         doc.setFillColor(i%2===0?240:248, i%2===0?244:250, i%2===0?248:252);
         doc.roundedRect(M, y, CW, 20, 1.5, 1.5, "F");
         y += 4;
         doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(11,31,58);
-        doc.text(`SERVER ${i+1}${s.name ? " \u2014 " + s.name : ""}`, M+3, y);
+        doc.text(`SERVER ${i+1}${s.name ? " — " + s.name : ""}`, M+3, y);
         y += 5;
         row([["IP Address:", s.ip], ["MAC:", s.mac], ["Serial #:", s.serial], ["Location:", s.location]]);
         noteRow(s.notes);
@@ -423,14 +534,14 @@ async function buildPDF(state, projectMeta) {
     state.switchGroups.forEach(grp => {
       if (!grp.devices.length) return;
       const grpLabel = grp.groupLabel || `${grp.brand || "Switch"} ${grp.model || "Group"}`.trim();
-      groupBanner(`${grpLabel}  |  VLAN: ${grp.vlan || "\u2014"}  |  Uplink: ${grp.uplink || "\u2014"}`);
+      groupBanner(`${grpLabel}  |  VLAN: ${grp.vlan || "—"}  |  Uplink: ${grp.uplink || "—"}`);
       grp.devices.forEach((sw, i) => {
         chk(22);
         doc.setFillColor(i%2===0?240:248, i%2===0?244:250, i%2===0?248:252);
         doc.roundedRect(M, y, CW, 20, 1.5, 1.5, "F");
         y += 4;
         doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(11,31,58);
-        doc.text(`SWITCH ${i+1}${sw.name ? " \u2014 " + sw.name : ""}`, M+3, y);
+        doc.text(`SWITCH ${i+1}${sw.name ? " — " + sw.name : ""}`, M+3, y);
         y += 5;
         row([["IP Address:", sw.ip], ["MAC:", sw.mac], ["Serial #:", sw.serial], ["Ports:", sw.ports]]);
         row([["Location:", sw.location]]);
@@ -453,14 +564,14 @@ async function buildPDF(state, projectMeta) {
     state.cameraGroups.forEach(grp => {
       if (!grp.devices.length) return;
       const grpLabel = grp.groupLabel || `${grp.brand || "Camera"} ${grp.model || "Group"}`.trim();
-      groupBanner(`${grpLabel}  |  ${grp.resolution}  ${grp.codec}  ${grp.lens}  ${grp.type}  |  FPS: ${grp.fps}  Bitrate: ${grp.bitrate || "\u2014"}  |  HTTP: ${grp.port}  RTSP: ${grp.rtspPort}  |  PTZ: ${grp.ptz ? "Yes" : "No"}`);
+      groupBanner(`${grpLabel}  |  ${grp.resolution}  ${grp.codec}  ${grp.lens}  ${grp.type}  |  FPS: ${grp.fps}  Bitrate: ${grp.bitrate || "—"}  |  HTTP: ${grp.port}  RTSP: ${grp.rtspPort}  |  PTZ: ${grp.ptz ? "Yes" : "No"}`);
       grp.devices.forEach((cam, i) => {
         chk(28);
         doc.setFillColor(i%2===0?240:248, i%2===0?244:250, i%2===0?248:252);
         doc.roundedRect(M, y, CW, 26, 1.5, 1.5, "F");
         y += 4;
         doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(11,31,58);
-        doc.text(`CAMERA ${i+1}${cam.name ? " \u2014 " + cam.name : ""}`, M+3, y);
+        doc.text(`CAMERA ${i+1}${cam.name ? " — " + cam.name : ""}`, M+3, y);
         y += 5;
         row([["Location:", cam.location], ["IP Address:", cam.ip], ["MAC:", cam.mac], ["Serial #:", cam.serial]]);
         row([["Username:", grp.username], ["Password:", grp.password], ["Storage Group:", grp.storageGroup]]);
@@ -476,17 +587,17 @@ async function buildPDF(state, projectMeta) {
     state.doorGroups.forEach(grp => {
       if (!grp.devices.length) return;
       const grpLabel = grp.groupLabel || `${grp.brand || "Access"} ${grp.model || "Group"}`.trim();
-      groupBanner(`${grpLabel}  |  Reader: ${grp.readerType}  Credential: ${grp.credentialType}  Lock: ${grp.lockType}  |  Format: ${grp.cardFormat || "\u2014"}  Facility: ${grp.facilityCode || "\u2014"}`);
+      groupBanner(`${grpLabel}  |  Reader: ${grp.readerType}  Credential: ${grp.credentialType}  Lock: ${grp.lockType}  |  Format: ${grp.cardFormat || "—"}  Facility: ${grp.facilityCode || "—"}`);
       grp.devices.forEach((d, i) => {
         chk(30);
         doc.setFillColor(i%2===0?240:248, i%2===0?244:250, i%2===0?248:252);
         doc.roundedRect(M, y, CW, 28, 1.5, 1.5, "F");
         y += 4;
         doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(11,31,58);
-        doc.text(`DOOR ${i+1}${d.name ? " \u2014 " + d.name : ""}`, M+3, y);
+        doc.text(`DOOR ${i+1}${d.name ? " — " + d.name : ""}`, M+3, y);
         y += 5;
         row([["Location:", d.location], ["Controller:", d.controllerName], ["Controller IP:", d.controllerIP], ["Controller S/N:", d.controllerSerial]]);
-        row([["Reader S/N:", d.readerSerial], ["REX:", d.rex ? "Yes" : "No"], ["Door Contact:", d.doorContact ? "Yes" : "No"], ["Schedule:", grp.schedule || "\u2014"]]);
+        row([["Reader S/N:", d.readerSerial], ["REX:", d.rex ? "Yes" : "No"], ["Door Contact:", d.doorContact ? "Yes" : "No"], ["Schedule:", grp.schedule || "—"]]);
         noteRow(d.notes);
         divider();
       });
@@ -505,7 +616,7 @@ async function buildPDF(state, projectMeta) {
     state.zoneGroups.forEach(grp => {
       if (!grp.devices.length) return;
       const grpLabel = grp.groupLabel || `${grp.zoneType} Zones`;
-      groupBanner(`${grpLabel}  |  Type: ${grp.zoneType}  |  Partitions: ${grp.partitions || "\u2014"}  |  Bypassable: ${grp.bypassable ? "Yes" : "No"}`);
+      groupBanner(`${grpLabel}  |  Type: ${grp.zoneType}  |  Partitions: ${grp.partitions || "—"}  |  Bypassable: ${grp.bypassable ? "Yes" : "No"}`);
       grp.devices.forEach((z, i) => {
         chk(18);
         doc.setFillColor(i%2===0?240:248, i%2===0?244:250, i%2===0?248:252);
@@ -524,7 +635,7 @@ async function buildPDF(state, projectMeta) {
     state.speakerGroups.forEach(grp => {
       if (!grp.devices.length) return;
       const grpLabel = grp.groupLabel || `${grp.brand || "Audio"} ${grp.model || "Group"}`.trim();
-      groupBanner(`${grpLabel}  |  Zone Group: ${grp.zoneGroup || "\u2014"}  Amp Zone: ${grp.ampZone || "\u2014"}  Volume: ${grp.volume}%`);
+      groupBanner(`${grpLabel}  |  Zone Group: ${grp.zoneGroup || "—"}  Amp Zone: ${grp.ampZone || "—"}  Volume: ${grp.volume}%`);
       grp.devices.forEach((sp, i) => {
         chk(16);
         doc.setFillColor(i%2===0?240:248, i%2===0?244:250, i%2===0?248:252);
@@ -555,7 +666,7 @@ async function buildPDF(state, projectMeta) {
     doc.setPage(i);
     doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(160,160,160);
     doc.text(`Page ${i} of ${totalPages}`, W-M-18, 270);
-    doc.text("CONFIDENTIAL \u2014 Programming & Configuration Work Order", M, 270);
+    doc.text("CONFIDENTIAL — Programming & Configuration Work Order", M, 270);
   }
   const fname = `PCWO_${projectMeta.name.replace(/\s+/g,"_").substring(0,40)}_${state.date}.pdf`;
   doc.save(fname);
@@ -608,27 +719,30 @@ export default function App() {
       .then(ps => { setProjects(ps); setLoadingProjects(false); })
       .catch(() => setLoadingProjects(false));
   }, []);
+  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups });
+  const projectMeta  = () => ({ name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" });
+  const handleCSV = () => {
+    try { buildCSV(stateSnapshot(), projectMeta()); }
+    catch (e) { alert("CSV error: " + e.message); }
+  };
   const handleGenerate = async () => {
     if (!sdkReady) { alert("PDF library still loading. Please wait."); return; }
     setPDF(true);
     try {
-      await buildPDF(
-        { ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups },
-        { name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "\u2014" }
-      );
+      await buildPDF(stateSnapshot(), projectMeta());
     } catch (e) { alert("PDF error: " + e.message); }
     setPDF(false);
   };
   const TABS = [
-    { id: "info",      label: "Project Info",  icon: "\uD83D\uDCCB" },
-    { id: "servers",   label: "Servers",        icon: "\uD83D\uDDA5", count: srvCount },
-    { id: "switches",  label: "Switching",      icon: "\uD83D\uDD00", count: swCount },
-    { id: "cameras",   label: "CCTV",           icon: "\uD83D\uDCF7", count: camCount },
-    { id: "access",    label: "Access",         icon: "\uD83D\uDEAA", count: doorCount },
-    { id: "intrusion", label: "Intrusion",      icon: "\uD83D\uDD14", count: zoneCount },
-    { id: "audio",     label: "Audio",          icon: "\uD83D\uDD0A", count: spkCount },
-    { id: "library",   label: "Device Library", icon: "\uD83D\uDCDA" },
-    { id: "export",    label: "Export PDF",     icon: "\uD83D\uDCE4" },
+    { id: "info",      label: "Project Info",  icon: "📋" },
+    { id: "servers",   label: "Servers",        icon: "🖥", count: srvCount },
+    { id: "switches",  label: "Switching",      icon: "🔀", count: swCount },
+    { id: "cameras",   label: "CCTV",           icon: "📷", count: camCount },
+    { id: "access",    label: "Access",         icon: "🚪", count: doorCount },
+    { id: "intrusion", label: "Intrusion",      icon: "🔔", count: zoneCount },
+    { id: "audio",     label: "Audio",          icon: "🔊", count: spkCount },
+    { id: "library",   label: "Device Library", icon: "📚" },
+    { id: "export",    label: "Export PDF",     icon: "📤" },
   ];
   // ─ PROJECT SELECT ─────────────────────────────────────────────────────────
   if (phase === "select") {
@@ -636,13 +750,13 @@ export default function App() {
       <div style={{ minHeight: "100vh", background: C.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
         <div style={{ maxWidth: 720, width: "100%" }}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <div style={{ fontSize: 40, marginBottom: 8 }}>\u26A1</div>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>⚡</div>
             <div style={{ color: C.white, fontWeight: 800, fontSize: 22, letterSpacing: "0.02em" }}>PROGRAMMING & CONFIG WORK ORDER</div>
             <div style={{ color: C.accent, fontSize: 13, marginTop: 4, letterSpacing: "0.06em" }}>Select a project from monday.com to begin</div>
           </div>
           {loadingProjects ? (
             <div style={{ textAlign: "center", color: C.muted, padding: 40 }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>\u23F3</div>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
               <div>Loading projects from monday.com...</div>
             </div>
           ) : projects.length > 0 ? (
@@ -670,7 +784,7 @@ export default function App() {
                 ))}
               </div>
               <button onClick={() => setPhase("build")} style={{ width: "100%", marginTop: 16, background: C.accent, color: C.white, border: "none", borderRadius: 8, padding: "12px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-                Continue \u2192
+                Continue →
               </button>
             </div>
           )}
@@ -684,11 +798,11 @@ export default function App() {
       {/* Topbar */}
       <div style={{ background: C.navy, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(0,0,0,.35)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 18px", height: 48 }}>
-          <button onClick={() => setPhase("select")} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>\u2190 Back</button>
+          <button onClick={() => setPhase("select")} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>← Back</button>
           <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)" }} />
           <div>
             <div style={{ color: C.white, fontWeight: 800, fontSize: 13 }}>{selectedProject?.name || "Project"}</div>
-            <div style={{ color: C.accent, fontSize: 10 }}>ID: {selectedProject?.projectId || "\u2014"}</div>
+            <div style={{ color: C.accent, fontSize: 10 }}>ID: {selectedProject?.projectId || "—"}</div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
             {totalDevices > 0 && (
@@ -696,9 +810,13 @@ export default function App() {
                 {totalDevices} devices
               </span>
             )}
+            <button onClick={handleCSV} disabled={totalDevices === 0}
+              style={{ background: C.success, color: C.white, border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", opacity: totalDevices === 0 ? 0.5 : 1 }}>
+              ⬇ CSV
+            </button>
             <button onClick={handleGenerate} disabled={generating || !sdkReady}
               style={{ background: generating ? C.muted : C.gold, color: C.navy, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
-              {generating ? "\u23F3 Generating..." : "\u2B07 Export PDF"}
+              {generating ? "⏳ Generating..." : "⬇ Export PDF"}
             </button>
           </div>
         </div>
@@ -719,7 +837,7 @@ export default function App() {
         {tab === "info" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 20 }}>
-              <CardHead icon="\uD83D\uDCCB" title="Job & Project Details" color={C.navy} />
+              <CardHead icon="📋" title="Job & Project Details" color={C.navy} />
               <div style={{ padding: 18 }}>
                 <G cols={3}>
                   <F label="Customer"><Inp value={info.customer} onChange={e => setI("customer", e.target.value)} placeholder="Customer / Client name" /></F>
@@ -732,7 +850,7 @@ export default function App() {
               </div>
             </div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 20 }}>
-              <CardHead icon="\uD83D\uDDA5" title="VMS / Recorder Details" color={C.steel} />
+              <CardHead icon="🖥" title="VMS / Recorder Details" color={C.steel} />
               <div style={{ padding: 18 }}>
                 <G cols={4}>
                   {[["NVR/DVR Brand","nvrBrand","e.g. Hikvision"],["Model","nvrModel","DS-9632NI"],["IP Address","nvrIp","192.168.x.x"],["Serial Number","nvrSerial",""],["Firmware","nvrFirmware",""],["Storage","nvrStorage","e.g. 4x4TB"],["Retention","nvrRetention","e.g. 30 days"],["VMS Software","vmsSoftware","e.g. iVMS-4200"]].map(([lbl, k, ph]) => (
@@ -742,7 +860,7 @@ export default function App() {
               </div>
             </div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="\uD83D\uDD14" title="Intrusion Panel Details" color={C.steel} />
+              <CardHead icon="🔔" title="Intrusion Panel Details" color={C.steel} />
               <div style={{ padding: 18 }}>
                 <G cols={4}>
                   <F label="Panel Brand">
@@ -778,11 +896,11 @@ export default function App() {
         {tab === "servers" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="\uD83D\uDDA5" title="Servers & Computing" count={srvCount} onAdd={() => setServerGroups(g => [...g, mkSrvGrp()])} addLabel="Add Server Group" color={C.navy} />
+              <CardHead icon="🖥" title="Servers & Computing" count={srvCount} onAdd={() => setServerGroups(g => [...g, mkSrvGrp()])} addLabel="Add Server Group" color={C.navy} />
               <div style={{ padding: 18 }}>
-                {serverGroups.length === 0 && <Empty icon="\uD83D\uDDA5" msg="No server groups yet. Click + Add Server Group." />}
+                {serverGroups.length === 0 && <Empty icon="🖥" msg="No server groups yet. Click + Add Server Group." />}
                 {serverGroups.map((grp, gi) => (
-                  <GroupCard key={grp.id} icon="\uD83D\uDDA5"
+                  <GroupCard key={grp.id} icon="🖥"
                     title={grp.groupLabel || (grp.brand ? `${grp.brand} ${grp.model}`.trim() : null)}
                     idx={gi} devCount={grp.devices.length}
                     collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
@@ -823,11 +941,11 @@ export default function App() {
         {tab === "switches" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="\uD83D\uDD00" title="Network Switching" count={swCount} onAdd={() => setSwitchGroups(g => [...g, mkSwGrp()])} addLabel="Add Switch Group" color={C.navy} />
+              <CardHead icon="🔀" title="Network Switching" count={swCount} onAdd={() => setSwitchGroups(g => [...g, mkSwGrp()])} addLabel="Add Switch Group" color={C.navy} />
               <div style={{ padding: 18 }}>
-                {switchGroups.length === 0 && <Empty icon="\uD83D\uDD00" msg="No switch groups yet. Click + Add Switch Group." />}
+                {switchGroups.length === 0 && <Empty icon="🔀" msg="No switch groups yet. Click + Add Switch Group." />}
                 {switchGroups.map((grp, gi) => (
-                  <GroupCard key={grp.id} icon="\uD83D\uDD00"
+                  <GroupCard key={grp.id} icon="🔀"
                     title={grp.groupLabel || (grp.brand ? `${grp.brand} ${grp.model}`.trim() : null)}
                     idx={gi} devCount={grp.devices.length}
                     collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
@@ -864,13 +982,13 @@ export default function App() {
         {tab === "cameras" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="\uD83D\uDCF7" title="CCTV Camera Programming" count={camCount} onAdd={() => setCameraGroups(g => [...g, mkCamGroup()])} addLabel="Add Camera Group" color={C.navy} />
+              <CardHead icon="📷" title="CCTV Camera Programming" count={camCount} onAdd={() => setCameraGroups(g => [...g, mkCamGroup()])} addLabel="Add Camera Group" color={C.navy} />
               <div style={{ padding: 18 }}>
-                {cameraGroups.length === 0 && <Empty icon="\uD83D\uDCF7" msg="No camera groups yet. Click + Add Camera Group to get started." />}
+                {cameraGroups.length === 0 && <Empty icon="📷" msg="No camera groups yet. Click + Add Camera Group to get started." />}
                 {cameraGroups.map((grp, gi) => {
-                  const grpTitle = grp.groupLabel || (grp.brand ? `${grp.brand}${grp.model ? " \u2014 " + grp.model : ""}` : null);
+                  const grpTitle = grp.groupLabel || (grp.brand ? `${grp.brand}${grp.model ? " — " + grp.model : ""}` : null);
                   return (
-                    <GroupCard key={grp.id} icon="\uD83D\uDCF7"
+                    <GroupCard key={grp.id} icon="📷"
                       title={grpTitle} idx={gi} devCount={grp.devices.length}
                       collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
                       onRemove={() => remGrp(setCameraGroups, grp.id)}>
@@ -895,7 +1013,7 @@ export default function App() {
                       <G cols={4}>
                         <F label="Codec"><Sel value={grp.codec} onChange={e => updGrp(setCameraGroups, grp.id, "codec", e.target.value)}>{["H.264","H.265","H.265+","MJPEG"].map(o => <option key={o}>{o}</option>)}</Sel></F>
                         <F label="Resolution"><Sel value={grp.resolution} onChange={e => updGrp(setCameraGroups, grp.id, "resolution", e.target.value)}>{["1MP (720p)","2MP (1080p)","4MP","5MP","6MP","8MP (4K)","12MP"].map(o => <option key={o}>{o}</option>)}</Sel></F>
-                        <F label="Lens"><Sel value={grp.lens} onChange={e => updGrp(setCameraGroups, grp.id, "lens", e.target.value)}>{["2.8mm","4mm","6mm","8mm","2.8\u201312mm VF","Motorized VF","Other"].map(o => <option key={o}>{o}</option>)}</Sel></F>
+                        <F label="Lens"><Sel value={grp.lens} onChange={e => updGrp(setCameraGroups, grp.id, "lens", e.target.value)}>{["2.8mm","4mm","6mm","8mm","2.8–12mm VF","Motorized VF","Other"].map(o => <option key={o}>{o}</option>)}</Sel></F>
                         <F label="Camera Type"><Sel value={grp.type} onChange={e => updGrp(setCameraGroups, grp.id, "type", e.target.value)}>{["Indoor Dome","Outdoor Dome","Bullet","PTZ","Fisheye","Multi-Sensor","Box"].map(o => <option key={o}>{o}</option>)}</Sel></F>
                         <F label="HTTP Port"><Inp value={grp.port} onChange={e => updGrp(setCameraGroups, grp.id, "port", e.target.value)} placeholder="80" /></F>
                         <F label="RTSP Port"><Inp value={grp.rtspPort} onChange={e => updGrp(setCameraGroups, grp.id, "rtspPort", e.target.value)} placeholder="554" /></F>
@@ -929,11 +1047,11 @@ export default function App() {
         {tab === "access" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="\uD83D\uDEAA" title="Access Control Door Programming" count={doorCount} onAdd={() => setDoorGroups(g => [...g, mkDoorGrp()])} addLabel="Add Door Group" color={C.navy} />
+              <CardHead icon="🚪" title="Access Control Door Programming" count={doorCount} onAdd={() => setDoorGroups(g => [...g, mkDoorGrp()])} addLabel="Add Door Group" color={C.navy} />
               <div style={{ padding: 18 }}>
-                {doorGroups.length === 0 && <Empty icon="\uD83D\uDEAA" msg="No door groups yet. Click + Add Door Group." />}
+                {doorGroups.length === 0 && <Empty icon="🚪" msg="No door groups yet. Click + Add Door Group." />}
                 {doorGroups.map((grp, gi) => (
-                  <GroupCard key={grp.id} icon="\uD83D\uDEAA"
+                  <GroupCard key={grp.id} icon="🚪"
                     title={grp.groupLabel || (grp.brand ? `${grp.brand} ${grp.model}`.trim() : null)}
                     idx={gi} devCount={grp.devices.length}
                     collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
@@ -979,11 +1097,11 @@ export default function App() {
         {tab === "intrusion" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="\uD83D\uDD14" title="Intrusion Zone Programming" count={zoneCount} onAdd={() => setZoneGroups(g => [...g, mkZoneGrp()])} addLabel="Add Zone Group" color={C.navy} />
+              <CardHead icon="🔔" title="Intrusion Zone Programming" count={zoneCount} onAdd={() => setZoneGroups(g => [...g, mkZoneGrp()])} addLabel="Add Zone Group" color={C.navy} />
               <div style={{ padding: 18 }}>
-                {zoneGroups.length === 0 && <Empty icon="\uD83D\uDD14" msg="No zone groups yet. Click + Add Zone Group." />}
+                {zoneGroups.length === 0 && <Empty icon="🔔" msg="No zone groups yet. Click + Add Zone Group." />}
                 {zoneGroups.map((grp, gi) => (
-                  <GroupCard key={grp.id} icon="\uD83D\uDD14"
+                  <GroupCard key={grp.id} icon="🔔"
                     title={grp.groupLabel || `${grp.zoneType} Zones`}
                     idx={gi} devCount={grp.devices.length}
                     collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
@@ -1017,11 +1135,11 @@ export default function App() {
         {tab === "audio" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="\uD83D\uDD0A" title="Audio Zone Programming" count={spkCount} onAdd={() => setSpeakerGroups(g => [...g, mkSpkGrp()])} addLabel="Add Audio Group" color={C.navy} />
+              <CardHead icon="🔊" title="Audio Zone Programming" count={spkCount} onAdd={() => setSpeakerGroups(g => [...g, mkSpkGrp()])} addLabel="Add Audio Group" color={C.navy} />
               <div style={{ padding: 18 }}>
-                {speakerGroups.length === 0 && <Empty icon="\uD83D\uDD0A" msg="No audio groups yet. Click + Add Audio Group." />}
+                {speakerGroups.length === 0 && <Empty icon="🔊" msg="No audio groups yet. Click + Add Audio Group." />}
                 {speakerGroups.map((grp, gi) => (
-                  <GroupCard key={grp.id} icon="\uD83D\uDD0A"
+                  <GroupCard key={grp.id} icon="🔊"
                     title={grp.groupLabel || (grp.brand ? `${grp.brand} ${grp.model}`.trim() : null)}
                     idx={gi} devCount={grp.devices.length}
                     collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
@@ -1054,18 +1172,18 @@ export default function App() {
         {tab === "library" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 20 }}>
-              <CardHead icon="\uD83D\uDCDA" title="Device Library" color={C.navy} />
+              <CardHead icon="📚" title="Device Library" color={C.navy} />
               <div style={{ padding: 18 }}>
                 <p style={{ color: C.muted, fontSize: 13, marginTop: 0 }}>
                   Reference catalog of supported brands and models. Select a model in any device tab to auto-fill specs.
                   Spec Sheet links open the manufacturer page in a new tab.
                 </p>
                 {[
-                  { label: "Cameras", icon: "\uD83D\uDCF7", db: CAM_DB, specCols: ["resolution","lens","type","codec","fps"] },
-                  { label: "Network Switches", icon: "\uD83D\uDD00", db: SWITCH_DB, specCols: ["ports"] },
-                  { label: "Servers / NVRs", icon: "\uD83D\uDDA5", db: SERVER_DB, specCols: ["os"] },
-                  { label: "Access Controllers", icon: "\uD83D\uDEAA", db: ACCESS_DB, specCols: ["readerType","credentialType"] },
-                  { label: "Intrusion Panels", icon: "\uD83D\uDD14", db: PANEL_DB, specCols: [] },
+                  { label: "Cameras", icon: "📷", db: CAM_DB, specCols: ["resolution","lens","type","codec","fps"] },
+                  { label: "Network Switches", icon: "🔀", db: SWITCH_DB, specCols: ["ports"] },
+                  { label: "Servers / NVRs", icon: "🖥", db: SERVER_DB, specCols: ["os"] },
+                  { label: "Access Controllers", icon: "🚪", db: ACCESS_DB, specCols: ["readerType","credentialType"] },
+                  { label: "Intrusion Panels", icon: "🔔", db: PANEL_DB, specCols: [] },
                 ].map(cat => (
                   <div key={cat.label} style={{ marginBottom: 24 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.navy, borderRadius: "6px 6px 0 0", padding: "8px 14px" }}>
@@ -1096,16 +1214,16 @@ export default function App() {
                                 <td style={{ padding: "7px 10px", color: C.navy, fontWeight: 600, fontFamily: "monospace", fontSize: 11 }}>{m.model}</td>
                                 <td style={{ padding: "7px 10px", color: C.navy }}>{m.name}</td>
                                 {cat.specCols.map(sc => (
-                                  <td key={sc} style={{ padding: "7px 10px", color: C.steel }}>{m[sc] !== undefined ? String(m[sc]) : "\u2014"}</td>
+                                  <td key={sc} style={{ padding: "7px 10px", color: C.steel }}>{m[sc] !== undefined ? String(m[sc]) : "—"}</td>
                                 ))}
                                 <td style={{ padding: "7px 10px" }}>
                                   {m.specSheet ? (
                                     <a href={m.specSheet} target="_blank" rel="noopener noreferrer"
                                       style={{ color: C.accent, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
-                                      \uD83D\uDD17 View
+                                      🔗 View
                                     </a>
                                   ) : (
-                                    <span style={{ color: C.muted, fontSize: 11 }}>\u2014</span>
+                                    <span style={{ color: C.muted, fontSize: 11 }}>—</span>
                                   )}
                                 </td>
                               </tr>
@@ -1124,16 +1242,16 @@ export default function App() {
         {/* ─ EXPORT ─ */}
         {tab === "export" && (
           <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-            <CardHead icon="\uD83D\uDCE4" title="Review & Export PDF Report" color={C.navy} />
+            <CardHead icon="📤" title="Review & Export PDF Report" color={C.navy} />
             <div style={{ padding: 24 }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
                 {[
-                  ["\uD83D\uDDA5","Servers",srvCount,serverGroups.length],
-                  ["\uD83D\uDD00","Switches",swCount,switchGroups.length],
-                  ["\uD83D\uDCF7","Cameras",camCount,cameraGroups.length],
-                  ["\uD83D\uDEAA","Access Doors",doorCount,doorGroups.length],
-                  ["\uD83D\uDD14","Intrusion Zones",zoneCount,zoneGroups.length],
-                  ["\uD83D\uDD0A","Audio Zones",spkCount,speakerGroups.length],
+                  ["🖥","Servers",srvCount,serverGroups.length],
+                  ["🔀","Switches",swCount,switchGroups.length],
+                  ["📷","Cameras",camCount,cameraGroups.length],
+                  ["🚪","Access Doors",doorCount,doorGroups.length],
+                  ["🔔","Intrusion Zones",zoneCount,zoneGroups.length],
+                  ["🔊","Audio Zones",spkCount,speakerGroups.length],
                 ].map(([ic, lbl, cnt, grps]) => (
                   <div key={lbl} style={{ background: C.bg, borderRadius: 8, padding: 16, textAlign: "center", borderTop: `3px solid ${C.accent}` }}>
                     <div style={{ fontSize: 24 }}>{ic}</div>
@@ -1146,25 +1264,31 @@ export default function App() {
               <div style={{ background: C.bg, borderRadius: 8, padding: 16, marginBottom: 20 }}>
                 <div style={{ fontWeight: 700, color: C.navy, marginBottom: 10 }}>Report will include:</div>
                 {[
-                  srvCount > 0 && `\u2705 ${serverGroups.length} server group(s), ${srvCount} server(s) \u2014 brand/model/role + IP, MAC, serial per unit`,
-                  swCount > 0 && `\u2705 ${switchGroups.length} switch group(s), ${swCount} switch(es) \u2014 brand/model/VLAN + per-unit details`,
-                  camCount > 0 && `\u2705 ${cameraGroups.length} camera group(s), ${camCount} camera(s) \u2014 model/codec/resolution/lens + IP, MAC, serial per camera`,
-                  doorCount > 0 && `\u2705 ${doorGroups.length} door group(s), ${doorCount} door(s) \u2014 reader type/credential/lock + per-door controller & serial`,
-                  zoneCount > 0 && `\u2705 ${zoneGroups.length} zone group(s), ${zoneCount} zone(s) \u2014 type/partition + per-zone number & location`,
-                  spkCount > 0 && `\u2705 ${speakerGroups.length} audio group(s), ${spkCount} speaker(s) \u2014 zone group/amp + per-unit location`,
-                  "\uD83D\uDCCB Project info header + VMS recorder details + intrusion panel info",
-                  "\u270D\uFE0F Technician and customer sign-off section",
+                  srvCount > 0 && `✅ ${serverGroups.length} server group(s), ${srvCount} server(s) — brand/model/role + IP, MAC, serial per unit`,
+                  swCount > 0 && `✅ ${switchGroups.length} switch group(s), ${swCount} switch(es) — brand/model/VLAN + per-unit details`,
+                  camCount > 0 && `✅ ${cameraGroups.length} camera group(s), ${camCount} camera(s) — model/codec/resolution/lens + IP, MAC, serial per camera`,
+                  doorCount > 0 && `✅ ${doorGroups.length} door group(s), ${doorCount} door(s) — reader type/credential/lock + per-door controller & serial`,
+                  zoneCount > 0 && `✅ ${zoneGroups.length} zone group(s), ${zoneCount} zone(s) — type/partition + per-zone number & location`,
+                  spkCount > 0 && `✅ ${speakerGroups.length} audio group(s), ${spkCount} speaker(s) — zone group/amp + per-unit location`,
+                  "📋 Project info header + VMS recorder details + intrusion panel info",
+                  "✍️ Technician and customer sign-off section",
                 ].filter(Boolean).map((item, i) => (
                   <div key={i} style={{ fontSize: 13, color: C.navy, padding: "4px 0", borderBottom: `1px solid ${C.border}` }}>{item}</div>
                 ))}
               </div>
               <div style={{ textAlign: "center" }}>
-                <button onClick={handleGenerate} disabled={generating || !sdkReady}
-                  style={{ background: generating ? C.muted : C.gold, color: C.navy, border: "none", borderRadius: 10, padding: "16px 52px", fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 18px rgba(244,163,0,.4)", letterSpacing: "0.03em" }}>
-                  {generating ? "\u23F3 Building PDF..." : "\u2B07 Export Programming & Config Report"}
-                </button>
+                <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+                  <button onClick={handleGenerate} disabled={generating || !sdkReady}
+                    style={{ background: generating ? C.muted : C.gold, color: C.navy, border: "none", borderRadius: 10, padding: "16px 44px", fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 18px rgba(244,163,0,.4)", letterSpacing: "0.03em" }}>
+                    {generating ? "⏳ Building PDF..." : "⬇ Export PDF Report"}
+                  </button>
+                  <button onClick={handleCSV} disabled={totalDevices === 0}
+                    style={{ background: C.success, color: C.white, border: "none", borderRadius: 10, padding: "16px 44px", fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 18px rgba(16,185,129,.3)", letterSpacing: "0.03em", opacity: totalDevices === 0 ? 0.5 : 1 }}>
+                    ⬇ Export CSV for CRM
+                  </button>
+                </div>
                 <div style={{ marginTop: 10, fontSize: 12, color: C.muted }}>
-                  PDF named by project + date. Organized by device group for easy close-out review.
+                  PDF = full close-out report with signatures. CSV = flat device list for CRM / spreadsheet import.
                 </div>
               </div>
             </div>

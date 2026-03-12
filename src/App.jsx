@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { CAM_DB, SWITCH_DB, SERVER_DB, ACCESS_DB, PANEL_DB } from "./deviceDB";
+import { loadWorkOrder, saveWorkOrder } from "./supabase";
 // ── Palette ───────────────────────────────────────────────────────────────────
 const C = {
   navy: "#0B1F3A", steel: "#1A3355", accent: "#00AEEF", gold: "#F4A300",
@@ -697,6 +698,8 @@ export default function App() {
   const [tab, setTab] = useState("info");
   const [generating, setPDF] = useState(false);
   const [sdkReady, setSDK] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("idle"); // idle | saving | saved | error
+  const saveTimerRef = useRef(null);
   // project info
   const [info, setInfo] = useState({ customer: "", siteAddress: "", techLead: "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" });
   const [nvrInfo, setNVR] = useState({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
@@ -723,6 +726,27 @@ export default function App() {
   const setI   = (k, v) => setInfo(s => ({ ...s, [k]: v }));
   const setNV  = (k, v) => setNVR(s => ({ ...s, [k]: v }));
   const setPan = (k, v) => setPanel(s => ({ ...s, [k]: v }));
+  // ── Auto-save to Supabase (debounced 3s) ──────────────────────────────────
+  const triggerSave = useCallback((snap, project) => {
+    if (!project?.id) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSaveStatus("saving");
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveWorkOrder(project.id, project.name, project.projectId, snap);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 3000);
+      } catch {
+        setSaveStatus("error");
+      }
+    }, 3000);
+  }, []);
+  // Watch all state and auto-save when anything changes (only in build phase)
+  useEffect(() => {
+    if (phase !== "build" || !selectedProject) return;
+    const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups };
+    triggerSave(snap, selectedProject);
+  }, [info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups]); // eslint-disable-line
   useEffect(() => {
     if (window.jspdf) { setSDK(true); return; }
     if (document.querySelector('script[src*="jspdf"]')) return;
@@ -827,7 +851,25 @@ export default function App() {
           ) : projects.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {projects.map(p => (
-                <div key={p.id} onClick={() => { setSelectedProject(p); setPhase("build"); }}
+                <div key={p.id} onClick={async () => {
+                    setSelectedProject(p);
+                    try {
+                      const saved = await loadWorkOrder(p.id);
+                      if (saved?.state) {
+                        const s = saved.state;
+                        if (s.info)          setInfo(s.info);
+                        if (s.nvrInfo)       setNVR(s.nvrInfo);
+                        if (s.panelInfo)     setPanel(s.panelInfo);
+                        if (s.cameraGroups)  setCameraGroups(s.cameraGroups);
+                        if (s.switchGroups)  setSwitchGroups(s.switchGroups);
+                        if (s.serverGroups)  setServerGroups(s.serverGroups);
+                        if (s.doorGroups)    setDoorGroups(s.doorGroups);
+                        if (s.zoneGroups)    setZoneGroups(s.zoneGroups);
+                        if (s.speakerGroups) setSpeakerGroups(s.speakerGroups);
+                      }
+                    } catch (e) { console.warn("Could not load saved work order:", e); }
+                    setPhase("build");
+                  }}
                   style={{ background: selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.05)", border: `1px solid ${selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.1)"}`, borderRadius: 8, padding: "14px 18px", cursor: "pointer", transition: "background .15s" }}>
                   <div style={{ color: C.white, fontWeight: 700, fontSize: 14 }}>{p.name}</div>
                   <div style={{ color: C.muted, fontSize: 11, marginTop: 3 }}>ID: {p.projectId}  |  Lead: {p.techLead}  |  Status: {p.programmingStatus}</div>
@@ -864,13 +906,25 @@ export default function App() {
       {/* Topbar */}
       <div style={{ background: C.navy, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(0,0,0,.35)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 18px", height: 48 }}>
-          <button onClick={() => setPhase("select")} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>← Back</button>
+          <button onClick={() => {
+            setPhase("select");
+            setInfo({ customer: "", siteAddress: "", techLead: "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" });
+            setNVR({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
+            setPanel({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
+            setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
+            setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
+            setCollapsed({}); setSaveStatus("idle");
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+          }} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>← Back</button>
           <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)" }} />
           <div>
             <div style={{ color: C.white, fontWeight: 800, fontSize: 13 }}>{selectedProject?.name || "Project"}</div>
             <div style={{ color: C.accent, fontSize: 10 }}>ID: {selectedProject?.projectId || "—"}</div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
+            {saveStatus === "saving" && <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>⏳ Saving…</span>}
+            {saveStatus === "saved"  && <span style={{ color: C.success, fontSize: 11, fontWeight: 700 }}>✓ Saved</span>}
+            {saveStatus === "error"  && <span style={{ color: C.danger,  fontSize: 11, fontWeight: 700 }}>⚠ Save failed</span>}
             {totalDevices > 0 && (
               <span style={{ background: C.accent, color: C.white, borderRadius: 10, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>
                 {totalDevices} devices

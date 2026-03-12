@@ -9,25 +9,28 @@ const C = {
 };
 // ── Monday API ────────────────────────────────────────────────────────────────
 const MONDAY_BOARD_ID = "18394052747";
-async function fetchProjects() {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+async function fetchProjects(token) {
+  if (!token) return [];
+  const query = `{ boards(ids: ${MONDAY_BOARD_ID}) { items_page(limit: 100) { items { id name column_values { id text } } } } }`;
+  const res = await fetch("https://api.monday.com/v2", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      system: `You are a monday.com API assistant. When given a task, call the monday.com MCP tool to get board items and return ONLY a JSON array (no markdown, no explanation) with objects: {id, name, projectId, techLead, techResource, programmingStatus, schedule}. Use "—" for missing values.`,
-      messages: [{ role: "user", content: `Get all items from monday.com board ID ${MONDAY_BOARD_ID} for the "(6) Project Programming" board. Return the project name, project ID (text_mm0vkgrq), tech lead (multiple_person_mm01ew1v), tech resource (multiple_person_mm01eyxg), programming status label (status column), and programming schedule (timerange_mm034yws). Return as a clean JSON array only.` }],
-      mcp_servers: [{ type: "url", url: "https://mcp.monday.com/mcp", name: "monday-mcp" }]
-    })
+    headers: { "Content-Type": "application/json", "Authorization": token },
+    body: JSON.stringify({ query }),
   });
   const data = await res.json();
-  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
-  try {
-    const clean = text.replace(/```json|```/g, "").trim();
-    const start = clean.indexOf("[");
-    return JSON.parse(clean.slice(start));
-  } catch { return []; }
+  if (data.errors) throw new Error(data.errors[0].message);
+  const items = data?.data?.boards?.[0]?.items_page?.items || [];
+  return items.map(item => {
+    const col = id => item.column_values.find(c => c.id === id)?.text || "—";
+    return {
+      id: item.id,
+      name: item.name,
+      projectId: col("text_mm0vkgrq"),
+      techLead: col("multiple_person_mm01ew1v"),
+      programmingStatus: col("status"),
+      schedule: col("timerange_mm034yws"),
+    };
+  });
 }
 // ── Utilities ─────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -39,17 +42,17 @@ const nextIP = (base, n) => {
 };
 // ── Group data makers ─────────────────────────────────────────────────────────
 const mkCamGroup = () => ({ id: uid(), groupLabel: "", brand: "", model: "", codec: "H.265", resolution: "4MP", lens: "2.8mm", type: "Outdoor Dome", port: "80", rtspPort: "554", fps: "15", bitrate: "", ptz: false, username: "", password: "", storageGroup: "", quantity: "4", ipStart: "", devices: [] });
-const mkCamDev = (ip = "", idx = 0) => ({ id: uid(), name: `Camera ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "" });
+const mkCamDev = (ip = "", idx = 0) => ({ id: uid(), name: `Camera ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "", programmed: false });
 const mkSwGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", vlan: "", uplink: "", quantity: "1", ipStart: "", devices: [] });
-const mkSwDev = (ip = "", idx = 0) => ({ id: uid(), name: `Switch ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", ports: "", notes: "" });
+const mkSwDev = (ip = "", idx = 0) => ({ id: uid(), name: `Switch ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", ports: "", notes: "", programmed: false });
 const mkSrvGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", role: "VMS Server", os: "", storage: "", quantity: "1", ipStart: "", devices: [] });
-const mkSrvDev = (ip = "", idx = 0) => ({ id: uid(), name: `Server ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "" });
+const mkSrvDev = (ip = "", idx = 0) => ({ id: uid(), name: `Server ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "", programmed: false });
 const mkDoorGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", readerType: "OSDP", credentialType: "Smart Card", lockType: "Electric Strike", cardFormat: "", facilityCode: "", accessGroup: "", schedule: "", quantity: "1", devices: [] });
-const mkDoorDev = (idx = 0) => ({ id: uid(), name: `Door ${String(idx + 1).padStart(2, "0")}`, location: "", controllerName: "", controllerIP: "", controllerSerial: "", readerSerial: "", rex: false, doorContact: false, notes: "" });
+const mkDoorDev = (idx = 0) => ({ id: uid(), name: `Door ${String(idx + 1).padStart(2, "0")}`, location: "", controllerName: "", controllerIP: "", controllerSerial: "", readerSerial: "", rex: false, doorContact: false, notes: "", programmed: false });
 const mkZoneGrp = () => ({ id: uid(), groupLabel: "", zoneType: "Motion", partitions: "", bypassable: false, quantity: "1", startNumber: "1", devices: [] });
-const mkZoneDev = (idx = 0, g = {}) => ({ id: uid(), name: `Zone ${String(idx + 1).padStart(2, "0")}`, location: "", zoneNumber: String((parseInt(g.startNumber) || 1) + idx), zoneType: g.zoneType || "Motion", partitions: g.partitions || "", bypassable: g.bypassable || false, notes: "" });
+const mkZoneDev = (idx = 0, g = {}) => ({ id: uid(), name: `Zone ${String(idx + 1).padStart(2, "0")}`, location: "", zoneNumber: String((parseInt(g.startNumber) || 1) + idx), zoneType: g.zoneType || "Motion", partitions: g.partitions || "", bypassable: g.bypassable || false, notes: "", programmed: false });
 const mkSpkGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", zoneGroup: "", ampZone: "", volume: "70", quantity: "1", ipStart: "", devices: [] });
-const mkSpkDev = (ip = "", idx = 0) => ({ id: uid(), name: `Speaker ${String(idx + 1).padStart(2, "0")}`, location: "", ip, notes: "" });
+const mkSpkDev = (ip = "", idx = 0) => ({ id: uid(), name: `Speaker ${String(idx + 1).padStart(2, "0")}`, location: "", ip, notes: "", programmed: false });
 // Generate device arrays from a group config
 const genCam  = g => Array.from({ length: Math.min(parseInt(g.quantity) || 1, 64) }, (_, i) => mkCamDev(nextIP(g.ipStart, i), i));
 const genSw   = g => Array.from({ length: Math.min(parseInt(g.quantity) || 1, 32) }, (_, i) => mkSwDev(nextIP(g.ipStart, i), i));
@@ -159,8 +162,9 @@ function DevRow({ num, dev, cols, onRemove, onUpd }) {
   const inpSt = { padding: "5px 7px", borderRadius: 4, border: `1.5px solid ${C.border}`, fontSize: 11, background: C.white, color: C.navy, outline: "none", width: "100%", boxSizing: "border-box" };
   const focus = e => e.target.style.borderColor = C.accent;
   const blur  = e => e.target.style.borderColor = C.border;
+  const rowBg = dev.programmed ? "#F0FDF4" : (num % 2 === 0 ? C.white : C.surface);
   return (
-    <tr style={{ background: num % 2 === 0 ? C.white : C.surface }}>
+    <tr style={{ background: rowBg }}>
       <td style={{ padding: "5px 8px", fontSize: 11, fontWeight: 700, color: C.muted, textAlign: "center", width: 30 }}>{num}</td>
       {cols.map(col => (
         <td key={col.key} style={{ padding: "4px 4px" }}>
@@ -178,6 +182,15 @@ function DevRow({ num, dev, cols, onRemove, onUpd }) {
           )}
         </td>
       ))}
+      <td style={{ padding: "4px 8px", textAlign: "center", width: 60 }}>
+        <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: "pointer" }}>
+          <input type="checkbox" checked={!!dev.programmed} onChange={e => onUpd("programmed", e.target.checked)}
+            style={{ cursor: "pointer", accentColor: C.success, width: 15, height: 15 }} />
+          <span style={{ fontSize: 9, fontWeight: 700, color: dev.programmed ? C.success : C.muted }}>
+            {dev.programmed ? "✓ Done" : "Pending"}
+          </span>
+        </label>
+      </td>
       <td style={{ padding: "4px 6px", textAlign: "center" }}>
         <button onClick={onRemove} style={{ background: "#FEE2E2", color: C.danger, border: "none", borderRadius: 3, padding: "2px 6px", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>✕</button>
       </td>
@@ -212,6 +225,7 @@ function DevTable({ cols, devices, gid, setter, newDevFn }) {
             <tr style={{ background: C.navy }}>
               <th style={{ padding: "5px 8px", color: C.muted, fontSize: 10, fontWeight: 700, textAlign: "center", width: 30 }}>#</th>
               {cols.map(c => <th key={c.key} style={{ padding: "5px 8px", color: "rgba(255,255,255,0.7)", fontSize: 10, fontWeight: 700, textAlign: "left", whiteSpace: "nowrap" }}>{c.label}</th>)}
+              <th style={{ padding: "5px 8px", color: C.success, fontSize: 10, fontWeight: 700, textAlign: "center", width: 60, whiteSpace: "nowrap" }}>Pgmd</th>
               <th style={{ padding: "5px 8px", width: 30 }}></th>
             </tr>
           </thead>
@@ -675,8 +689,11 @@ async function buildPDF(state, projectMeta) {
 export default function App() {
   const [phase, setPhase] = useState("select");
   const [projects, setProjects] = useState([]);
-  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [projectsError, setProjectsError] = useState("");
   const [selectedProject, setSelectedProject] = useState(null);
+  const [mondayToken, setMondayToken] = useState(() => localStorage.getItem("mondayToken") || "");
+  const [tokenDraft, setTokenDraft] = useState("");
   const [tab, setTab] = useState("info");
   const [generating, setPDF] = useState(false);
   const [sdkReady, setSDK] = useState(false);
@@ -715,10 +732,13 @@ export default function App() {
     document.head.appendChild(s);
   }, []);
   useEffect(() => {
-    fetchProjects()
+    if (!mondayToken) return;
+    setLoadingProjects(true);
+    setProjectsError("");
+    fetchProjects(mondayToken)
       .then(ps => { setProjects(ps); setLoadingProjects(false); })
-      .catch(() => setLoadingProjects(false));
-  }, []);
+      .catch(e => { setProjectsError(e.message || "Failed to load projects"); setLoadingProjects(false); });
+  }, [mondayToken]);
   const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups });
   const projectMeta  = () => ({ name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" });
   const handleCSV = () => {
@@ -741,23 +761,68 @@ export default function App() {
     { id: "access",    label: "Access",         icon: "🚪", count: doorCount },
     { id: "intrusion", label: "Intrusion",      icon: "🔔", count: zoneCount },
     { id: "audio",     label: "Audio",          icon: "🔊", count: spkCount },
+    { id: "dashboard", label: "Dashboard",       icon: "📊" },
     { id: "library",   label: "Device Library", icon: "📚" },
     { id: "export",    label: "Export PDF",     icon: "📤" },
   ];
   // ─ PROJECT SELECT ─────────────────────────────────────────────────────────
   if (phase === "select") {
+    const inp2St = { width: "100%", padding: "10px 14px", borderRadius: 6, border: `1px solid rgba(255,255,255,0.15)`, background: "rgba(255,255,255,0.07)", color: C.white, fontSize: 13, outline: "none", boxSizing: "border-box" };
+    const saveToken = () => {
+      const t = tokenDraft.trim();
+      if (!t) return;
+      localStorage.setItem("mondayToken", t);
+      setMondayToken(t);
+      setTokenDraft("");
+    };
     return (
       <div style={{ minHeight: "100vh", background: C.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
         <div style={{ maxWidth: 720, width: "100%" }}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>⚡</div>
             <div style={{ color: C.white, fontWeight: 800, fontSize: 22, letterSpacing: "0.02em" }}>PROGRAMMING & CONFIG WORK ORDER</div>
-            <div style={{ color: C.accent, fontSize: 13, marginTop: 4, letterSpacing: "0.06em" }}>Select a project from monday.com to begin</div>
+            <div style={{ color: C.accent, fontSize: 13, marginTop: 4, letterSpacing: "0.06em" }}>Select an active project from monday.com</div>
           </div>
+
+          {/* Token setup */}
+          {!mondayToken && (
+            <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 20, marginBottom: 20 }}>
+              <div style={{ color: C.gold, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Connect to monday.com</div>
+              <div style={{ color: C.muted, fontSize: 12, marginBottom: 12 }}>
+                Enter your monday.com API token to load active projects automatically.<br />
+                Find it at: <span style={{ color: C.accent }}>monday.com → Avatar → Developers → API v2 Token</span>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={tokenDraft} onChange={e => setTokenDraft(e.target.value)}
+                  placeholder="eyJhbGc..." type="password"
+                  onKeyDown={e => e.key === "Enter" && saveToken()}
+                  style={{ ...inp2St, flex: 1 }} />
+                <button onClick={saveToken} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  Connect
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Refresh token */}
+          {mondayToken && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8, gap: 8, alignItems: "center" }}>
+              <span style={{ color: C.success, fontSize: 11, fontWeight: 600 }}>✓ Connected to monday.com</span>
+              <button onClick={() => { localStorage.removeItem("mondayToken"); setMondayToken(""); setProjects([]); }}
+                style={{ background: "rgba(255,255,255,0.07)", color: C.muted, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 5, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
+                Change Token
+              </button>
+            </div>
+          )}
+
           {loadingProjects ? (
             <div style={{ textAlign: "center", color: C.muted, padding: 40 }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
               <div>Loading projects from monday.com...</div>
+            </div>
+          ) : projectsError ? (
+            <div style={{ background: "#3B0F0F", borderRadius: 8, padding: 16, color: "#FCA5A5", fontSize: 13, marginBottom: 16 }}>
+              Error: {projectsError}. Check your API token and board ID.
             </div>
           ) : projects.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -769,25 +834,26 @@ export default function App() {
                 </div>
               ))}
             </div>
-          ) : (
-            <div>
-              <div style={{ textAlign: "center", color: C.muted, marginBottom: 20, fontSize: 13 }}>
-                Could not load projects. Enter project details manually:
-              </div>
-              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 20 }}>
-                {[["Project Name","name",""],["Project ID","projectId",""]].map(([lbl, k]) => (
-                  <div key={k} style={{ marginBottom: 12 }}>
-                    <label style={{ color: C.muted, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: 4 }}>{lbl}</label>
-                    <input value={selectedProject?.[k] || ""} onChange={e => setSelectedProject(s => ({ ...(s || {}), [k]: e.target.value }))}
-                      style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: `1px solid rgba(255,255,255,0.15)`, background: "rgba(255,255,255,0.07)", color: C.white, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => setPhase("build")} style={{ width: "100%", marginTop: 16, background: C.accent, color: C.white, border: "none", borderRadius: 8, padding: "12px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-                Continue →
-              </button>
+          ) : mondayToken ? (
+            <div style={{ textAlign: "center", color: C.muted, padding: 24, fontSize: 13 }}>No projects found on board {MONDAY_BOARD_ID}.</div>
+          ) : null}
+
+          {/* Manual fallback */}
+          <div style={{ marginTop: 20 }}>
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 11, marginBottom: 12 }}>— or enter manually —</div>
+            <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 16 }}>
+              {[["Project Name","name"],["Project ID","projectId"]].map(([lbl, k]) => (
+                <div key={k} style={{ marginBottom: 10 }}>
+                  <label style={{ color: C.muted, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: 4 }}>{lbl}</label>
+                  <input value={selectedProject?.[k] || ""} onChange={e => setSelectedProject(s => ({ ...(s || {}), [k]: e.target.value }))}
+                    style={inp2St} />
+                </div>
+              ))}
             </div>
-          )}
+            <button onClick={() => setPhase("build")} style={{ width: "100%", marginTop: 12, background: C.accent, color: C.white, border: "none", borderRadius: 8, padding: "12px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              Continue →
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1167,6 +1233,109 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* ─ DASHBOARD ─ */}
+        {tab === "dashboard" && (() => {
+          const allDevs = [
+            ...cameraGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Camera", group: g.groupLabel || g.brand || "Unnamed", icon: "📷" }))),
+            ...switchGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Switch", group: g.groupLabel || g.brand || "Unnamed", icon: "🔀" }))),
+            ...serverGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Server", group: g.groupLabel || g.brand || "Unnamed", icon: "🖥" }))),
+            ...doorGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Door", group: g.groupLabel || g.brand || "Unnamed", icon: "🚪" }))),
+            ...zoneGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Zone", group: g.groupLabel || "Unnamed", icon: "🔔" }))),
+            ...speakerGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Speaker", group: g.groupLabel || g.brand || "Unnamed", icon: "🔊" }))),
+          ];
+          const programmedCount = allDevs.filter(d => d.programmed).length;
+          const pct = allDevs.length ? Math.round((programmedCount / allDevs.length) * 100) : 0;
+          const categories = [
+            { label: "Cameras", icon: "📷", devs: cameraGroups.flatMap(g => g.devices) },
+            { label: "Switches", icon: "🔀", devs: switchGroups.flatMap(g => g.devices) },
+            { label: "Servers", icon: "🖥", devs: serverGroups.flatMap(g => g.devices) },
+            { label: "Doors", icon: "🚪", devs: doorGroups.flatMap(g => g.devices) },
+            { label: "Zones", icon: "🔔", devs: zoneGroups.flatMap(g => g.devices) },
+            { label: "Speakers", icon: "🔊", devs: speakerGroups.flatMap(g => g.devices) },
+          ].filter(c => c.devs.length > 0);
+          return (
+            <div>
+              {/* Overall progress */}
+              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 20, marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: C.navy }}>Overall Programming Progress</div>
+                  <div style={{ fontWeight: 800, fontSize: 22, color: pct === 100 ? C.success : C.navy }}>{pct}%</div>
+                </div>
+                <div style={{ background: C.bg, borderRadius: 999, height: 12, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? C.success : C.accent, borderRadius: 999, transition: "width .4s" }} />
+                </div>
+                <div style={{ marginTop: 8, color: C.muted, fontSize: 12 }}>{programmedCount} of {allDevs.length} devices programmed</div>
+              </div>
+
+              {/* Category breakdown */}
+              {categories.length > 0 && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
+                  {categories.map(cat => {
+                    const done = cat.devs.filter(d => d.programmed).length;
+                    const cp = cat.devs.length ? Math.round((done / cat.devs.length) * 100) : 0;
+                    return (
+                      <div key={cat.label} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 14, borderTop: `3px solid ${cp === 100 ? C.success : C.accent}` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>{cat.icon} {cat.label}</div>
+                          <div style={{ fontWeight: 800, color: cp === 100 ? C.success : C.navy, fontSize: 14 }}>{cp}%</div>
+                        </div>
+                        <div style={{ background: C.bg, borderRadius: 999, height: 7, overflow: "hidden", marginBottom: 6 }}>
+                          <div style={{ height: "100%", width: `${cp}%`, background: cp === 100 ? C.success : C.accent, borderRadius: 999, transition: "width .4s" }} />
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted }}>{done}/{cat.devs.length} done</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Full device list */}
+              {allDevs.length === 0 ? (
+                <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 40, textAlign: "center", color: C.muted }}>
+                  No devices added yet. Go to any category tab and add device groups.
+                </div>
+              ) : (
+                <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+                  <div style={{ background: C.navy, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ color: C.white, fontWeight: 700, fontSize: 13 }}>All Devices — {allDevs.length} total</span>
+                    <span style={{ color: C.success, fontWeight: 700, fontSize: 12 }}>{programmedCount} done  ·  {allDevs.length - programmedCount} pending</span>
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: C.surface }}>
+                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Status</th>
+                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Category</th>
+                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Group</th>
+                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Device Name</th>
+                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Location</th>
+                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>IP</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allDevs.map((dev, i) => (
+                          <tr key={dev.id} style={{ background: dev.programmed ? "#F0FDF4" : (i % 2 === 0 ? C.white : C.surface) }}>
+                            <td style={{ padding: "7px 10px", textAlign: "center" }}>
+                              <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: dev.programmed ? "#D1FAE5" : "#FEF3C7", color: dev.programmed ? C.success : C.warn }}>
+                                {dev.programmed ? "✓ Done" : "Pending"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "7px 10px", color: C.navy }}>{dev.icon} {dev.category}</td>
+                            <td style={{ padding: "7px 10px", color: C.muted, fontSize: 11 }}>{dev.group}</td>
+                            <td style={{ padding: "7px 10px", fontWeight: 600, color: C.navy }}>{dev.name}</td>
+                            <td style={{ padding: "7px 10px", color: C.muted }}>{dev.location || "—"}</td>
+                            <td style={{ padding: "7px 10px", fontFamily: "monospace", color: C.steel }}>{dev.ip || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ─ DEVICE LIBRARY ─ */}
         {tab === "library" && (

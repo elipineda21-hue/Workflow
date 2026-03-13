@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CAM_DB, SWITCH_DB, SERVER_DB, ACCESS_DB, PANEL_DB } from "./deviceDB";
-import { loadWorkOrder, saveWorkOrder } from "./supabase";
+import { loadWorkOrder, saveWorkOrder, listWorkOrders } from "./supabase";
 // ── Palette ───────────────────────────────────────────────────────────────────
 const C = {
   navy: "#0B1F3A", steel: "#1A3355", accent: "#00AEEF", gold: "#F4A300",
@@ -43,17 +43,17 @@ const nextIP = (base, n) => {
 };
 // ── Group data makers ─────────────────────────────────────────────────────────
 const mkCamGroup = () => ({ id: uid(), groupLabel: "", brand: "", model: "", codec: "H.265", resolution: "4MP", lens: "2.8mm", type: "Outdoor Dome", port: "80", rtspPort: "554", fps: "15", bitrate: "", ptz: false, username: "", password: "", storageGroup: "", quantity: "4", ipStart: "", devices: [] });
-const mkCamDev = (ip = "", idx = 0) => ({ id: uid(), name: `Camera ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "", programmed: false });
+const mkCamDev = (ip = "", idx = 0) => ({ id: uid(), name: `Camera ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "", installed: false, programmed: false });
 const mkSwGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", vlan: "", uplink: "", quantity: "1", ipStart: "", devices: [] });
-const mkSwDev = (ip = "", idx = 0) => ({ id: uid(), name: `Switch ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", ports: "", notes: "", programmed: false });
+const mkSwDev = (ip = "", idx = 0) => ({ id: uid(), name: `Switch ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", ports: "", notes: "", installed: false, programmed: false });
 const mkSrvGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", role: "VMS Server", os: "", storage: "", quantity: "1", ipStart: "", devices: [] });
-const mkSrvDev = (ip = "", idx = 0) => ({ id: uid(), name: `Server ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "", programmed: false });
+const mkSrvDev = (ip = "", idx = 0) => ({ id: uid(), name: `Server ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "", installed: false, programmed: false });
 const mkDoorGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", readerType: "OSDP", credentialType: "Smart Card", lockType: "Electric Strike", cardFormat: "", facilityCode: "", accessGroup: "", schedule: "", quantity: "1", devices: [] });
-const mkDoorDev = (idx = 0) => ({ id: uid(), name: `Door ${String(idx + 1).padStart(2, "0")}`, location: "", controllerName: "", controllerIP: "", controllerSerial: "", readerSerial: "", rex: false, doorContact: false, notes: "", programmed: false });
+const mkDoorDev = (idx = 0) => ({ id: uid(), name: `Door ${String(idx + 1).padStart(2, "0")}`, location: "", controllerName: "", controllerIP: "", controllerSerial: "", readerSerial: "", rex: false, doorContact: false, notes: "", installed: false, programmed: false });
 const mkZoneGrp = () => ({ id: uid(), groupLabel: "", zoneType: "Motion", partitions: "", bypassable: false, quantity: "1", startNumber: "1", devices: [] });
-const mkZoneDev = (idx = 0, g = {}) => ({ id: uid(), name: `Zone ${String(idx + 1).padStart(2, "0")}`, location: "", zoneNumber: String((parseInt(g.startNumber) || 1) + idx), zoneType: g.zoneType || "Motion", partitions: g.partitions || "", bypassable: g.bypassable || false, notes: "", programmed: false });
+const mkZoneDev = (idx = 0, g = {}) => ({ id: uid(), name: `Zone ${String(idx + 1).padStart(2, "0")}`, location: "", zoneNumber: String((parseInt(g.startNumber) || 1) + idx), zoneType: g.zoneType || "Motion", partitions: g.partitions || "", bypassable: g.bypassable || false, notes: "", installed: false, programmed: false });
 const mkSpkGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", zoneGroup: "", ampZone: "", volume: "70", quantity: "1", ipStart: "", devices: [] });
-const mkSpkDev = (ip = "", idx = 0) => ({ id: uid(), name: `Speaker ${String(idx + 1).padStart(2, "0")}`, location: "", ip, notes: "", programmed: false });
+const mkSpkDev = (ip = "", idx = 0) => ({ id: uid(), name: `Speaker ${String(idx + 1).padStart(2, "0")}`, location: "", ip, notes: "", installed: false, programmed: false });
 // Generate device arrays from a group config
 const genCam  = g => Array.from({ length: Math.min(parseInt(g.quantity) || 1, 64) }, (_, i) => mkCamDev(nextIP(g.ipStart, i), i));
 const genSw   = g => Array.from({ length: Math.min(parseInt(g.quantity) || 1, 32) }, (_, i) => mkSwDev(nextIP(g.ipStart, i), i));
@@ -163,7 +163,7 @@ function DevRow({ num, dev, cols, onRemove, onUpd }) {
   const inpSt = { padding: "5px 7px", borderRadius: 4, border: `1.5px solid ${C.border}`, fontSize: 11, background: C.white, color: C.navy, outline: "none", width: "100%", boxSizing: "border-box" };
   const focus = e => e.target.style.borderColor = C.accent;
   const blur  = e => e.target.style.borderColor = C.border;
-  const rowBg = dev.programmed ? "#F0FDF4" : (num % 2 === 0 ? C.white : C.surface);
+  const rowBg = dev.programmed ? "#F0FDF4" : dev.installed ? "#FFFBEB" : (num % 2 === 0 ? C.white : C.surface);
   return (
     <tr style={{ background: rowBg }}>
       <td style={{ padding: "5px 8px", fontSize: 11, fontWeight: 700, color: C.muted, textAlign: "center", width: 30 }}>{num}</td>
@@ -183,12 +183,21 @@ function DevRow({ num, dev, cols, onRemove, onUpd }) {
           )}
         </td>
       ))}
-      <td style={{ padding: "4px 8px", textAlign: "center", width: 60 }}>
+      <td style={{ padding: "4px 8px", textAlign: "center", width: 50 }}>
+        <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: "pointer" }}>
+          <input type="checkbox" checked={!!dev.installed} onChange={e => onUpd("installed", e.target.checked)}
+            style={{ cursor: "pointer", accentColor: C.warn, width: 15, height: 15 }} />
+          <span style={{ fontSize: 9, fontWeight: 700, color: dev.installed ? C.warn : C.muted }}>
+            {dev.installed ? "✓ Inst" : "—"}
+          </span>
+        </label>
+      </td>
+      <td style={{ padding: "4px 8px", textAlign: "center", width: 50 }}>
         <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: "pointer" }}>
           <input type="checkbox" checked={!!dev.programmed} onChange={e => onUpd("programmed", e.target.checked)}
             style={{ cursor: "pointer", accentColor: C.success, width: 15, height: 15 }} />
           <span style={{ fontSize: 9, fontWeight: 700, color: dev.programmed ? C.success : C.muted }}>
-            {dev.programmed ? "✓ Done" : "Pending"}
+            {dev.programmed ? "✓ Pgmd" : "—"}
           </span>
         </label>
       </td>
@@ -226,7 +235,8 @@ function DevTable({ cols, devices, gid, setter, newDevFn }) {
             <tr style={{ background: C.navy }}>
               <th style={{ padding: "5px 8px", color: C.muted, fontSize: 10, fontWeight: 700, textAlign: "center", width: 30 }}>#</th>
               {cols.map(c => <th key={c.key} style={{ padding: "5px 8px", color: "rgba(255,255,255,0.7)", fontSize: 10, fontWeight: 700, textAlign: "left", whiteSpace: "nowrap" }}>{c.label}</th>)}
-              <th style={{ padding: "5px 8px", color: C.success, fontSize: 10, fontWeight: 700, textAlign: "center", width: 60, whiteSpace: "nowrap" }}>Pgmd</th>
+              <th style={{ padding: "5px 8px", color: C.warn, fontSize: 10, fontWeight: 700, textAlign: "center", width: 50, whiteSpace: "nowrap" }}>Inst</th>
+              <th style={{ padding: "5px 8px", color: C.success, fontSize: 10, fontWeight: 700, textAlign: "center", width: 50, whiteSpace: "nowrap" }}>Pgmd</th>
               <th style={{ padding: "5px 8px", width: 30 }}></th>
             </tr>
           </thead>
@@ -686,8 +696,144 @@ async function buildPDF(state, projectMeta) {
   const fname = `PCWO_${projectMeta.name.replace(/\s+/g,"_").substring(0,40)}_${state.date}.pdf`;
   doc.save(fname);
 }
+// ── MASTER DASHBOARD ──────────────────────────────────────────────────────────
+function MasterDashboard({ onBack, laborTypes }) {
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState("");
+  useEffect(() => {
+    listWorkOrders()
+      .then(data => { setRows(data); setLoading(false); })
+      .catch(e   => { setError(e.message); setLoading(false); });
+  }, []);
+  const allDevs = (s) => [
+    ...(s.cameraGroups  || []), ...(s.switchGroups  || []),
+    ...(s.serverGroups  || []), ...(s.doorGroups    || []),
+    ...(s.zoneGroups    || []), ...(s.speakerGroups || []),
+  ].flatMap(g => g.devices || []);
+  const pct = (n, d) => d ? Math.round((n / d) * 100) : 0;
+  const Bar = ({ val, color }) => (
+    <div style={{ background: "#E5E7EB", borderRadius: 999, height: 6, width: "100%", overflow: "hidden", marginTop: 2 }}>
+      <div style={{ height: "100%", width: `${val}%`, background: color, borderRadius: 999, transition: "width .4s" }} />
+    </div>
+  );
+  // Summaries
+  const summary = rows.map(r => {
+    const s = r.state || {};
+    const devs = allDevs(s);
+    const inst = devs.filter(d => d.installed).length;
+    const pgmd = devs.filter(d => d.programmed).length;
+    const bud  = laborTypes.reduce((a, t) => a + (parseFloat((s.laborBudget || {})[t.key]) || 0), 0);
+    const act  = laborTypes.reduce((a, t) => a + (parseFloat((s.laborActual || {})[t.key]) || 0), 0);
+    return { name: r.project_name, id: r.monday_project_id, total: devs.length, inst, pgmd, bud, act, updated: r.updated_at };
+  });
+  const totDevices = summary.reduce((a, r) => a + r.total, 0);
+  const totInst    = summary.reduce((a, r) => a + r.inst,  0);
+  const totPgmd    = summary.reduce((a, r) => a + r.pgmd,  0);
+  const totBud     = summary.reduce((a, r) => a + r.bud,   0);
+  const totAct     = summary.reduce((a, r) => a + r.act,   0);
+  const statusLabel = (r) => {
+    if (r.total === 0) return { label: "No Devices", color: C.muted };
+    if (r.pgmd === r.total) return { label: "Complete", color: C.success };
+    if (r.inst === r.total) return { label: "Installed", color: C.warn };
+    if (r.inst > 0) return { label: "In Progress", color: C.accent };
+    return { label: "Not Started", color: C.steel };
+  };
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+      {/* Header */}
+      <div style={{ background: C.navy, padding: "12px 24px", display: "flex", alignItems: "center", gap: 16 }}>
+        <button onClick={onBack} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 12px", fontSize: 12, cursor: "pointer" }}>← Back</button>
+        <div style={{ color: C.white, fontWeight: 800, fontSize: 16 }}>📊 Master Project Dashboard</div>
+        <div style={{ marginLeft: "auto", color: C.accent, fontSize: 12, fontWeight: 600 }}>{rows.length} projects loaded</div>
+      </div>
+      <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+        {loading && <div style={{ textAlign: "center", padding: 60, color: C.muted }}>Loading all projects…</div>}
+        {error   && <div style={{ background: "#FEE2E2", borderRadius: 8, padding: 16, color: C.danger, marginBottom: 16 }}>Error: {error}</div>}
+        {!loading && !error && (
+          <>
+            {/* Summary cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
+              {[
+                { label: "Projects",     value: rows.length,                              color: C.navy },
+                { label: "Total Devices",value: totDevices,                               color: C.navy },
+                { label: "Avg Install",  value: `${pct(totInst, totDevices)}%`,           color: C.warn },
+                { label: "Avg Program",  value: `${pct(totPgmd, totDevices)}%`,           color: C.accent },
+                { label: "Budget Hrs",   value: `${totBud}h`,                             color: C.navy },
+                { label: "Actual Hrs",   value: `${totAct}h`,                             color: totAct > totBud && totBud > 0 ? C.danger : C.success },
+              ].map(card => (
+                <div key={card.label} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 16 }}>
+                  <div style={{ color: C.muted, fontSize: 11, fontWeight: 700 }}>{card.label}</div>
+                  <div style={{ fontWeight: 800, fontSize: 22, color: card.color, marginTop: 4 }}>{card.value}</div>
+                </div>
+              ))}
+            </div>
+            {/* Projects table */}
+            <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: C.navy }}>
+                    {["Project", "Status", "Devices", "Install %", "Program %", "Budget Hrs", "Actual Hrs", "Variance", "Last Updated"].map(h => (
+                      <th key={h} style={{ padding: "10px 14px", color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: 700, textAlign: h === "Project" || h === "Status" ? "left" : "center", whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.map((r, i) => {
+                    const st   = statusLabel(r);
+                    const ip   = pct(r.inst, r.total);
+                    const pp   = pct(r.pgmd, r.total);
+                    const varr = r.act - r.bud;
+                    return (
+                      <tr key={r.id} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
+                        <td style={{ padding: "10px 14px", fontWeight: 700, color: C.navy, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name || "—"}</td>
+                        <td style={{ padding: "10px 14px" }}>
+                          <span style={{ background: st.color + "22", color: st.color, borderRadius: 6, padding: "2px 10px", fontWeight: 700, fontSize: 11 }}>{st.label}</span>
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: C.navy, fontWeight: 700 }}>{r.total}</td>
+                        <td style={{ padding: "10px 14px", minWidth: 100 }}>
+                          <div style={{ textAlign: "center", fontWeight: 700, color: ip === 100 ? C.success : C.warn, fontSize: 12 }}>{ip}%</div>
+                          <Bar val={ip} color={ip === 100 ? C.success : C.warn} />
+                        </td>
+                        <td style={{ padding: "10px 14px", minWidth: 100 }}>
+                          <div style={{ textAlign: "center", fontWeight: 700, color: pp === 100 ? C.success : C.accent, fontSize: 12 }}>{pp}%</div>
+                          <Bar val={pp} color={pp === 100 ? C.success : C.accent} />
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: C.navy }}>{r.bud ? `${r.bud}h` : "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: C.navy }}>{r.act ? `${r.act}h` : "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700, color: varr > 0 ? C.danger : varr < 0 ? C.success : C.muted }}>
+                          {r.bud === 0 ? "—" : varr === 0 ? "0h" : `${varr > 0 ? "+" : ""}${varr}h`}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: C.muted, fontSize: 11 }}>
+                          {r.updated ? new Date(r.updated).toLocaleDateString() : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {summary.length === 0 && (
+                    <tr><td colSpan={9} style={{ padding: 40, textAlign: "center", color: C.muted }}>No saved projects yet. Open a project and make changes to save it.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function App() {
+  const LABOR_TYPES = [
+    { key: "l1",           label: "Installation - L1" },
+    { key: "l2",           label: "Installation - L2" },
+    { key: "l3",           label: "Installation - L3" },
+    { key: "programming",  label: "Programming" },
+    { key: "travel",       label: "Travel" },
+    { key: "super",        label: "Superintendent" },
+    { key: "pm",           label: "Project Management" },
+  ];
+  const emptyLabor = () => ({ l1: "", l2: "", l3: "", programming: "", travel: "", super: "", pm: "" });
   const [phase, setPhase] = useState("select");
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -704,6 +850,9 @@ export default function App() {
   const [info, setInfo] = useState({ customer: "", siteAddress: "", techLead: "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" });
   const [nvrInfo, setNVR] = useState({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
   const [panelInfo, setPanel] = useState({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
+  // labor hours
+  const [laborBudget, setLaborBudget] = useState(emptyLabor());
+  const [laborActual, setLaborActual] = useState(emptyLabor());
   // group-based device state
   const [cameraGroups, setCameraGroups] = useState([]);
   const [switchGroups,  setSwitchGroups]  = useState([]);
@@ -749,9 +898,9 @@ export default function App() {
   // Watch all state and auto-save when anything changes (only in build phase)
   useEffect(() => {
     if (phase !== "build" || !selectedProject) return;
-    const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups };
+    const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual };
     triggerSave(snap, selectedProject);
-  }, [info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups]); // eslint-disable-line
+  }, [info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual]); // eslint-disable-line
   // Flush save on tab close / refresh
   useEffect(() => {
     const handleUnload = () => { if (selectedProject) flushSave(selectedProject); };
@@ -796,6 +945,7 @@ export default function App() {
     { id: "access",    label: "Access",         icon: "🚪", count: doorCount },
     { id: "intrusion", label: "Intrusion",      icon: "🔔", count: zoneCount },
     { id: "audio",     label: "Audio",          icon: "🔊", count: spkCount },
+    { id: "labor",     label: "Labor",            icon: "⏱" },
     { id: "dashboard", label: "Dashboard",       icon: "📊" },
     { id: "library",   label: "Device Library", icon: "📚" },
     { id: "export",    label: "Export PDF",     icon: "📤" },
@@ -841,12 +991,18 @@ export default function App() {
 
           {/* Refresh token */}
           {mondayToken && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8, gap: 8, alignItems: "center" }}>
-              <span style={{ color: C.success, fontSize: 11, fontWeight: 600 }}>✓ Connected to monday.com</span>
-              <button onClick={() => { localStorage.removeItem("mondayToken"); setMondayToken(""); setProjects([]); }}
-                style={{ background: "rgba(255,255,255,0.07)", color: C.muted, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 5, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
-                Change Token
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, gap: 8, alignItems: "center" }}>
+              <button onClick={() => setPhase("master")}
+                style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "6px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                📊 Master Dashboard
               </button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ color: C.success, fontSize: 11, fontWeight: 600 }}>✓ Connected to monday.com</span>
+                <button onClick={() => { localStorage.removeItem("mondayToken"); setMondayToken(""); setProjects([]); }}
+                  style={{ background: "rgba(255,255,255,0.07)", color: C.muted, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 5, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
+                  Change Token
+                </button>
+              </div>
             </div>
           )}
 
@@ -877,6 +1033,8 @@ export default function App() {
                         if (s.doorGroups)    setDoorGroups(s.doorGroups);
                         if (s.zoneGroups)    setZoneGroups(s.zoneGroups);
                         if (s.speakerGroups) setSpeakerGroups(s.speakerGroups);
+                        if (s.laborBudget)  setLaborBudget(s.laborBudget);
+                        if (s.laborActual)  setLaborActual(s.laborActual);
                       }
                     } catch (e) { console.warn("Could not load saved work order:", e); }
                     setPhase("build");
@@ -911,6 +1069,10 @@ export default function App() {
       </div>
     );
   }
+  // ─ MASTER DASHBOARD ───────────────────────────────────────────────────────
+  if (phase === "master") {
+    return <MasterDashboard onBack={() => setPhase("select")} laborTypes={LABOR_TYPES} />;
+  }
   // ─ BUILD PHASE ────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
@@ -925,6 +1087,7 @@ export default function App() {
             setPanel({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
             setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
             setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
+            setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
             setCollapsed({}); setSaveStatus("idle");
           }} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>← Back</button>
           <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)" }} />
@@ -1299,6 +1462,90 @@ export default function App() {
           </div>
         )}
 
+        {/* ─ LABOR ─ */}
+        {tab === "labor" && (() => {
+          const parseCSV = (text) => {
+            const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+            const budget = emptyLabor();
+            lines.forEach(line => {
+              const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+              const combined = cols.join(" ").toLowerCase();
+              const qty = cols.map(c => parseFloat(c)).find(n => !isNaN(n) && n > 0);
+              if (!qty) return;
+              if (combined.includes("l1") || combined.includes("level 1") || (combined.includes("install") && combined.includes("1"))) budget.l1 = qty;
+              else if (combined.includes("l2") || combined.includes("level 2") || (combined.includes("install") && combined.includes("2"))) budget.l2 = qty;
+              else if (combined.includes("l3") || combined.includes("level 3") || (combined.includes("install") && combined.includes("3"))) budget.l3 = qty;
+              else if (combined.includes("program")) budget.programming = qty;
+              else if (combined.includes("travel")) budget.travel = qty;
+              else if (combined.includes("super")) budget.super = qty;
+              else if (combined.includes("manage") || combined.includes(" pm") || combined.includes("admin")) budget.pm = qty;
+            });
+            setLaborBudget(b => ({ ...b, ...Object.fromEntries(Object.entries(budget).filter(([,v]) => v !== "")) }));
+          };
+          const totalBudget = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborBudget[t.key]) || 0), 0);
+          const totalActual = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborActual[t.key]) || 0), 0);
+          const variance = totalActual - totalBudget;
+          const inp = { padding: "6px 10px", borderRadius: 5, border: `1.5px solid ${C.border}`, fontSize: 13, width: 90, textAlign: "right", outline: "none", background: C.white, color: C.navy };
+          return (
+            <div style={{ maxWidth: 700 }}>
+              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+                {/* Header */}
+                <div style={{ background: C.navy, padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>⏱ Labor Hours</div>
+                  <label style={{ background: C.accent, color: C.white, borderRadius: 6, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    📎 Import from CSV
+                    <input type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={e => {
+                      const f = e.target.files[0]; if (!f) return;
+                      const r = new FileReader(); r.onload = ev => parseCSV(ev.target.result); r.readAsText(f);
+                      e.target.value = "";
+                    }} />
+                  </label>
+                </div>
+                {/* Column headers */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 90px", gap: 0, padding: "8px 20px", background: C.surface, borderBottom: `1px solid ${C.border}` }}>
+                  {["Labor Type", "Budget (hrs)", "Actual (hrs)", "Variance"].map(h => (
+                    <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.steel, textAlign: h === "Labor Type" ? "left" : "right" }}>{h}</div>
+                  ))}
+                </div>
+                {/* Rows */}
+                {LABOR_TYPES.map((lt, i) => {
+                  const b = parseFloat(laborBudget[lt.key]) || 0;
+                  const a = parseFloat(laborActual[lt.key]) || 0;
+                  const v = a - b;
+                  return (
+                    <div key={lt.key} style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 90px", gap: 0, padding: "8px 20px", background: i % 2 === 0 ? C.white : C.surface, alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
+                      <div style={{ fontSize: 13, color: C.navy, fontWeight: 600 }}>{lt.label}</div>
+                      <div style={{ textAlign: "right" }}>
+                        <input style={inp} type="number" min="0" value={laborBudget[lt.key]} placeholder="0"
+                          onChange={e => setLaborBudget(s => ({ ...s, [lt.key]: e.target.value }))} />
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <input style={inp} type="number" min="0" value={laborActual[lt.key]} placeholder="0"
+                          onChange={e => setLaborActual(s => ({ ...s, [lt.key]: e.target.value }))} />
+                      </div>
+                      <div style={{ textAlign: "right", fontWeight: 700, fontSize: 13, color: v > 0 ? C.danger : v < 0 ? C.success : C.muted }}>
+                        {b === 0 && a === 0 ? "—" : (v > 0 ? `+${v}h` : v < 0 ? `${v}h` : "0h")}
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Totals */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 90px", gap: 0, padding: "12px 20px", background: C.navy, alignItems: "center" }}>
+                  <div style={{ color: C.white, fontWeight: 800, fontSize: 13 }}>TOTAL</div>
+                  <div style={{ textAlign: "right", color: C.white, fontWeight: 800, fontSize: 14 }}>{totalBudget}h</div>
+                  <div style={{ textAlign: "right", color: C.white, fontWeight: 800, fontSize: 14 }}>{totalActual}h</div>
+                  <div style={{ textAlign: "right", fontWeight: 800, fontSize: 14, color: variance > 0 ? "#FCA5A5" : variance < 0 ? "#6EE7B7" : "rgba(255,255,255,0.5)" }}>
+                    {variance === 0 ? "—" : (variance > 0 ? `+${variance}h` : `${variance}h`)}
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginTop: 10, color: C.muted, fontSize: 11 }}>
+                CSV format: one row per labor type, e.g. <code>Labor,Installation - L1,49</code> — the app matches keywords automatically.
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ─ DASHBOARD ─ */}
         {tab === "dashboard" && (() => {
           const allDevs = [
@@ -1309,8 +1556,12 @@ export default function App() {
             ...zoneGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Zone", group: g.groupLabel || "Unnamed", icon: "🔔" }))),
             ...speakerGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Speaker", group: g.groupLabel || g.brand || "Unnamed", icon: "🔊" }))),
           ];
+          const installedCount  = allDevs.filter(d => d.installed).length;
           const programmedCount = allDevs.filter(d => d.programmed).length;
-          const pct = allDevs.length ? Math.round((programmedCount / allDevs.length) * 100) : 0;
+          const instPct = allDevs.length ? Math.round((installedCount / allDevs.length) * 100) : 0;
+          const pct     = allDevs.length ? Math.round((programmedCount / allDevs.length) * 100) : 0;
+          const totalBudget = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborBudget[t.key]) || 0), 0);
+          const totalActual = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborActual[t.key]) || 0), 0);
           const categories = [
             { label: "Cameras", icon: "📷", devs: cameraGroups.flatMap(g => g.devices) },
             { label: "Switches", icon: "🔀", devs: switchGroups.flatMap(g => g.devices) },
@@ -1321,16 +1572,37 @@ export default function App() {
           ].filter(c => c.devs.length > 0);
           return (
             <div>
-              {/* Overall progress */}
+              {/* Summary cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
+                {[
+                  { label: "Install %",  value: `${instPct}%`, sub: `${installedCount} / ${allDevs.length} devices`, color: instPct === 100 ? C.success : C.warn },
+                  { label: "Program %",  value: `${pct}%`,     sub: `${programmedCount} / ${allDevs.length} devices`, color: pct === 100 ? C.success : C.accent },
+                  { label: "Budget Hrs", value: `${totalBudget}h`, sub: "from proposal", color: C.navy },
+                  { label: "Actual Hrs", value: `${totalActual}h`, sub: totalBudget ? `${totalActual - totalBudget > 0 ? "+" : ""}${totalActual - totalBudget}h variance` : "enter in Labor tab", color: totalActual > totalBudget ? C.danger : C.success },
+                ].map(card => (
+                  <div key={card.label} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 16 }}>
+                    <div style={{ color: C.muted, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{card.label}</div>
+                    <div style={{ fontWeight: 800, fontSize: 24, color: card.color }}>{card.value}</div>
+                    <div style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{card.sub}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Install progress bar */}
               <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 20, marginBottom: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: C.navy }}>Overall Programming Progress</div>
-                  <div style={{ fontWeight: 800, fontSize: 22, color: pct === 100 ? C.success : C.navy }}>{pct}%</div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>Installation</div>
+                  <div style={{ fontWeight: 800, color: instPct === 100 ? C.success : C.warn }}>{instPct}%</div>
                 </div>
-                <div style={{ background: C.bg, borderRadius: 999, height: 12, overflow: "hidden" }}>
+                <div style={{ background: C.bg, borderRadius: 999, height: 10, overflow: "hidden", marginBottom: 4 }}>
+                  <div style={{ height: "100%", width: `${instPct}%`, background: instPct === 100 ? C.success : C.warn, borderRadius: 999, transition: "width .4s" }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>Programming</div>
+                  <div style={{ fontWeight: 800, color: pct === 100 ? C.success : C.accent }}>{pct}%</div>
+                </div>
+                <div style={{ background: C.bg, borderRadius: 999, height: 10, overflow: "hidden", marginTop: 4 }}>
                   <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? C.success : C.accent, borderRadius: 999, transition: "width .4s" }} />
                 </div>
-                <div style={{ marginTop: 8, color: C.muted, fontSize: 12 }}>{programmedCount} of {allDevs.length} devices programmed</div>
               </div>
 
               {/* Category breakdown */}

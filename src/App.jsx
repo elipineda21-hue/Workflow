@@ -726,27 +726,38 @@ export default function App() {
   const setI   = (k, v) => setInfo(s => ({ ...s, [k]: v }));
   const setNV  = (k, v) => setNVR(s => ({ ...s, [k]: v }));
   const setPan = (k, v) => setPanel(s => ({ ...s, [k]: v }));
-  // ── Auto-save to Supabase (debounced 3s) ──────────────────────────────────
+  // ── Auto-save to Supabase ─────────────────────────────────────────────────
+  const pendingSnapRef = useRef(null);
+  const flushSave = useCallback(async (project) => {
+    if (!project?.id || !pendingSnapRef.current) return;
+    const snap = pendingSnapRef.current;
+    pendingSnapRef.current = null;
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
+    try {
+      await saveWorkOrder(project.id, project.name, project.projectId, snap);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch { setSaveStatus("error"); }
+  }, []);
   const triggerSave = useCallback((snap, project) => {
     if (!project?.id) return;
+    pendingSnapRef.current = snap;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSaveStatus("saving");
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        await saveWorkOrder(project.id, project.name, project.projectId, snap);
-        setSaveStatus("saved");
-        setTimeout(() => setSaveStatus("idle"), 3000);
-      } catch {
-        setSaveStatus("error");
-      }
-    }, 3000);
-  }, []);
+    saveTimerRef.current = setTimeout(() => flushSave(project), 1000);
+  }, [flushSave]);
   // Watch all state and auto-save when anything changes (only in build phase)
   useEffect(() => {
     if (phase !== "build" || !selectedProject) return;
     const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups };
     triggerSave(snap, selectedProject);
   }, [info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups]); // eslint-disable-line
+  // Flush save on tab close / refresh
+  useEffect(() => {
+    const handleUnload = () => { if (selectedProject) flushSave(selectedProject); };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, [selectedProject, flushSave]);
   useEffect(() => {
     if (window.jspdf) { setSDK(true); return; }
     if (document.querySelector('script[src*="jspdf"]')) return;
@@ -906,7 +917,8 @@ export default function App() {
       {/* Topbar */}
       <div style={{ background: C.navy, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(0,0,0,.35)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 18px", height: 48 }}>
-          <button onClick={() => {
+          <button onClick={async () => {
+            await flushSave(selectedProject);
             setPhase("select");
             setInfo({ customer: "", siteAddress: "", techLead: "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" });
             setNVR({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
@@ -914,7 +926,6 @@ export default function App() {
             setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
             setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
             setCollapsed({}); setSaveStatus("idle");
-            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
           }} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>← Back</button>
           <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)" }} />
           <div>

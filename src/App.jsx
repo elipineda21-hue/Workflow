@@ -693,7 +693,7 @@ export default function App() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsError, setProjectsError] = useState("");
   const [selectedProject, setSelectedProject] = useState(null);
-  const [mondayToken, setMondayToken] = useState(() => localStorage.getItem("mondayToken") || "");
+  const [mondayToken, setMondayToken] = useState(() => import.meta.env.VITE_MONDAY_TOKEN || localStorage.getItem("mondayToken") || "");
   const [tokenDraft, setTokenDraft] = useState("");
   const [tab, setTab] = useState("info");
   const [generating, setPDF] = useState(false);

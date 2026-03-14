@@ -1043,16 +1043,15 @@ export default function App() {
   };
   const TABS = [
     { id: "info",      label: "Project Info",  icon: "📋" },
-    { id: "servers",   label: "Servers",        icon: "🖥", count: srvCount },
-    { id: "switches",  label: "Switching",      icon: "🔀", count: swCount },
-    { id: "cameras",   label: "CCTV",           icon: "📷", count: camCount },
-    { id: "access",    label: "Access",         icon: "🚪", count: doorCount },
-    { id: "intrusion", label: "Intrusion",      icon: "🔔", count: zoneCount },
-    { id: "audio",     label: "Audio",          icon: "🔊", count: spkCount },
-    { id: "labor",     label: "Labor",            icon: "⏱" },
-    { id: "dashboard", label: "Dashboard",       icon: "📊" },
-    { id: "library",   label: "Device Library", icon: "📚" },
-    { id: "export",    label: "Export PDF",     icon: "📤" },
+    { id: "dashboard", label: "Dashboard",     icon: "📊" },
+    { id: "access",    label: "Access",        icon: "🚪", count: doorCount },
+    { id: "audio",     label: "Audio",         icon: "🔊", count: spkCount },
+    { id: "cameras",   label: "CCTV",          icon: "📷", count: camCount },
+    { id: "servers",   label: "Server / NVR",  icon: "🖥", count: srvCount },
+    { id: "switches",  label: "Switching",     icon: "🔀", count: swCount },
+    { id: "labor",     label: "Labor",         icon: "⏱" },
+    { id: "library",   label: "Device Library",icon: "📚" },
+    { id: "export",    label: "Export PDF",    icon: "📤" },
   ];
   // ─ PROJECT SELECT ─────────────────────────────────────────────────────────
   if (phase === "select") {

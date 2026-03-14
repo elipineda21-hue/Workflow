@@ -43,17 +43,17 @@ const nextIP = (base, n) => {
 };
 // ── Group data makers ─────────────────────────────────────────────────────────
 const mkCamGroup = () => ({ id: uid(), groupLabel: "", brand: "", model: "", codec: "H.265", resolution: "4MP", lens: "2.8mm", type: "Outdoor Dome", port: "80", rtspPort: "554", fps: "15", bitrate: "", ptz: false, username: "", password: "", storageGroup: "", quantity: "4", ipStart: "", devices: [] });
-const mkCamDev = (ip = "", idx = 0) => ({ id: uid(), name: `Camera ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "", installed: false, programmed: false });
+const mkCamDev = (ip = "", idx = 0) => ({ id: uid(), name: `Camera ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", ip, mac: "", serial: "", notes: "", installed: false, programmed: false });
 const mkSwGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", vlan: "", uplink: "", quantity: "1", ipStart: "", devices: [] });
-const mkSwDev = (ip = "", idx = 0) => ({ id: uid(), name: `Switch ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", ports: "", notes: "", installed: false, programmed: false });
+const mkSwDev = (ip = "", idx = 0) => ({ id: uid(), name: `Switch ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", ip, mac: "", serial: "", ports: "", notes: "", installed: false, programmed: false });
 const mkSrvGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", role: "VMS Server", os: "", storage: "", quantity: "1", ipStart: "", devices: [] });
-const mkSrvDev = (ip = "", idx = 0) => ({ id: uid(), name: `Server ${String(idx + 1).padStart(2, "0")}`, location: "", ip, mac: "", serial: "", notes: "", installed: false, programmed: false });
+const mkSrvDev = (ip = "", idx = 0) => ({ id: uid(), name: `Server ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", ip, mac: "", serial: "", notes: "", installed: false, programmed: false });
 const mkDoorGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", readerType: "OSDP", credentialType: "Smart Card", lockType: "Electric Strike", cardFormat: "", facilityCode: "", accessGroup: "", schedule: "", quantity: "1", devices: [] });
-const mkDoorDev = (idx = 0) => ({ id: uid(), name: `Door ${String(idx + 1).padStart(2, "0")}`, location: "", controllerName: "", controllerIP: "", controllerSerial: "", readerSerial: "", rex: false, doorContact: false, notes: "", installed: false, programmed: false });
+const mkDoorDev = (idx = 0) => ({ id: uid(), name: `Door ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", controllerName: "", controllerIP: "", controllerSerial: "", readerSerial: "", rex: false, doorContact: false, notes: "", installed: false, programmed: false });
 const mkZoneGrp = () => ({ id: uid(), groupLabel: "", zoneType: "Motion", partitions: "", bypassable: false, quantity: "1", startNumber: "1", devices: [] });
-const mkZoneDev = (idx = 0, g = {}) => ({ id: uid(), name: `Zone ${String(idx + 1).padStart(2, "0")}`, location: "", zoneNumber: String((parseInt(g.startNumber) || 1) + idx), zoneType: g.zoneType || "Motion", partitions: g.partitions || "", bypassable: g.bypassable || false, notes: "", installed: false, programmed: false });
+const mkZoneDev = (idx = 0, g = {}) => ({ id: uid(), name: `Zone ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", zoneNumber: String((parseInt(g.startNumber) || 1) + idx), zoneType: g.zoneType || "Motion", partitions: g.partitions || "", bypassable: g.bypassable || false, notes: "", installed: false, programmed: false });
 const mkSpkGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", zoneGroup: "", ampZone: "", volume: "70", quantity: "1", ipStart: "", devices: [] });
-const mkSpkDev = (ip = "", idx = 0) => ({ id: uid(), name: `Speaker ${String(idx + 1).padStart(2, "0")}`, location: "", ip, notes: "", installed: false, programmed: false });
+const mkSpkDev = (ip = "", idx = 0) => ({ id: uid(), name: `Speaker ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", ip, notes: "", installed: false, programmed: false });
 // Generate device arrays from a group config
 const genCam  = g => Array.from({ length: Math.min(parseInt(g.quantity) || 1, 64) }, (_, i) => mkCamDev(nextIP(g.ipStart, i), i));
 const genSw   = g => Array.from({ length: Math.min(parseInt(g.quantity) || 1, 32) }, (_, i) => mkSwDev(nextIP(g.ipStart, i), i));
@@ -159,7 +159,7 @@ function GroupCard({ icon, title, idx, devCount, collapsed, onToggle, onRemove, 
   );
 }
 // ── Compact device row (used in all group tables) ─────────────────────────────
-function DevRow({ num, dev, cols, onRemove, onUpd }) {
+function DevRow({ num, dev, cols, onRemove, onUpd, onLog }) {
   const inpSt = { padding: "5px 7px", borderRadius: 4, border: `1.5px solid ${C.border}`, fontSize: 11, background: C.white, color: C.navy, outline: "none", width: "100%", boxSizing: "border-box" };
   const focus = e => e.target.style.borderColor = C.accent;
   const blur  = e => e.target.style.borderColor = C.border;
@@ -194,7 +194,7 @@ function DevRow({ num, dev, cols, onRemove, onUpd }) {
       </td>
       <td style={{ padding: "4px 8px", textAlign: "center", width: 50 }}>
         <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: "pointer" }}>
-          <input type="checkbox" checked={!!dev.programmed} onChange={e => onUpd("programmed", e.target.checked)}
+          <input type="checkbox" checked={!!dev.programmed} onChange={e => { onUpd("programmed", e.target.checked); onLog?.(dev.name, e.target.checked); }}
             style={{ cursor: "pointer", accentColor: C.success, width: 15, height: 15 }} />
           <span style={{ fontSize: 9, fontWeight: 700, color: dev.programmed ? C.success : C.muted }}>
             {dev.programmed ? "✓ Pgmd" : "—"}
@@ -208,7 +208,7 @@ function DevRow({ num, dev, cols, onRemove, onUpd }) {
   );
 }
 // ── Device table (wraps rows with header) ─────────────────────────────────────
-function DevTable({ cols, devices, gid, setter, newDevFn }) {
+function DevTable({ cols, devices, gid, setter, newDevFn, onLog }) {
   if (!devices.length) {
     return (
       <div style={{ textAlign: "center", padding: "16px", color: C.muted, fontSize: 12, border: `1px dashed ${C.border}`, borderRadius: 6, marginTop: 8 }}>
@@ -245,6 +245,7 @@ function DevTable({ cols, devices, gid, setter, newDevFn }) {
               <DevRow key={dev.id} num={i + 1} dev={dev} cols={cols}
                 onRemove={() => remDev(setter, gid, dev.id)}
                 onUpd={(k, v) => updDev(setter, gid, dev.id, k, v)}
+                onLog={onLog}
               />
             ))}
           </tbody>
@@ -935,6 +936,14 @@ export default function App() {
   // collapse state per group
   const [collapsed, setCollapsed] = useState({});
   const toggleCollapse = (id) => setCollapsed(s => ({ ...s, [id]: !s[id] }));
+  // change log + AI summary
+  const [changeLog,     setChangeLog]     = useState([]);   // [{ id, ts, type, desc }] — persisted
+  const [anthropicKey,  setAnthropicKey]  = useState(() => localStorage.getItem("anthropicKey") || "");
+  const [aiSummary,     setAiSummary]     = useState("");
+  const [aiLoading,     setAiLoading]     = useState(false);
+  const [dashCollapsed, setDashCollapsed] = useState({});   // category collapse in dashboard
+  const addLog = (type, desc) =>
+    setChangeLog(l => [{ id: uid(), ts: new Date().toISOString(), type, desc }, ...l].slice(0, 500));
   // proposal import
   const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
   const importFileRef = useRef(null);
@@ -983,9 +992,9 @@ export default function App() {
   // Watch all state and auto-save when anything changes (only in build phase)
   useEffect(() => {
     if (phase !== "build" || !selectedProject) return;
-    const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls };
+    const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog };
     triggerSave(snap, selectedProject);
-  }, [info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls]); // eslint-disable-line
+  }, [info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog]); // eslint-disable-line
   // Flush save on tab close / refresh
   useEffect(() => {
     const handleUnload = () => { if (selectedProject) flushSave(selectedProject); };
@@ -1026,7 +1035,7 @@ export default function App() {
       .then(rows => { setLibrary(rows); setLibraryLoading(false); })
       .catch(() => setLibraryLoading(false));
   }, [tab]);
-  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls });
+  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls, changeLog });
   const projectMeta  = () => ({ name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" });
   const handleCSV = () => {
     try { buildCSV(stateSnapshot(), projectMeta()); }
@@ -1111,6 +1120,7 @@ export default function App() {
     setImportPreview(null);
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 3000);
+    addLog("import", `Imported proposal #${importPreview.proposalId} — ${rows.filter((r,i)=>(importPreview.overrideCats[i]||r.category)!=="unknown").length} hardware groups`);
   };
   const TABS = [
     // ── Exec overview ─────────────────────────────────────────────────────────
@@ -1214,6 +1224,7 @@ export default function App() {
                         if (s.laborBudget)   setLaborBudget(s.laborBudget);
                         if (s.laborActual)   setLaborActual(s.laborActual);
                         if (s.specSheetUrls) setSpecSheetUrls(s.specSheetUrls);
+                        if (s.changeLog)     setChangeLog(s.changeLog);
                       }
                     } catch (e) { console.warn("Could not load saved work order:", e); }
                     setPhase("build");
@@ -1267,7 +1278,7 @@ export default function App() {
             setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
             setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
             setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
-            setCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null);
+            setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]); setAiSummary("");
           }} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>← Back</button>
           <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)" }} />
           <div>
@@ -1400,9 +1411,11 @@ export default function App() {
                     </G>
                     <GenerateBar group={grp} setter={setServerGroups} genFn={genSrv} />
                     <DevTable gid={grp.id} setter={setServerGroups} devices={grp.devices} newDevFn={(i) => mkSrvDev("", i || grp.devices.length)}
+                      onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Server)`)}
                       cols={[
                         { key: "name", label: "Server Name", ph: "e.g. VMS-01" },
                         { key: "location", label: "Location", ph: "e.g. Server Room" },
+                        { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-201" },
                         { key: "ip", label: "IP Address", ph: "192.168.x.x" },
                         { key: "mac", label: "MAC", ph: "AA:BB:CC..." },
                         { key: "serial", label: "Serial #", ph: "" },
@@ -1440,9 +1453,11 @@ export default function App() {
                     </G>
                     <GenerateBar group={grp} setter={setSwitchGroups} genFn={genSw} />
                     <DevTable gid={grp.id} setter={setSwitchGroups} devices={grp.devices} newDevFn={(i) => mkSwDev("", i || grp.devices.length)}
+                      onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Switch)`)}
                       cols={[
                         { key: "name", label: "Switch Name", ph: "e.g. CCTV-SW-01" },
                         { key: "location", label: "Location", ph: "e.g. IDF Room B" },
+                        { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-301" },
                         { key: "ip", label: "IP Address", ph: "192.168.x.x" },
                         { key: "mac", label: "MAC", ph: "AA:BB:CC..." },
                         { key: "serial", label: "Serial #", ph: "" },
@@ -1505,9 +1520,11 @@ export default function App() {
                       </G>
                       <GenerateBar group={grp} setter={setCameraGroups} genFn={genCam} />
                       <DevTable gid={grp.id} setter={setCameraGroups} devices={grp.devices} newDevFn={(i) => mkCamDev("", i || grp.devices.length)}
+                        onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Camera)`)}
                         cols={[
                           { key: "name", label: "Camera Name", ph: "e.g. NE Entry" },
                           { key: "location", label: "Location", ph: "e.g. NE Corner Lobby" },
+                          { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-101" },
                           { key: "ip", label: "IP Address", ph: "192.168.x.x" },
                           { key: "mac", label: "MAC Address", ph: "AA:BB:CC..." },
                           { key: "serial", label: "Serial #", ph: "" },
@@ -1555,9 +1572,11 @@ export default function App() {
                     </G>
                     <GenerateBar group={grp} setter={setDoorGroups} genFn={genDoor} showIP={false} />
                     <DevTable gid={grp.id} setter={setDoorGroups} devices={grp.devices} newDevFn={(i) => mkDoorDev(i || grp.devices.length)}
+                      onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Access)`)}
                       cols={[
                         { key: "name", label: "Door Name", ph: "e.g. Main Entry" },
                         { key: "location", label: "Location", ph: "e.g. Lobby" },
+                        { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-401" },
                         { key: "controllerName", label: "Controller", ph: "" },
                         { key: "controllerIP", label: "Controller IP", ph: "192.168.x.x" },
                         { key: "controllerSerial", label: "Ctrl S/N", ph: "" },
@@ -1594,10 +1613,12 @@ export default function App() {
                     </G>
                     <GenerateBar group={grp} setter={setZoneGroups} genFn={genZone} showIP={false} />
                     <DevTable gid={grp.id} setter={setZoneGroups} devices={grp.devices} newDevFn={(i) => mkZoneDev(i || grp.devices.length, grp)}
+                      onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Intrusion)`)}
                       cols={[
                         { key: "zoneNumber", label: "Zone #", ph: "01" },
                         { key: "name", label: "Zone Name", ph: "e.g. Back Door PIR" },
                         { key: "location", label: "Location", ph: "" },
+                        { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-501" },
                         { key: "zoneType", label: "Type", ph: "" },
                         { key: "partitions", label: "Partitions", ph: "" },
                         { key: "notes", label: "Notes", ph: "EOL, wiring..." },
@@ -1633,9 +1654,11 @@ export default function App() {
                     </G>
                     <GenerateBar group={grp} setter={setSpeakerGroups} genFn={genSpk} />
                     <DevTable gid={grp.id} setter={setSpeakerGroups} devices={grp.devices} newDevFn={(i) => mkSpkDev("", i || grp.devices.length)}
+                      onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Audio)`)}
                       cols={[
                         { key: "name", label: "Speaker / Zone", ph: "e.g. Lobby 01" },
                         { key: "location", label: "Location", ph: "" },
+                        { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-601" },
                         { key: "ip", label: "IP / Address", ph: "192.168.x.x" },
                         { key: "notes", label: "Notes", ph: "" },
                       ]} />
@@ -1732,28 +1755,69 @@ export default function App() {
 
         {/* ─ DASHBOARD ─ */}
         {tab === "dashboard" && (() => {
-          const allDevs = [
-            ...cameraGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Camera", group: g.groupLabel || g.brand || "Unnamed", icon: "📷" }))),
-            ...switchGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Switch", group: g.groupLabel || g.brand || "Unnamed", icon: "🔀" }))),
-            ...serverGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Server", group: g.groupLabel || g.brand || "Unnamed", icon: "🖥" }))),
-            ...doorGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Door", group: g.groupLabel || g.brand || "Unnamed", icon: "🚪" }))),
-            ...zoneGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Zone", group: g.groupLabel || "Unnamed", icon: "🔔" }))),
-            ...speakerGroups.flatMap(g => g.devices.map(d => ({ ...d, category: "Speaker", group: g.groupLabel || g.brand || "Unnamed", icon: "🔊" }))),
-          ];
+          const catSections = [
+            { id: "cameras",  label: "CCTV / Cameras",    icon: "📷", devs: cameraGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
+            { id: "access",   label: "Access Control",    icon: "🚪", devs: doorGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
+            { id: "audio",    label: "Audio / Speakers",  icon: "🔊", devs: speakerGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
+            { id: "intrusion",label: "Intrusion / Zones", icon: "🔔", devs: zoneGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || "" }))) },
+            { id: "servers",  label: "Server / NVR",      icon: "🖥", devs: serverGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
+            { id: "switches", label: "Switching",         icon: "🔀", devs: switchGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
+          ].filter(c => c.devs.length > 0);
+          const allDevs = catSections.flatMap(c => c.devs);
           const installedCount  = allDevs.filter(d => d.installed).length;
           const programmedCount = allDevs.filter(d => d.programmed).length;
           const instPct = allDevs.length ? Math.round((installedCount / allDevs.length) * 100) : 0;
           const pct     = allDevs.length ? Math.round((programmedCount / allDevs.length) * 100) : 0;
           const totalBudget = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborBudget[t.key]) || 0), 0);
           const totalActual = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborActual[t.key]) || 0), 0);
-          const categories = [
-            { label: "Cameras", icon: "📷", devs: cameraGroups.flatMap(g => g.devices) },
-            { label: "Switches", icon: "🔀", devs: switchGroups.flatMap(g => g.devices) },
-            { label: "Servers", icon: "🖥", devs: serverGroups.flatMap(g => g.devices) },
-            { label: "Doors", icon: "🚪", devs: doorGroups.flatMap(g => g.devices) },
-            { label: "Zones", icon: "🔔", devs: zoneGroups.flatMap(g => g.devices) },
-            { label: "Speakers", icon: "🔊", devs: speakerGroups.flatMap(g => g.devices) },
-          ].filter(c => c.devs.length > 0);
+
+          const logTypeMeta = {
+            programmed:   { label: "Programmed",  bg: "#D1FAE5", color: C.success },
+            unprogrammed: { label: "Unprogrammed", bg: "#FEE2E2", color: C.danger },
+            group_added:  { label: "Group Added",  bg: "#DBEAFE", color: "#1D4ED8" },
+            import:       { label: "Import",       bg: "#EDE9FE", color: "#6D28D9" },
+          };
+
+          async function generateAISummary() {
+            if (!anthropicKey) { showToast("Enter your Anthropic API key first"); return; }
+            setAiLoading(true); setAiSummary("");
+            try {
+              const snap = stateSnapshot();
+              const prompt = `You are a field technician project coordinator. Summarize today's progress for the team based on this work order data.
+
+Project: ${snap.projectName || "Unnamed"} (Ref: ${snap.projectRef || "N/A"})
+
+Device counts:
+${catSections.map(c => `- ${c.label}: ${c.devs.length} total, ${c.devs.filter(d=>d.programmed).length} programmed, ${c.devs.filter(d=>d.installed).length} installed`).join("\n")}
+
+Recent change log (last 20 entries):
+${changeLog.slice(0,20).map(e => `[${new Date(e.ts).toLocaleTimeString()}] ${e.desc}`).join("\n") || "No entries"}
+
+Labor: Budget ${totalBudget}h / Actual ${totalActual}h
+
+Write a concise end-of-day team progress update (3–5 bullet points). Include: what was completed, what remains, any concerns. Keep it professional and brief.`;
+
+              const res = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-api-key": anthropicKey,
+                  "anthropic-version": "2023-06-01",
+                  "anthropic-dangerous-direct-browser-access": "true",
+                },
+                body: JSON.stringify({
+                  model: "claude-opus-4-6",
+                  max_tokens: 512,
+                  messages: [{ role: "user", content: prompt }],
+                }),
+              });
+              if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.statusText); }
+              const data = await res.json();
+              setAiSummary(data.content?.[0]?.text || "No response");
+            } catch(e) { showToast(`AI error: ${e.message}`); }
+            setAiLoading(false);
+          }
+
           return (
             <div>
               {/* Summary cards */}
@@ -1771,7 +1835,8 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              {/* Install progress bar */}
+
+              {/* Progress bars */}
               <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 20, marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>Installation</div>
@@ -1789,71 +1854,151 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Category breakdown */}
-              {categories.length > 0 && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
-                  {categories.map(cat => {
+              {/* Collapsible category device sections */}
+              {allDevs.length === 0 ? (
+                <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 40, textAlign: "center", color: C.muted, marginBottom: 16 }}>
+                  No devices added yet. Go to any category tab and add device groups.
+                </div>
+              ) : (
+                <div style={{ marginBottom: 16 }}>
+                  {catSections.map(cat => {
                     const done = cat.devs.filter(d => d.programmed).length;
                     const cp = cat.devs.length ? Math.round((done / cat.devs.length) * 100) : 0;
+                    const collapsed = dashCollapsed[cat.id];
                     return (
-                      <div key={cat.label} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 14, borderTop: `3px solid ${cp === 100 ? C.success : C.accent}` }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>{cat.icon} {cat.label}</div>
-                          <div style={{ fontWeight: 800, color: cp === 100 ? C.success : C.navy, fontSize: 14 }}>{cp}%</div>
+                      <div key={cat.id} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 8 }}>
+                        {/* Section header — click to collapse */}
+                        <div
+                          onClick={() => setDashCollapsed(s => ({ ...s, [cat.id]: !s[cat.id] }))}
+                          style={{ background: C.navy, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none" }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ color: C.white, fontWeight: 700, fontSize: 13 }}>{cat.icon} {cat.label}</span>
+                            <span style={{ background: "rgba(255,255,255,0.15)", color: C.white, borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{cat.devs.length}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ color: cp === 100 ? C.success : "#FCD34D", fontWeight: 700, fontSize: 12 }}>{done}/{cat.devs.length} programmed</span>
+                            <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>{collapsed ? "▶" : "▼"}</span>
+                          </div>
                         </div>
-                        <div style={{ background: C.bg, borderRadius: 999, height: 7, overflow: "hidden", marginBottom: 6 }}>
-                          <div style={{ height: "100%", width: `${cp}%`, background: cp === 100 ? C.success : C.accent, borderRadius: 999, transition: "width .4s" }} />
+                        {/* Device mini-progress bar */}
+                        <div style={{ height: 3, background: C.bg }}>
+                          <div style={{ height: "100%", width: `${cp}%`, background: cp === 100 ? C.success : C.accent, transition: "width .4s" }} />
                         </div>
-                        <div style={{ fontSize: 11, color: C.muted }}>{done}/{cat.devs.length} done</div>
+                        {/* Device rows table */}
+                        {!collapsed && (
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ background: C.surface }}>
+                                <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}`, width: 90 }}>Status</th>
+                                <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Device Name</th>
+                                <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}`, width: 140 }}>Blueprint ID</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {cat.devs.map((dev, i) => (
+                                <tr key={dev.id} style={{ background: dev.programmed ? "#F0FDF4" : (i % 2 === 0 ? C.white : C.surface) }}>
+                                  <td style={{ padding: "6px 12px" }}>
+                                    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: dev.programmed ? "#D1FAE5" : "#FEF3C7", color: dev.programmed ? C.success : C.warn }}>
+                                      {dev.programmed ? "✓ Done" : "Pending"}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: "6px 12px", fontWeight: 600, color: C.navy }}>
+                                    {dev.name}
+                                    {dev._grp && <span style={{ fontWeight: 400, color: C.muted, fontSize: 11, marginLeft: 6 }}>({dev._grp})</span>}
+                                  </td>
+                                  <td style={{ padding: "6px 12px", fontFamily: "monospace", color: C.steel, fontSize: 11 }}>{dev.cableId || <span style={{ color: C.border }}>—</span>}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               )}
 
-              {/* Full device list */}
-              {allDevs.length === 0 ? (
-                <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 40, textAlign: "center", color: C.muted }}>
-                  No devices added yet. Go to any category tab and add device groups.
-                </div>
-              ) : (
-                <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-                  <div style={{ background: C.navy, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ color: C.white, fontWeight: 700, fontSize: 13 }}>All Devices — {allDevs.length} total</span>
-                    <span style={{ color: C.success, fontWeight: 700, fontSize: 12 }}>{programmedCount} done  ·  {allDevs.length - programmedCount} pending</span>
-                  </div>
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                      <thead>
-                        <tr style={{ background: C.surface }}>
-                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Status</th>
-                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Category</th>
-                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Group</th>
-                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Device Name</th>
-                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Location</th>
-                          <th style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>IP</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allDevs.map((dev, i) => (
-                          <tr key={dev.id} style={{ background: dev.programmed ? "#F0FDF4" : (i % 2 === 0 ? C.white : C.surface) }}>
-                            <td style={{ padding: "7px 10px", textAlign: "center" }}>
-                              <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: dev.programmed ? "#D1FAE5" : "#FEF3C7", color: dev.programmed ? C.success : C.warn }}>
-                                {dev.programmed ? "✓ Done" : "Pending"}
-                              </span>
-                            </td>
-                            <td style={{ padding: "7px 10px", color: C.navy }}>{dev.icon} {dev.category}</td>
-                            <td style={{ padding: "7px 10px", color: C.muted, fontSize: 11 }}>{dev.group}</td>
-                            <td style={{ padding: "7px 10px", fontWeight: 600, color: C.navy }}>{dev.name}</td>
-                            <td style={{ padding: "7px 10px", color: C.muted }}>{dev.location || "—"}</td>
-                            <td style={{ padding: "7px 10px", fontFamily: "monospace", color: C.steel }}>{dev.ip || "—"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              {/* ── Change Log ────────────────────────────────────────── */}
+              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 16 }}>
+                <div
+                  onClick={() => setDashCollapsed(s => ({ ...s, _changelog: !s._changelog }))}
+                  style={{ background: C.surface, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none", borderBottom: `1px solid ${C.border}` }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>📋 Change Log <span style={{ fontWeight: 400, color: C.muted, fontSize: 11 }}>({changeLog.length} entries)</span></span>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    {changeLog.length > 0 && (
+                      <button
+                        onClick={e => { e.stopPropagation(); setChangeLog([]); }}
+                        style={{ fontSize: 11, padding: "2px 10px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.white, color: C.danger, cursor: "pointer", fontWeight: 600 }}
+                      >Clear</button>
+                    )}
+                    <span style={{ color: C.muted, fontSize: 14 }}>{dashCollapsed._changelog ? "▶" : "▼"}</span>
                   </div>
                 </div>
-              )}
+                {!dashCollapsed._changelog && (
+                  changeLog.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: "center", color: C.muted, fontSize: 12 }}>No activity yet. Mark devices as programmed/installed to log changes.</div>
+                  ) : (
+                    <div style={{ maxHeight: 280, overflowY: "auto" }}>
+                      {changeLog.map(entry => {
+                        const meta = logTypeMeta[entry.type] || { label: entry.type, bg: C.surface, color: C.muted };
+                        return (
+                          <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", borderBottom: `1px solid ${C.border}`, fontSize: 12 }}>
+                            <span style={{ color: C.muted, fontSize: 11, minWidth: 70, flexShrink: 0 }}>{new Date(entry.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                            <span style={{ background: meta.bg, color: meta.color, borderRadius: 8, padding: "1px 8px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{meta.label}</span>
+                            <span style={{ color: C.navy }}>{entry.desc}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
+                )}
+              </div>
+
+              {/* ── AI End-of-Day Summary ─────────────────────────────── */}
+              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+                <div
+                  onClick={() => setDashCollapsed(s => ({ ...s, _ai: !s._ai }))}
+                  style={{ background: C.surface, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none", borderBottom: `1px solid ${C.border}` }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>🤖 AI End-of-Day Summary</span>
+                  <span style={{ color: C.muted, fontSize: 14 }}>{dashCollapsed._ai ? "▶" : "▼"}</span>
+                </div>
+                {!dashCollapsed._ai && (
+                  <div style={{ padding: 16 }}>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                      <input
+                        type="password"
+                        placeholder="Anthropic API key (sk-ant-...)"
+                        value={anthropicKey}
+                        onChange={e => { setAnthropicKey(e.target.value); localStorage.setItem("anthropicKey", e.target.value); }}
+                        style={{ flex: 1, padding: "8px 10px", borderRadius: 7, border: `1px solid ${C.border}`, fontSize: 12, fontFamily: "monospace" }}
+                      />
+                      <button
+                        onClick={generateAISummary}
+                        disabled={aiLoading}
+                        style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: aiLoading ? C.muted : C.accent, color: C.white, fontWeight: 700, fontSize: 12, cursor: aiLoading ? "not-allowed" : "pointer" }}
+                      >{aiLoading ? "Generating…" : "Generate Update"}</button>
+                    </div>
+                    {aiSummary && (
+                      <div style={{ background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, padding: 14 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <span style={{ fontWeight: 700, fontSize: 12, color: C.navy }}>Team Progress Update</span>
+                          <button
+                            onClick={() => navigator.clipboard?.writeText(aiSummary).then(() => showToast("Copied to clipboard"))}
+                            style={{ fontSize: 11, padding: "2px 10px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.white, color: C.navy, cursor: "pointer" }}
+                          >Copy</button>
+                        </div>
+                        <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 12, color: C.navy, fontFamily: "inherit", lineHeight: 1.6 }}>{aiSummary}</pre>
+                      </div>
+                    )}
+                    {!aiSummary && !aiLoading && (
+                      <div style={{ color: C.muted, fontSize: 12, textAlign: "center", padding: 10 }}>Enter your Anthropic API key and click Generate Update to get an AI-written team progress summary.</div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })()}

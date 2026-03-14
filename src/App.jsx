@@ -938,8 +938,7 @@ export default function App() {
   const toggleCollapse = (id) => setCollapsed(s => ({ ...s, [id]: !s[id] }));
   // change log + AI summary
   const [changeLog,     setChangeLog]     = useState([]);   // [{ id, ts, type, desc }] — persisted
-  const [anthropicKey,  setAnthropicKey]  = useState(() => localStorage.getItem("anthropicKey") || "");
-  const [aiSummary,     setAiSummary]     = useState("");
+  const [webhookUrl,    setWebhookUrl]    = useState(() => localStorage.getItem("agentWebhookUrl") || "");
   const [aiLoading,     setAiLoading]     = useState(false);
   const [dashCollapsed, setDashCollapsed] = useState({});   // category collapse in dashboard
   const addLog = (type, desc) =>
@@ -1778,46 +1777,6 @@ export default function App() {
             import:       { label: "Import",       bg: "#EDE9FE", color: "#6D28D9" },
           };
 
-          async function generateAISummary() {
-            if (!anthropicKey) { showToast("Enter your Anthropic API key first"); return; }
-            setAiLoading(true); setAiSummary("");
-            try {
-              const snap = stateSnapshot();
-              const prompt = `You are a field technician project coordinator. Summarize today's progress for the team based on this work order data.
-
-Project: ${snap.projectName || "Unnamed"} (Ref: ${snap.projectRef || "N/A"})
-
-Device counts:
-${catSections.map(c => `- ${c.label}: ${c.devs.length} total, ${c.devs.filter(d=>d.programmed).length} programmed, ${c.devs.filter(d=>d.installed).length} installed`).join("\n")}
-
-Recent change log (last 20 entries):
-${changeLog.slice(0,20).map(e => `[${new Date(e.ts).toLocaleTimeString()}] ${e.desc}`).join("\n") || "No entries"}
-
-Labor: Budget ${totalBudget}h / Actual ${totalActual}h
-
-Write a concise end-of-day team progress update (3–5 bullet points). Include: what was completed, what remains, any concerns. Keep it professional and brief.`;
-
-              const res = await fetch("https://api.anthropic.com/v1/messages", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "x-api-key": anthropicKey,
-                  "anthropic-version": "2023-06-01",
-                  "anthropic-dangerous-direct-browser-access": "true",
-                },
-                body: JSON.stringify({
-                  model: "claude-opus-4-6",
-                  max_tokens: 512,
-                  messages: [{ role: "user", content: prompt }],
-                }),
-              });
-              if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.statusText); }
-              const data = await res.json();
-              setAiSummary(data.content?.[0]?.text || "No response");
-            } catch(e) { showToast(`AI error: ${e.message}`); }
-            setAiLoading(false);
-          }
-
           return (
             <div>
               {/* Summary cards */}
@@ -1956,46 +1915,82 @@ Write a concise end-of-day team progress update (3–5 bullet points). Include: 
                 )}
               </div>
 
-              {/* ── AI End-of-Day Summary ─────────────────────────────── */}
+              {/* ── Send Update to AI Agent ───────────────────────────── */}
               <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
                 <div
                   onClick={() => setDashCollapsed(s => ({ ...s, _ai: !s._ai }))}
                   style={{ background: C.surface, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none", borderBottom: `1px solid ${C.border}` }}
                 >
-                  <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>🤖 AI End-of-Day Summary</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>🤖 Send Update to AI Agent</span>
                   <span style={{ color: C.muted, fontSize: 14 }}>{dashCollapsed._ai ? "▶" : "▼"}</span>
                 </div>
                 {!dashCollapsed._ai && (
                   <div style={{ padding: 16 }}>
+                    <div style={{ color: C.muted, fontSize: 11, marginBottom: 10 }}>
+                      Posts the change log + device status counts to your AI agent's webhook. The agent handles Monday.com updates from there.
+                    </div>
                     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                       <input
-                        type="password"
-                        placeholder="Anthropic API key (sk-ant-...)"
-                        value={anthropicKey}
-                        onChange={e => { setAnthropicKey(e.target.value); localStorage.setItem("anthropicKey", e.target.value); }}
+                        type="url"
+                        placeholder="Webhook URL (https://...)"
+                        value={webhookUrl}
+                        onChange={e => { setWebhookUrl(e.target.value); localStorage.setItem("agentWebhookUrl", e.target.value); }}
                         style={{ flex: 1, padding: "8px 10px", borderRadius: 7, border: `1px solid ${C.border}`, fontSize: 12, fontFamily: "monospace" }}
                       />
                       <button
-                        onClick={generateAISummary}
+                        onClick={async () => {
+                          if (!webhookUrl) { showToast("Enter a webhook URL first"); return; }
+                          setAiLoading(true);
+                          const payload = {
+                            project_id:   selectedProject?.id   || null,
+                            project_name: selectedProject?.name || info.projectName || null,
+                            project_ref:  info.projectRef       || null,
+                            sent_at:      new Date().toISOString(),
+                            device_summary: catSections.map(c => ({
+                              category:   c.label,
+                              total:      c.devs.length,
+                              programmed: c.devs.filter(d => d.programmed).length,
+                              installed:  c.devs.filter(d => d.installed).length,
+                              pending:    c.devs.filter(d => !d.programmed).length,
+                            })),
+                            totals: {
+                              devices:    allDevs.length,
+                              programmed: programmedCount,
+                              installed:  installedCount,
+                              program_pct: pct,
+                              install_pct: instPct,
+                            },
+                            labor: {
+                              budget_hrs: totalBudget,
+                              actual_hrs: totalActual,
+                              variance_hrs: totalActual - totalBudget,
+                            },
+                            change_log: changeLog.slice(0, 100).map(e => ({
+                              time: e.ts,
+                              type: e.type,
+                              description: e.desc,
+                            })),
+                          };
+                          try {
+                            const res = await fetch(webhookUrl, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify(payload),
+                            });
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            showToast("✓ Update sent to AI agent");
+                          } catch(e) {
+                            showToast(`Webhook error: ${e.message}`);
+                          }
+                          setAiLoading(false);
+                        }}
                         disabled={aiLoading}
-                        style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: aiLoading ? C.muted : C.accent, color: C.white, fontWeight: 700, fontSize: 12, cursor: aiLoading ? "not-allowed" : "pointer" }}
-                      >{aiLoading ? "Generating…" : "Generate Update"}</button>
+                        style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: aiLoading ? C.muted : C.accent, color: C.white, fontWeight: 700, fontSize: 12, cursor: aiLoading ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                      >{aiLoading ? "Sending…" : "Send Update"}</button>
                     </div>
-                    {aiSummary && (
-                      <div style={{ background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, padding: 14 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                          <span style={{ fontWeight: 700, fontSize: 12, color: C.navy }}>Team Progress Update</span>
-                          <button
-                            onClick={() => navigator.clipboard?.writeText(aiSummary).then(() => showToast("Copied to clipboard"))}
-                            style={{ fontSize: 11, padding: "2px 10px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.white, color: C.navy, cursor: "pointer" }}
-                          >Copy</button>
-                        </div>
-                        <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 12, color: C.navy, fontFamily: "inherit", lineHeight: 1.6 }}>{aiSummary}</pre>
-                      </div>
-                    )}
-                    {!aiSummary && !aiLoading && (
-                      <div style={{ color: C.muted, fontSize: 12, textAlign: "center", padding: 10 }}>Enter your Anthropic API key and click Generate Update to get an AI-written team progress summary.</div>
-                    )}
+                    <div style={{ background: C.surface, borderRadius: 7, border: `1px solid ${C.border}`, padding: "8px 12px", fontSize: 11, color: C.muted }}>
+                      <strong style={{ color: C.navy }}>Payload includes:</strong> project ID &amp; name · device counts per category (total / programmed / installed / pending) · labor hours &amp; variance · last 100 change log entries
+                    </div>
                   </div>
                 )}
               </div>

@@ -822,6 +822,77 @@ function MasterDashboard({ onBack, laborTypes }) {
     </div>
   );
 }
+// ── Portal.io Proposal CSV Import ─────────────────────────────────────────────
+function parseCSVLine(line) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+function areaToCategory(area) {
+  const a = (area || "").toLowerCase();
+  if (/video|surveillance|camera|cctv/.test(a)) return "camera";
+  if (/access/.test(a))                          return "door";
+  if (/intrusion|alarm/.test(a))                 return "zone";
+  if (/audio|speaker|sound/.test(a))             return "speaker";
+  if (/network|switch|\bit\b/.test(a))           return "switch";
+  if (/server|nvr|dvr/.test(a))                  return "server";
+  return "unknown";
+}
+function parseProposalCSV(csvText) {
+  const lines = csvText.split(/\r?\n/).filter(l => l.trim());
+  const rows = [];
+  let proposalId = null;
+  for (const line of lines) {
+    const cols = parseCSVLine(line);
+    // Col indices: 0=Proposal, 1=ChangeOrder, 2=Area, 3=ItemType, 4=Brand, 5=Model, 6=ShortDesc, 7=Recurring, 8=AreaQty
+    const [colA,, area, itemType, brand, model, shortDesc,, qty] = cols;
+    if (!colA || isNaN(Number(colA))) continue; // skip header rows
+    if ((itemType || "").trim().toLowerCase() !== "part") continue;
+    if (!proposalId) proposalId = colA.trim();
+    rows.push({
+      proposalId: colA.trim(),
+      brand: (brand || "").trim(),
+      model: (model || "").trim(),
+      label: (shortDesc || "").trim(),
+      qty: Math.max(1, parseInt(qty) || 1),
+      area: (area || "").trim(),
+      category: areaToCategory(area),
+    });
+  }
+  return { proposalId, rows };
+}
+function buildGroupsFromRows(rows, overrideCats = {}) {
+  const result = { cameraGroups: [], switchGroups: [], serverGroups: [], doorGroups: [], zoneGroups: [], speakerGroups: [] };
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const cat = overrideCats[i] || r.category;
+    const base = { id: uid(), groupLabel: r.label || "", brand: r.brand || "", model: r.model || "", quantity: String(r.qty), devices: [] };
+    switch (cat) {
+      case "camera":  result.cameraGroups.push({ ...mkCamGroup(), ...base });  break;
+      case "door":    result.doorGroups.push({ ...mkDoorGrp(), ...base });     break;
+      case "zone":    result.zoneGroups.push({ ...mkZoneGrp(), ...base });     break;
+      case "speaker": result.speakerGroups.push({ ...mkSpkGrp(), ...base });   break;
+      case "switch":  result.switchGroups.push({ ...mkSwGrp(), ...base });     break;
+      case "server":  result.serverGroups.push({ ...mkSrvGrp(), ...base });    break;
+      default: break; // unknown — skip
+    }
+  }
+  return result;
+}
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function App() {
   const LABOR_TYPES = [
@@ -863,6 +934,9 @@ export default function App() {
   // collapse state per group
   const [collapsed, setCollapsed] = useState({});
   const toggleCollapse = (id) => setCollapsed(s => ({ ...s, [id]: !s[id] }));
+  // proposal import
+  const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
+  const importFileRef = useRef(null);
   // device counts
   const camCount  = cameraGroups.reduce((s, g) => s + g.devices.length, 0);
   const swCount   = switchGroups.reduce((s, g) => s + g.devices.length, 0);
@@ -936,6 +1010,36 @@ export default function App() {
       await buildPDF(stateSnapshot(), projectMeta());
     } catch (e) { alert("PDF error: " + e.message); }
     setPDF(false);
+  };
+  const handleProposalFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const { proposalId, rows } = parseProposalCSV(ev.target.result);
+        if (!rows.length) { alert("No Part rows found in this CSV. Make sure ItemType column contains 'Part'."); return; }
+        setImportPreview({ proposalId, rows, overrideCats: {} });
+      } catch (err) {
+        alert("Error parsing CSV: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+  const handleProposalImport = () => {
+    if (!importPreview) return;
+    const { rows, overrideCats } = importPreview;
+    const newGroups = buildGroupsFromRows(rows, overrideCats);
+    setCameraGroups(g => [...g, ...newGroups.cameraGroups]);
+    setSwitchGroups(g => [...g, ...newGroups.switchGroups]);
+    setServerGroups(g => [...g, ...newGroups.serverGroups]);
+    setDoorGroups(g => [...g, ...newGroups.doorGroups]);
+    setZoneGroups(g => [...g, ...newGroups.zoneGroups]);
+    setSpeakerGroups(g => [...g, ...newGroups.speakerGroups]);
+    setImportPreview(null);
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus("idle"), 3000);
   };
   const TABS = [
     { id: "info",      label: "Project Info",  icon: "📋" },
@@ -1107,6 +1211,11 @@ export default function App() {
             <button onClick={handleCSV} disabled={totalDevices === 0}
               style={{ background: C.success, color: C.white, border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", opacity: totalDevices === 0 ? 0.5 : 1 }}>
               ⬇ CSV
+            </button>
+            <input ref={importFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleProposalFileChange} />
+            <button onClick={() => importFileRef.current?.click()}
+              style={{ background: C.steel, color: C.white, border: `1px solid rgba(255,255,255,0.2)`, borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+              ⬆ Import Proposal
             </button>
             <button onClick={handleGenerate} disabled={generating || !sdkReady}
               style={{ background: generating ? C.muted : C.gold, color: C.navy, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
@@ -1802,6 +1911,84 @@ export default function App() {
         )}
 
       </div>
+
+      {/* ─ PROPOSAL IMPORT PREVIEW MODAL ─ */}
+      {importPreview && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(7,20,42,0.82)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: C.white, borderRadius: 12, maxWidth: 780, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 48px rgba(0,0,0,.45)" }}>
+            {/* Modal header */}
+            <div style={{ background: C.navy, borderRadius: "12px 12px 0 0", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>Import Proposal Hardware</div>
+                <div style={{ color: C.accent, fontSize: 12, marginTop: 2 }}>
+                  Proposal #{importPreview.proposalId}
+                  {selectedProject?.projectId && importPreview.proposalId !== selectedProject.projectId && (
+                    <span style={{ color: C.warn, marginLeft: 8 }}>⚠ Proposal ID doesn't match project ID ({selectedProject.projectId})</span>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setImportPreview(null)} style={{ background: "rgba(255,255,255,0.12)", color: C.white, border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 13, cursor: "pointer" }}>✕</button>
+            </div>
+            {/* Existing data warning */}
+            {(cameraGroups.length + switchGroups.length + serverGroups.length + doorGroups.length + zoneGroups.length + speakerGroups.length) > 0 && (
+              <div style={{ background: "#FEF3C7", borderBottom: `1px solid #FDE68A`, padding: "10px 20px", fontSize: 12, color: "#92400E" }}>
+                ⚠ This project already has hardware groups. Imported items will be <strong>added</strong> to the existing groups — nothing will be replaced.
+              </div>
+            )}
+            {/* Parts table */}
+            <div style={{ overflowY: "auto", flex: 1, padding: "0 0 4px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: C.surface, position: "sticky", top: 0 }}>
+                    {["Brand","Model","Description","Qty","Category"].map(h => (
+                      <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPreview.rows.map((row, i) => {
+                    const cat = importPreview.overrideCats[i] || row.category;
+                    const isUnknown = cat === "unknown";
+                    const CAT_OPTIONS = [
+                      { value: "camera",  label: "CCTV / Camera" },
+                      { value: "door",    label: "Access Control" },
+                      { value: "zone",    label: "Intrusion" },
+                      { value: "speaker", label: "Audio" },
+                      { value: "switch",  label: "Network Switch" },
+                      { value: "server",  label: "Server / NVR" },
+                      { value: "unknown", label: "Skip this row" },
+                    ];
+                    return (
+                      <tr key={i} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
+                        <td style={{ padding: "7px 12px", color: C.navy }}>{row.brand || <span style={{ color: C.muted }}>—</span>}</td>
+                        <td style={{ padding: "7px 12px", color: C.navy, fontFamily: "monospace", fontSize: 11 }}>{row.model || <span style={{ color: C.muted }}>—</span>}</td>
+                        <td style={{ padding: "7px 12px", color: C.muted, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.label || "—"}</td>
+                        <td style={{ padding: "7px 12px", color: C.navy, fontWeight: 700, textAlign: "center" }}>{row.qty}</td>
+                        <td style={{ padding: "7px 12px" }}>
+                          <select value={cat} onChange={e => setImportPreview(s => ({ ...s, overrideCats: { ...s.overrideCats, [i]: e.target.value } }))}
+                            style={{ padding: "3px 8px", borderRadius: 5, border: `1px solid ${isUnknown ? C.warn : C.border}`, background: isUnknown ? "#FEF3C7" : C.white, color: isUnknown ? "#92400E" : C.navy, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                            {CAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {/* Footer */}
+            <div style={{ padding: "14px 20px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 12, background: C.surface, borderRadius: "0 0 12px 12px" }}>
+              <div style={{ flex: 1, fontSize: 12, color: C.muted }}>
+                {importPreview.rows.filter((r, i) => (importPreview.overrideCats[i] || r.category) !== "unknown").length} parts will be imported as device groups. Devices not generated yet — set IP start + hit Generate in each group.
+              </div>
+              <button onClick={() => setImportPreview(null)} style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+              <button onClick={handleProposalImport} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 7, padding: "8px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                ⬆ Import Hardware
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CAM_DB, SWITCH_DB, SERVER_DB, ACCESS_DB, PANEL_DB } from "./deviceDB";
-import { loadWorkOrder, saveWorkOrder, listWorkOrders } from "./supabase";
+import { loadWorkOrder, saveWorkOrder, listWorkOrders, listLibrary, uploadSpecSheet, deleteLibraryEntry, getSpecSheetUrl } from "./supabase";
 // ── Palette ───────────────────────────────────────────────────────────────────
 const C = {
   navy: "#0B1F3A", steel: "#1A3355", accent: "#00AEEF", gold: "#F4A300",
@@ -939,11 +939,15 @@ export default function App() {
   const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
   const importFileRef = useRef(null);
   // device library / OEM manual
-  const [specSheetUrls,  setSpecSheetUrls]  = useState({}); // {"brand|model": url}  — persisted to Supabase
-  const [specSheetFiles, setSpecSheetFiles] = useState({}); // {"brand|model": File} — session only
+  const [specSheetUrls,  setSpecSheetUrls]  = useState({}); // {"brand|model": url} — persisted (reference links only)
   const [coverPageFile,  setCoverPageFile]  = useState(null);
   const [pdfLibReady,    setPdfLibReady]    = useState(false);
   const coverFileRef = useRef(null);
+  // living library (Supabase-backed)
+  const [library,        setLibrary]        = useState([]);  // all device_library rows
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libUploadForm,  setLibUploadForm]  = useState(null); // null | { category, brand, model, displayName, file, uploading, error }
+  const libUploadFileRef = useRef(null);
   // device counts
   const camCount  = cameraGroups.reduce((s, g) => s + g.devices.length, 0);
   const swCount   = switchGroups.reduce((s, g) => s + g.devices.length, 0);
@@ -1014,6 +1018,14 @@ export default function App() {
       .then(ps => { setProjects(ps); setLoadingProjects(false); })
       .catch(e => { setProjectsError(e.message || "Failed to load projects"); setLoadingProjects(false); });
   }, [mondayToken]);
+  // Load library whenever the library tab is opened
+  useEffect(() => {
+    if (tab !== "library") return;
+    setLibraryLoading(true);
+    listLibrary()
+      .then(rows => { setLibrary(rows); setLibraryLoading(false); })
+      .catch(() => setLibraryLoading(false));
+  }, [tab]);
   const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls });
   const projectMeta  = () => ({ name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" });
   const handleCSV = () => {
@@ -1047,9 +1059,18 @@ export default function App() {
       const closeoutBytes = await buildPDF(stateSnapshot(), projectMeta(), { returnBytes: true });
       if (closeoutBytes) await appendPdfBytes(closeoutBytes);
     } catch (e) { console.warn("Could not generate close-out PDF:", e); }
-    // 3. Spec sheet PDFs (uploaded per model)
-    for (const file of Object.values(specSheetFiles)) {
-      if (file) await appendPdfBytes(await file.arrayBuffer());
+    // 3. Spec sheet PDFs — auto-match from living library by brand+model
+    const allGroups = [...cameraGroups, ...doorGroups, ...zoneGroups, ...speakerGroups, ...switchGroups, ...serverGroups];
+    const usedKeys  = new Set(allGroups.map(g => `${g.brand}|${g.model}`.toLowerCase()));
+    const matched   = library.filter(e => usedKeys.has(`${e.brand}|${e.model}`.toLowerCase()));
+    for (const entry of matched) {
+      try {
+        const url = getSpecSheetUrl(entry.file_path);
+        if (url) {
+          const res = await fetch(url);
+          if (res.ok) await appendPdfBytes(await res.arrayBuffer());
+        }
+      } catch (e) { console.warn(`Skipping spec sheet for ${entry.brand} ${entry.model}:`, e); }
     }
     if (merger.getPageCount() === 0) { alert("No PDF content to export. Upload a cover page or spec sheets first."); return; }
     const mergedBytes = await merger.save();
@@ -1246,7 +1267,7 @@ export default function App() {
             setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
             setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
             setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
-            setCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setSpecSheetFiles({}); setCoverPageFile(null);
+            setCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null);
           }} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>← Back</button>
           <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)" }} />
           <div>
@@ -1839,143 +1860,205 @@ export default function App() {
 
         {/* ─ DEVICE LIBRARY / OEM MANUAL ─ */}
         {tab === "library" && (() => {
-          const libCats = [
-            { label: "Access Control", icon: "🚪", groups: doorGroups },
-            { label: "Audio",          icon: "🔊", groups: speakerGroups },
-            { label: "CCTV",           icon: "📷", groups: cameraGroups },
-            { label: "Intrusion",      icon: "🔔", groups: zoneGroups },
-            { label: "Server / NVR",   icon: "🖥", groups: serverGroups },
-            { label: "Switching",      icon: "🔀", groups: switchGroups },
-          ];
-          // Deduplicate groups by brand+model within each category
-          const catModels = libCats.map(cat => {
-            const seen = new Set();
-            const models = [];
-            for (const grp of cat.groups) {
-              const key = grp.brand && grp.model ? `${grp.brand}|${grp.model}` : `__${grp.id}`;
-              if (!seen.has(key)) {
-                seen.add(key);
-                const totalQty = cat.groups
-                  .filter(g => (g.brand && g.model ? `${g.brand}|${g.model}` : `__${g.id}`) === key)
-                  .reduce((s, g) => s + (parseInt(g.quantity) || 0), 0);
-                models.push({ key, brand: grp.brand || "—", model: grp.model || "—", label: grp.groupLabel || "", qty: totalQty });
-              }
-            }
-            return { ...cat, models };
-          }).filter(cat => cat.models.length > 0);
-          const totalUploaded = Object.values(specSheetFiles).filter(Boolean).length;
+          // Build category tree from library rows
+          const CAT_META = {
+            camera:  { label: "CCTV / Cameras",      icon: "📷" },
+            door:    { label: "Access Control",       icon: "🚪" },
+            zone:    { label: "Intrusion",            icon: "🔔" },
+            speaker: { label: "Audio",                icon: "🔊" },
+            switch:  { label: "Network Switching",    icon: "🔀" },
+            server:  { label: "Server / NVR",         icon: "🖥" },
+          };
+          const CAT_ORDER = ["camera","door","zone","speaker","switch","server"];
+          // Group library rows: { category: { brand: [entries] } }
+          const tree = {};
+          for (const row of library) {
+            if (!tree[row.category]) tree[row.category] = {};
+            if (!tree[row.category][row.brand]) tree[row.category][row.brand] = [];
+            tree[row.category][row.brand].push(row);
+          }
+          // Unique models on this project for OEM match preview
+          const projectKeys = new Set(
+            [...cameraGroups,...doorGroups,...zoneGroups,...speakerGroups,...switchGroups,...serverGroups]
+              .map(g => `${g.brand}|${g.model}`.toLowerCase())
+          );
+          const matchCount = library.filter(e => projectKeys.has(`${e.brand}|${e.model}`.toLowerCase())).length;
+
           return (
             <div>
-              {/* Cover page upload */}
-              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16, overflow: "hidden" }}>
-                <div style={{ background: C.navy, padding: "10px 18px", display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 18 }}>📄</span>
-                  <span style={{ color: C.white, fontWeight: 700, fontSize: 14 }}>OEM Manual Cover Page</span>
-                  <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>Upload your branded cover PDF</span>
+              {/* Upload form modal */}
+              {libUploadForm && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(7,20,42,0.78)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+                  <div style={{ background: C.white, borderRadius: 12, maxWidth: 480, width: "100%", boxShadow: "0 8px 48px rgba(0,0,0,.4)" }}>
+                    <div style={{ background: C.navy, borderRadius: "12px 12px 0 0", padding: "14px 18px", display: "flex", alignItems: "center" }}>
+                      <span style={{ color: C.white, fontWeight: 800, fontSize: 14, flex: 1 }}>Add to Device Library</span>
+                      <button onClick={() => setLibUploadForm(null)} style={{ background: "rgba(255,255,255,0.12)", color: C.white, border: "none", borderRadius: 5, padding: "3px 9px", cursor: "pointer" }}>✕</button>
+                    </div>
+                    <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                      {[
+                        ["Category", "category", "select", CAT_ORDER],
+                        ["Brand",    "brand",     "text"],
+                        ["Model #",  "model",     "text"],
+                        ["Display Name (optional)", "displayName", "text"],
+                      ].map(([lbl, key, type, opts]) => (
+                        <div key={key}>
+                          <label style={{ color: C.muted, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>{lbl}</label>
+                          {type === "select" ? (
+                            <select value={libUploadForm[key] || ""} onChange={e => setLibUploadForm(s => ({ ...s, [key]: e.target.value }))}
+                              style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.border}`, fontSize: 13, color: C.navy }}>
+                              <option value="">— select —</option>
+                              {opts.map(v => <option key={v} value={v}>{CAT_META[v]?.label || v}</option>)}
+                            </select>
+                          ) : (
+                            <input value={libUploadForm[key] || ""} onChange={e => setLibUploadForm(s => ({ ...s, [key]: e.target.value }))}
+                              style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.border}`, fontSize: 13, color: C.navy, boxSizing: "border-box" }} />
+                          )}
+                        </div>
+                      ))}
+                      <div>
+                        <label style={{ color: C.muted, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Spec Sheet PDF</label>
+                        <input ref={libUploadFileRef} type="file" accept=".pdf" style={{ display: "none" }}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) setLibUploadForm(s => ({ ...s, file: f })); e.target.value = ""; }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <button onClick={() => libUploadFileRef.current?.click()}
+                            style={{ background: C.bg, color: C.steel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                            ⬆ Choose PDF
+                          </button>
+                          {libUploadForm.file
+                            ? <span style={{ color: C.success, fontSize: 12, fontWeight: 600 }}>✓ {libUploadForm.file.name}</span>
+                            : <span style={{ color: C.muted, fontSize: 12 }}>No file chosen</span>}
+                        </div>
+                      </div>
+                      {libUploadForm.error && <div style={{ color: C.danger, fontSize: 12 }}>{libUploadForm.error}</div>}
+                    </div>
+                    <div style={{ padding: "12px 20px", borderTop: `1px solid ${C.border}`, display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                      <button onClick={() => setLibUploadForm(null)} style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                      <button
+                        disabled={libUploadForm.uploading || !libUploadForm.category || !libUploadForm.brand || !libUploadForm.model || !libUploadForm.file}
+                        onClick={async () => {
+                          setLibUploadForm(s => ({ ...s, uploading: true, error: null }));
+                          try {
+                            await uploadSpecSheet({
+                              category:    libUploadForm.category,
+                              brand:       libUploadForm.brand.trim(),
+                              model:       libUploadForm.model.trim(),
+                              displayName: libUploadForm.displayName?.trim() || libUploadForm.model.trim(),
+                              file:        libUploadForm.file,
+                            });
+                            const rows = await listLibrary();
+                            setLibrary(rows);
+                            setLibUploadForm(null);
+                          } catch (err) {
+                            setLibUploadForm(s => ({ ...s, uploading: false, error: err.message || "Upload failed" }));
+                          }
+                        }}
+                        style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "8px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer",
+                          opacity: (libUploadForm.uploading || !libUploadForm.category || !libUploadForm.brand || !libUploadForm.model || !libUploadForm.file) ? 0.5 : 1 }}>
+                        {libUploadForm.uploading ? "Uploading…" : "Save to Library"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-                  <input ref={coverFileRef} type="file" accept=".pdf" style={{ display: "none" }}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) setCoverPageFile(f); e.target.value = ""; }} />
-                  <button onClick={() => coverFileRef.current?.click()}
-                    style={{ background: C.steel, color: C.white, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                    {coverPageFile ? "↻ Replace" : "⬆ Upload PDF"}
-                  </button>
-                  {coverPageFile ? (
-                    <span style={{ color: C.success, fontSize: 12, fontWeight: 600 }}>✓ {coverPageFile.name}</span>
-                  ) : (
-                    <span style={{ color: C.muted, fontSize: 12 }}>No file selected — cover page will be omitted from OEM manual</span>
-                  )}
-                  {coverPageFile && (
-                    <button onClick={() => setCoverPageFile(null)}
-                      style={{ background: "transparent", color: C.danger, border: "none", fontSize: 12, cursor: "pointer", marginLeft: "auto" }}>✕ Remove</button>
-                  )}
+              )}
+
+              {/* Header row */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontWeight: 800, color: C.navy, fontSize: 16 }}>📚 Device Library</div>
+                  <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
+                    {library.length} spec sheet{library.length !== 1 ? "s" : ""} stored · shared across all projects
+                  </div>
                 </div>
+                <button onClick={() => setLibUploadForm({ category: "", brand: "", model: "", displayName: "", file: null, uploading: false, error: null })}
+                  style={{ background: C.accent, color: C.white, border: "none", borderRadius: 7, padding: "9px 18px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                  + Add Spec Sheet
+                </button>
               </div>
 
-              {/* Per-model spec sheets */}
-              {catModels.length === 0 ? (
+              {/* Library tree */}
+              {libraryLoading ? (
+                <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 40, textAlign: "center", color: C.muted }}>Loading library…</div>
+              ) : library.length === 0 ? (
                 <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 40, textAlign: "center", color: C.muted }}>
-                  No hardware on this project yet. Add devices in the category tabs and they'll appear here.
+                  No spec sheets yet. Click <strong>+ Add Spec Sheet</strong> to upload your first PDF.
                 </div>
-              ) : catModels.map(cat => (
-                <div key={cat.label} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 14, overflow: "hidden" }}>
-                  <div style={{ background: C.steel, padding: "9px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>{cat.icon}</span>
-                    <span style={{ color: C.white, fontWeight: 700, fontSize: 13 }}>{cat.label}</span>
-                    <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>{cat.models.length} model{cat.models.length !== 1 ? "s" : ""}</span>
+              ) : CAT_ORDER.filter(cat => tree[cat]).map(catKey => (
+                <div key={catKey} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 12, overflow: "hidden" }}>
+                  {/* Category header */}
+                  <div style={{ background: C.navy, padding: "9px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{CAT_META[catKey]?.icon}</span>
+                    <span style={{ color: C.white, fontWeight: 700, fontSize: 13 }}>{CAT_META[catKey]?.label}</span>
+                    <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>
+                      {Object.values(tree[catKey]).flat().length} model{Object.values(tree[catKey]).flat().length !== 1 ? "s" : ""}
+                    </span>
                   </div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: C.bg }}>
-                        <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderBottom: `1px solid ${C.border}` }}>Brand</th>
-                        <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderBottom: `1px solid ${C.border}` }}>Model</th>
-                        <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderBottom: `1px solid ${C.border}` }}>Qty on Project</th>
-                        <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderBottom: `1px solid ${C.border}` }}>Spec Sheet URL</th>
-                        <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderBottom: `1px solid ${C.border}` }}>PDF for OEM Manual</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cat.models.map((m, mi) => {
-                        const fileRef = { current: null };
-                        const hasFile = !!specSheetFiles[m.key];
+                  {Object.keys(tree[catKey]).sort().map(brand => (
+                    <div key={brand}>
+                      {/* Brand sub-header */}
+                      <div style={{ background: C.steel, padding: "6px 16px", display: "flex", alignItems: "center" }}>
+                        <span style={{ color: C.white, fontWeight: 700, fontSize: 12 }}>{brand}</span>
+                        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginLeft: 8 }}>
+                          {tree[catKey][brand].length} model{tree[catKey][brand].length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      {tree[catKey][brand].map((entry, ei) => {
+                        const url         = getSpecSheetUrl(entry.file_path);
+                        const onProject   = projectKeys.has(`${entry.brand}|${entry.model}`.toLowerCase());
                         return (
-                          <tr key={m.key} style={{ background: mi % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
-                            <td style={{ padding: "8px 12px", color: C.navy, fontWeight: 600 }}>{m.brand}</td>
-                            <td style={{ padding: "8px 12px", color: C.navy, fontFamily: "monospace", fontSize: 11 }}>{m.model}</td>
-                            <td style={{ padding: "8px 12px", color: C.steel, fontWeight: 700 }}>{m.qty}</td>
-                            <td style={{ padding: "8px 12px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <input
-                                  value={specSheetUrls[m.key] || ""}
-                                  onChange={e => setSpecSheetUrls(s => ({ ...s, [m.key]: e.target.value }))}
-                                  placeholder="https://..."
-                                  style={{ flex: 1, padding: "4px 8px", borderRadius: 5, border: `1px solid ${C.border}`, fontSize: 11, color: C.navy, outline: "none", minWidth: 0 }}
-                                />
-                                {specSheetUrls[m.key] && (
-                                  <a href={specSheetUrls[m.key]} target="_blank" rel="noopener noreferrer"
-                                    style={{ color: C.accent, fontSize: 11, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>🔗 View</a>
-                                )}
-                              </div>
-                            </td>
-                            <td style={{ padding: "8px 12px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <input type="file" accept=".pdf" style={{ display: "none" }}
-                                  ref={el => fileRef.current = el}
-                                  onChange={e => {
-                                    const f = e.target.files?.[0];
-                                    if (f) setSpecSheetFiles(s => ({ ...s, [m.key]: f }));
-                                    e.target.value = "";
-                                  }} />
-                                <button onClick={() => fileRef.current?.click()}
-                                  style={{ background: hasFile ? C.success : C.bg, color: hasFile ? C.white : C.steel, border: `1px solid ${hasFile ? C.success : C.border}`, borderRadius: 5, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                  {hasFile ? `✓ ${specSheetFiles[m.key].name.substring(0,20)}…` : "⬆ Upload PDF"}
-                                </button>
-                                {hasFile && (
-                                  <button onClick={() => setSpecSheetFiles(s => { const n = { ...s }; delete n[m.key]; return n; })}
-                                    style={{ background: "transparent", color: C.danger, border: "none", fontSize: 11, cursor: "pointer" }}>✕</button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
+                          <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 16px", background: ei % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, color: C.navy, fontSize: 13 }}>{entry.display_name || entry.model}</div>
+                              <div style={{ color: C.muted, fontSize: 11, marginTop: 1 }}>{entry.file_name}</div>
+                            </div>
+                            {onProject && (
+                              <span style={{ background: "#D1FAE5", color: C.success, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, whiteSpace: "nowrap" }}>✓ On this project</span>
+                            )}
+                            {url && (
+                              <a href={url} target="_blank" rel="noopener noreferrer"
+                                style={{ color: C.accent, fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>🔗 View PDF</a>
+                            )}
+                            <button onClick={async () => {
+                                if (!confirm(`Delete "${entry.display_name || entry.model}" from library?`)) return;
+                                await deleteLibraryEntry(entry.id, entry.file_path);
+                                setLibrary(l => l.filter(r => r.id !== entry.id));
+                              }}
+                              style={{ background: "transparent", color: C.danger, border: `1px solid ${C.danger}`, borderRadius: 5, padding: "3px 8px", fontSize: 11, cursor: "pointer" }}>
+                              Delete
+                            </button>
+                          </div>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </div>
+                  ))}
                 </div>
               ))}
 
-              {/* OEM Manual export */}
-              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 22, marginTop: 4 }}>
+              {/* OEM Manual section */}
+              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 22, marginTop: 8 }}>
                 <div style={{ fontWeight: 800, color: C.navy, fontSize: 15, marginBottom: 6 }}>📦 Export OEM Manual</div>
                 <div style={{ color: C.muted, fontSize: 12, marginBottom: 16 }}>
-                  Compiles into a single PDF: <strong>Cover page</strong> → <strong>Close-out report</strong> → <strong>Spec sheets</strong> (for uploaded PDFs).
-                  Spec sheet URLs are reference links only and are not embedded.
+                  Compiles a single PDF: <strong>Cover page</strong> → <strong>Close-out report</strong> → <strong>Spec sheets</strong> for every model on this project that exists in the library.
+                </div>
+                {/* Cover page */}
+                <div style={{ background: C.surface, borderRadius: 8, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ color: C.muted, fontSize: 12, fontWeight: 700, minWidth: 90 }}>Cover page</span>
+                  <input ref={coverFileRef} type="file" accept=".pdf" style={{ display: "none" }}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) setCoverPageFile(f); e.target.value = ""; }} />
+                  <button onClick={() => coverFileRef.current?.click()}
+                    style={{ background: C.steel, color: C.white, border: "none", borderRadius: 5, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                    {coverPageFile ? "↻ Replace" : "⬆ Upload PDF"}
+                  </button>
+                  {coverPageFile
+                    ? <span style={{ color: C.success, fontSize: 12, fontWeight: 600 }}>✓ {coverPageFile.name}</span>
+                    : <span style={{ color: C.muted, fontSize: 12 }}>Optional — omitted if not uploaded</span>}
                 </div>
                 <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", gap: 10, fontSize: 12, color: C.muted, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 12, fontSize: 12, flexWrap: "wrap" }}>
                     <span style={{ color: coverPageFile ? C.success : C.muted }}>{coverPageFile ? "✓" : "○"} Cover page</span>
                     <span style={{ color: C.success }}>✓ Close-out report</span>
-                    <span style={{ color: totalUploaded > 0 ? C.success : C.muted }}>{totalUploaded > 0 ? `✓ ${totalUploaded} spec sheet PDF${totalUploaded !== 1 ? "s" : ""}` : "○ No spec sheets uploaded"}</span>
+                    <span style={{ color: matchCount > 0 ? C.success : C.muted }}>
+                      {matchCount > 0 ? `✓ ${matchCount} spec sheet${matchCount !== 1 ? "s" : ""} matched from library` : "○ No library matches for this project's devices"}
+                    </span>
                   </div>
                   <button onClick={buildOEMManual} disabled={!pdfLibReady || !sdkReady}
                     style={{ marginLeft: "auto", background: C.gold, color: C.navy, border: "none", borderRadius: 8, padding: "10px 28px", fontSize: 14, fontWeight: 800, cursor: "pointer", opacity: (!pdfLibReady || !sdkReady) ? 0.5 : 1 }}>

@@ -39,3 +39,61 @@ export async function listWorkOrders() {
   if (error) throw error;
   return data || [];
 }
+
+// ── Device Library ─────────────────────────────────────────────────────────────
+const BUCKET = "device-specs";
+
+// Upload a spec sheet PDF and upsert the metadata row.
+// Replaces any existing entry for the same brand+model.
+export async function uploadSpecSheet({ category, brand, model, displayName, uploadedBy, file }) {
+  const ext      = file.name.split(".").pop() || "pdf";
+  const safeName = `${category}/${brand}/${model}.${ext}`
+    .replace(/[^a-zA-Z0-9/_.-]/g, "_");
+
+  // Upload file (upsert overwrites existing)
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET)
+    .upload(safeName, file, { upsert: true, contentType: "application/pdf" });
+  if (upErr) throw upErr;
+
+  // Upsert metadata row
+  const { error: dbErr } = await supabase
+    .from("device_library")
+    .upsert({
+      category,
+      brand,
+      model,
+      display_name: displayName || model,
+      file_path:    safeName,
+      file_name:    file.name,
+      uploaded_by:  uploadedBy || null,
+      created_at:   new Date().toISOString(),
+    }, { onConflict: "brand,model" });
+  if (dbErr) throw dbErr;
+}
+
+// Fetch all library entries ordered for tree display
+export async function listLibrary() {
+  const { data, error } = await supabase
+    .from("device_library")
+    .select("*")
+    .order("category")
+    .order("brand")
+    .order("model");
+  if (error) throw error;
+  return data || [];
+}
+
+// Delete a library entry and its stored file
+export async function deleteLibraryEntry(id, filePath) {
+  const { error: stErr } = await supabase.storage.from(BUCKET).remove([filePath]);
+  if (stErr) throw stErr;
+  const { error: dbErr } = await supabase.from("device_library").delete().eq("id", id);
+  if (dbErr) throw dbErr;
+}
+
+// Get the public download URL for a stored spec sheet
+export function getSpecSheetUrl(filePath) {
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
+  return data?.publicUrl || null;
+}

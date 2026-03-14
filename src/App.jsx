@@ -1042,14 +1042,18 @@ export default function App() {
     setTimeout(() => setSaveStatus("idle"), 3000);
   };
   const TABS = [
+    // ── Exec overview ─────────────────────────────────────────────────────────
     { id: "info",      label: "Project Info",  icon: "📋" },
     { id: "dashboard", label: "Dashboard",     icon: "📊" },
+    { id: "labor",     label: "Labor",         icon: "⏱" },
+    // ── Hardware (alphabetical) ────────────────────────────────────────────────
     { id: "access",    label: "Access",        icon: "🚪", count: doorCount },
     { id: "audio",     label: "Audio",         icon: "🔊", count: spkCount },
     { id: "cameras",   label: "CCTV",          icon: "📷", count: camCount },
+    { id: "intrusion", label: "Intrusion",     icon: "🔔", count: zoneCount },
     { id: "servers",   label: "Server / NVR",  icon: "🖥", count: srvCount },
     { id: "switches",  label: "Switching",     icon: "🔀", count: swCount },
-    { id: "labor",     label: "Labor",         icon: "⏱" },
+    // ── Resources ─────────────────────────────────────────────────────────────
     { id: "library",   label: "Device Library",icon: "📚" },
     { id: "export",    label: "Export PDF",    icon: "📤" },
   ];

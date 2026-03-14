@@ -159,10 +159,9 @@ function GroupCard({ icon, title, idx, devCount, collapsed, onToggle, onRemove, 
   );
 }
 // ── Compact device row (used in all group tables) ─────────────────────────────
-function DevRow({ num, dev, cols, onRemove, onUpd, onLog }) {
+function DevRow({ num, dev, cols, onRemove, onUpd, onLog, onFieldLog }) {
   const inpSt = { padding: "5px 7px", borderRadius: 4, border: `1.5px solid ${C.border}`, fontSize: 11, background: C.white, color: C.navy, outline: "none", width: "100%", boxSizing: "border-box" };
-  const focus = e => e.target.style.borderColor = C.accent;
-  const blur  = e => e.target.style.borderColor = C.border;
+  const focusVals = React.useRef({});
   const rowBg = dev.programmed ? "#F0FDF4" : dev.installed ? "#FFFBEB" : (num % 2 === 0 ? C.white : C.surface);
   return (
     <tr style={{ background: rowBg }}>
@@ -177,8 +176,13 @@ function DevRow({ num, dev, cols, onRemove, onUpd, onLog }) {
               onChange={e => onUpd(col.key, e.target.value)}
               placeholder={col.ph || ""}
               style={inpSt}
-              onFocus={focus}
-              onBlur={blur}
+              onFocus={e => { e.target.style.borderColor = C.accent; focusVals.current[col.key] = e.target.value; }}
+              onBlur={e => {
+                e.target.style.borderColor = C.border;
+                const newVal = e.target.value;
+                const oldVal = focusVals.current[col.key] ?? "";
+                if (newVal !== oldVal && onFieldLog) onFieldLog(col.key, oldVal, newVal);
+              }}
             />
           )}
         </td>
@@ -208,7 +212,7 @@ function DevRow({ num, dev, cols, onRemove, onUpd, onLog }) {
   );
 }
 // ── Device table (wraps rows with header) ─────────────────────────────────────
-function DevTable({ cols, devices, gid, setter, newDevFn, onLog }) {
+function DevTable({ cols, devices, gid, setter, newDevFn, onLog, onFieldLog }) {
   if (!devices.length) {
     return (
       <div style={{ textAlign: "center", padding: "16px", color: C.muted, fontSize: 12, border: `1px dashed ${C.border}`, borderRadius: 6, marginTop: 8 }}>
@@ -246,6 +250,7 @@ function DevTable({ cols, devices, gid, setter, newDevFn, onLog }) {
                 onRemove={() => remDev(setter, gid, dev.id)}
                 onUpd={(k, v) => updDev(setter, gid, dev.id, k, v)}
                 onLog={onLog}
+                onFieldLog={onFieldLog}
               />
             ))}
           </tbody>
@@ -1277,7 +1282,7 @@ export default function App() {
             setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
             setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
             setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
-            setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]); setAiSummary("");
+            setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]);
           }} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>← Back</button>
           <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)" }} />
           <div>
@@ -1384,7 +1389,7 @@ export default function App() {
         {tab === "servers" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="🖥" title="Servers & Computing" count={srvCount} onAdd={() => setServerGroups(g => [...g, mkSrvGrp()])} addLabel="Add Server Group" color={C.navy} />
+              <CardHead icon="🖥" title="Servers & Computing" count={srvCount} onAdd={() => { setServerGroups(g => [...g, mkSrvGrp()]); addLog("group_added", "Server group added"); }} addLabel="Add Server Group" color={C.navy} />
               <div style={{ padding: 18 }}>
                 {serverGroups.length === 0 && <Empty icon="🖥" msg="No server groups yet. Click + Add Server Group." />}
                 {serverGroups.map((grp, gi) => (
@@ -1411,6 +1416,7 @@ export default function App() {
                     <GenerateBar group={grp} setter={setServerGroups} genFn={genSrv} />
                     <DevTable gid={grp.id} setter={setServerGroups} devices={grp.devices} newDevFn={(i) => mkSrvDev("", i || grp.devices.length)}
                       onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Server)`)}
+                      onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Server)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Server)`); }}
                       cols={[
                         { key: "name", label: "Server Name", ph: "e.g. VMS-01" },
                         { key: "location", label: "Location", ph: "e.g. Server Room" },
@@ -1431,7 +1437,7 @@ export default function App() {
         {tab === "switches" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="🔀" title="Network Switching" count={swCount} onAdd={() => setSwitchGroups(g => [...g, mkSwGrp()])} addLabel="Add Switch Group" color={C.navy} />
+              <CardHead icon="🔀" title="Network Switching" count={swCount} onAdd={() => { setSwitchGroups(g => [...g, mkSwGrp()]); addLog("group_added", "Switch group added"); }} addLabel="Add Switch Group" color={C.navy} />
               <div style={{ padding: 18 }}>
                 {switchGroups.length === 0 && <Empty icon="🔀" msg="No switch groups yet. Click + Add Switch Group." />}
                 {switchGroups.map((grp, gi) => (
@@ -1453,6 +1459,7 @@ export default function App() {
                     <GenerateBar group={grp} setter={setSwitchGroups} genFn={genSw} />
                     <DevTable gid={grp.id} setter={setSwitchGroups} devices={grp.devices} newDevFn={(i) => mkSwDev("", i || grp.devices.length)}
                       onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Switch)`)}
+                      onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Switch)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Switch)`); }}
                       cols={[
                         { key: "name", label: "Switch Name", ph: "e.g. CCTV-SW-01" },
                         { key: "location", label: "Location", ph: "e.g. IDF Room B" },
@@ -1474,7 +1481,7 @@ export default function App() {
         {tab === "cameras" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="📷" title="CCTV Camera Programming" count={camCount} onAdd={() => setCameraGroups(g => [...g, mkCamGroup()])} addLabel="Add Camera Group" color={C.navy} />
+              <CardHead icon="📷" title="CCTV Camera Programming" count={camCount} onAdd={() => { setCameraGroups(g => [...g, mkCamGroup()]); addLog("group_added", "Camera group added"); }} addLabel="Add Camera Group" color={C.navy} />
               <div style={{ padding: 18 }}>
                 {cameraGroups.length === 0 && <Empty icon="📷" msg="No camera groups yet. Click + Add Camera Group to get started." />}
                 {cameraGroups.map((grp, gi) => {
@@ -1520,6 +1527,7 @@ export default function App() {
                       <GenerateBar group={grp} setter={setCameraGroups} genFn={genCam} />
                       <DevTable gid={grp.id} setter={setCameraGroups} devices={grp.devices} newDevFn={(i) => mkCamDev("", i || grp.devices.length)}
                         onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Camera)`)}
+                        onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Camera)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Camera)`); }}
                         cols={[
                           { key: "name", label: "Camera Name", ph: "e.g. NE Entry" },
                           { key: "location", label: "Location", ph: "e.g. NE Corner Lobby" },
@@ -1541,7 +1549,7 @@ export default function App() {
         {tab === "access" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="🚪" title="Access Control Door Programming" count={doorCount} onAdd={() => setDoorGroups(g => [...g, mkDoorGrp()])} addLabel="Add Door Group" color={C.navy} />
+              <CardHead icon="🚪" title="Access Control Door Programming" count={doorCount} onAdd={() => { setDoorGroups(g => [...g, mkDoorGrp()]); addLog("group_added", "Access door group added"); }} addLabel="Add Door Group" color={C.navy} />
               <div style={{ padding: 18 }}>
                 {doorGroups.length === 0 && <Empty icon="🚪" msg="No door groups yet. Click + Add Door Group." />}
                 {doorGroups.map((grp, gi) => (
@@ -1572,6 +1580,7 @@ export default function App() {
                     <GenerateBar group={grp} setter={setDoorGroups} genFn={genDoor} showIP={false} />
                     <DevTable gid={grp.id} setter={setDoorGroups} devices={grp.devices} newDevFn={(i) => mkDoorDev(i || grp.devices.length)}
                       onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Access)`)}
+                      onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Access)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Access)`); }}
                       cols={[
                         { key: "name", label: "Door Name", ph: "e.g. Main Entry" },
                         { key: "location", label: "Location", ph: "e.g. Lobby" },
@@ -1593,7 +1602,7 @@ export default function App() {
         {tab === "intrusion" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="🔔" title="Intrusion Zone Programming" count={zoneCount} onAdd={() => setZoneGroups(g => [...g, mkZoneGrp()])} addLabel="Add Zone Group" color={C.navy} />
+              <CardHead icon="🔔" title="Intrusion Zone Programming" count={zoneCount} onAdd={() => { setZoneGroups(g => [...g, mkZoneGrp()]); addLog("group_added", "Intrusion zone group added"); }} addLabel="Add Zone Group" color={C.navy} />
               <div style={{ padding: 18 }}>
                 {zoneGroups.length === 0 && <Empty icon="🔔" msg="No zone groups yet. Click + Add Zone Group." />}
                 {zoneGroups.map((grp, gi) => (
@@ -1613,6 +1622,7 @@ export default function App() {
                     <GenerateBar group={grp} setter={setZoneGroups} genFn={genZone} showIP={false} />
                     <DevTable gid={grp.id} setter={setZoneGroups} devices={grp.devices} newDevFn={(i) => mkZoneDev(i || grp.devices.length, grp)}
                       onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Intrusion)`)}
+                      onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Intrusion)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Intrusion)`); }}
                       cols={[
                         { key: "zoneNumber", label: "Zone #", ph: "01" },
                         { key: "name", label: "Zone Name", ph: "e.g. Back Door PIR" },
@@ -1633,7 +1643,7 @@ export default function App() {
         {tab === "audio" && (
           <div>
             <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <CardHead icon="🔊" title="Audio Zone Programming" count={spkCount} onAdd={() => setSpeakerGroups(g => [...g, mkSpkGrp()])} addLabel="Add Audio Group" color={C.navy} />
+              <CardHead icon="🔊" title="Audio Zone Programming" count={spkCount} onAdd={() => { setSpeakerGroups(g => [...g, mkSpkGrp()]); addLog("group_added", "Audio group added"); }} addLabel="Add Audio Group" color={C.navy} />
               <div style={{ padding: 18 }}>
                 {speakerGroups.length === 0 && <Empty icon="🔊" msg="No audio groups yet. Click + Add Audio Group." />}
                 {speakerGroups.map((grp, gi) => (
@@ -1654,6 +1664,7 @@ export default function App() {
                     <GenerateBar group={grp} setter={setSpeakerGroups} genFn={genSpk} />
                     <DevTable gid={grp.id} setter={setSpeakerGroups} devices={grp.devices} newDevFn={(i) => mkSpkDev("", i || grp.devices.length)}
                       onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Audio)`)}
+                      onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Audio)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Audio)`); }}
                       cols={[
                         { key: "name", label: "Speaker / Zone", ph: "e.g. Lobby 01" },
                         { key: "location", label: "Location", ph: "" },
@@ -1771,10 +1782,12 @@ export default function App() {
           const totalActual = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborActual[t.key]) || 0), 0);
 
           const logTypeMeta = {
-            programmed:   { label: "Programmed",  bg: "#D1FAE5", color: C.success },
-            unprogrammed: { label: "Unprogrammed", bg: "#FEE2E2", color: C.danger },
-            group_added:  { label: "Group Added",  bg: "#DBEAFE", color: "#1D4ED8" },
-            import:       { label: "Import",       bg: "#EDE9FE", color: "#6D28D9" },
+            programmed:   { label: "Programmed",   bg: "#D1FAE5", color: C.success },
+            unprogrammed: { label: "Unprogrammed",  bg: "#FEE2E2", color: C.danger },
+            group_added:  { label: "Group Added",   bg: "#DBEAFE", color: "#1D4ED8" },
+            name_change:  { label: "Renamed",       bg: "#FEF9C3", color: "#92400E" },
+            location_set: { label: "Location",      bg: "#E0F2FE", color: "#0369A1" },
+            import:       { label: "Import",        bg: "#EDE9FE", color: "#6D28D9" },
           };
 
           return (

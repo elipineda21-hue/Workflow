@@ -161,7 +161,7 @@ function GroupCard({ icon, title, idx, devCount, collapsed, onToggle, onRemove, 
 // ── Compact device row (used in all group tables) ─────────────────────────────
 function DevRow({ num, dev, cols, onRemove, onUpd, onLog, onFieldLog }) {
   const inpSt = { padding: "5px 7px", borderRadius: 4, border: `1.5px solid ${C.border}`, fontSize: 11, background: C.white, color: C.navy, outline: "none", width: "100%", boxSizing: "border-box" };
-  const focusVals = React.useRef({});
+  const focusVals = useRef({});
   const rowBg = dev.programmed ? "#F0FDF4" : dev.installed ? "#FFFBEB" : (num % 2 === 0 ? C.white : C.surface);
   return (
     <tr style={{ background: rowBg }}>

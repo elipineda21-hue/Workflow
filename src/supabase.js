@@ -97,3 +97,48 @@ export function getSpecSheetUrl(filePath) {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
   return data?.publicUrl || null;
 }
+
+// ── Project Files ──────────────────────────────────────────────────────────────
+const FILES_BUCKET = "project-files";
+
+export async function uploadProjectFile(mondayProjectId, category, file) {
+  const ext      = file.name.split(".").pop() || "bin";
+  const safeName = `${mondayProjectId}/${category}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const { error: upErr } = await supabase.storage
+    .from(FILES_BUCKET)
+    .upload(safeName, file, { upsert: false });
+  if (upErr) throw upErr;
+  const { error: dbErr } = await supabase
+    .from("project_files")
+    .insert({
+      monday_project_id: String(mondayProjectId),
+      category,
+      file_name:  file.name,
+      file_path:  safeName,
+      file_size:  file.size,
+      created_at: new Date().toISOString(),
+    });
+  if (dbErr) throw dbErr;
+}
+
+export async function listProjectFiles(mondayProjectId) {
+  const { data, error } = await supabase
+    .from("project_files")
+    .select("*")
+    .eq("monday_project_id", String(mondayProjectId))
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function deleteProjectFile(id, filePath) {
+  const { error: stErr } = await supabase.storage.from(FILES_BUCKET).remove([filePath]);
+  if (stErr) throw stErr;
+  const { error: dbErr } = await supabase.from("project_files").delete().eq("id", id);
+  if (dbErr) throw dbErr;
+}
+
+export function getProjectFileUrl(filePath) {
+  const { data } = supabase.storage.from(FILES_BUCKET).getPublicUrl(filePath);
+  return data?.publicUrl || null;
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CAM_DB, SWITCH_DB, SERVER_DB, ACCESS_DB, PANEL_DB } from "./deviceDB";
-import { loadWorkOrder, saveWorkOrder, listWorkOrders, listLibrary, uploadSpecSheet, deleteLibraryEntry, getSpecSheetUrl } from "./supabase";
+import { loadWorkOrder, saveWorkOrder, listWorkOrders, listLibrary, uploadSpecSheet, deleteLibraryEntry, getSpecSheetUrl, uploadProjectFile, listProjectFiles, deleteProjectFile, getProjectFileUrl } from "./supabase";
 // ── Palette ───────────────────────────────────────────────────────────────────
 const C = {
   navy: "#0B1F3A", steel: "#1A3355", accent: "#00AEEF", gold: "#F4A300",
@@ -10,7 +10,7 @@ const C = {
 };
 // ── Monday API ────────────────────────────────────────────────────────────────
 const MONDAY_BOARD_ID = "18394052747";
-async function fetchProjects(token) {
+async function fetchProjects(token, colMap = {}) {
   if (!token) return [];
   const query = `{ boards(ids: ${MONDAY_BOARD_ID}) { items_page(limit: 100) { items { id name column_values { id text } } } } }`;
   const res = await fetch("https://api.monday.com/v2", {
@@ -22,16 +22,39 @@ async function fetchProjects(token) {
   if (data.errors) throw new Error(data.errors[0].message);
   const items = data?.data?.boards?.[0]?.items_page?.items || [];
   return items.map(item => {
-    const col = id => item.column_values.find(c => c.id === id)?.text || "—";
+    const col = id => item.column_values.find(c => c.id === id)?.text || "";
     return {
       id: item.id,
       name: item.name,
-      projectId: col("text_mm0vkgrq"),
-      techLead: col("multiple_person_mm01ew1v"),
+      projectId:         col("text_mm0vkgrq"),
+      techLead:          col("multiple_person_mm01ew1v"),
       programmingStatus: col("status"),
-      schedule: col("timerange_mm034yws"),
+      schedule:          col("timerange_mm034yws"),
+      customer:    colMap.customer    ? col(colMap.customer)    : "",
+      siteAddress: colMap.siteAddress ? col(colMap.siteAddress) : "",
+      pm:          colMap.pm          ? col(colMap.pm)          : "",
     };
   });
+}
+// Fetch raw column list from first board item for mapping UI
+async function fetchBoardColumns(token) {
+  if (!token) return [];
+  const query = `{ boards(ids: ${MONDAY_BOARD_ID}) { columns { id title } items_page(limit: 1) { items { column_values { id text } } } } }`;
+  const res = await fetch("https://api.monday.com/v2", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": token },
+    body: JSON.stringify({ query }),
+  });
+  const data = await res.json();
+  if (data.errors) throw new Error(data.errors[0].message);
+  const board = data?.data?.boards?.[0];
+  const cols  = board?.columns || [];
+  const vals  = board?.items_page?.items?.[0]?.column_values || [];
+  return cols.map(c => ({
+    id:    c.id,
+    title: c.title,
+    sample: vals.find(v => v.id === c.id)?.text || "",
+  }));
 }
 // ── Utilities ─────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -919,6 +942,15 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [mondayToken, setMondayToken] = useState(() => import.meta.env.VITE_MONDAY_TOKEN || localStorage.getItem("mondayToken") || "");
   const [tokenDraft, setTokenDraft] = useState("");
+  const [colMap, setColMap] = useState(() => { try { return JSON.parse(localStorage.getItem("mondayColMap") || "{}"); } catch { return {}; } });
+  const [colMapperOpen, setColMapperOpen] = useState(false);
+  const [colMapperCols, setColMapperCols] = useState([]);   // [{id, title, sample}]
+  const [colMapperLoading, setColMapperLoading] = useState(false);
+  const [colMapDraft, setColMapDraft] = useState({});
+  const [projectFiles, setProjectFiles] = useState([]);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [fileUploadCat, setFileUploadCat] = useState("Drawings");
+  const fileInputRef = useRef(null);
   const [tab, setTab] = useState("info");
   const [generating, setPDF] = useState(false);
   const [sdkReady, setSDK] = useState(false);
@@ -1027,10 +1059,10 @@ export default function App() {
     if (!mondayToken) return;
     setLoadingProjects(true);
     setProjectsError("");
-    fetchProjects(mondayToken)
+    fetchProjects(mondayToken, colMap)
       .then(ps => { setProjects(ps); setLoadingProjects(false); })
       .catch(e => { setProjectsError(e.message || "Failed to load projects"); setLoadingProjects(false); });
-  }, [mondayToken]);
+  }, [mondayToken, colMap]);
   // Load library whenever the library tab is opened
   useEffect(() => {
     if (tab !== "library") return;
@@ -1039,6 +1071,14 @@ export default function App() {
       .then(rows => { setLibrary(rows); setLibraryLoading(false); })
       .catch(() => setLibraryLoading(false));
   }, [tab]);
+  // Load project files whenever the files tab is opened
+  useEffect(() => {
+    if (tab !== "files" || !selectedProject) return;
+    setFilesLoading(true);
+    listProjectFiles(selectedProject.id)
+      .then(rows => { setProjectFiles(rows); setFilesLoading(false); })
+      .catch(() => setFilesLoading(false));
+  }, [tab, selectedProject]);
   const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls, changeLog });
   const projectMeta  = () => ({ name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" });
   const handleCSV = () => {
@@ -1139,6 +1179,7 @@ export default function App() {
     { id: "servers",   label: "Server / NVR",  icon: "🖥", count: srvCount },
     { id: "switches",  label: "Switching",     icon: "🔀", count: swCount },
     // ── Resources ─────────────────────────────────────────────────────────────
+    { id: "files",     label: "Project Files", icon: "📁" },
     { id: "library",   label: "Device Library",icon: "📚" },
     { id: "export",    label: "Export PDF",    icon: "📤" },
   ];
@@ -1181,21 +1222,117 @@ export default function App() {
             </div>
           )}
 
-          {/* Refresh token */}
+          {/* Refresh token + column mapper */}
           {mondayToken && (
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, gap: 8, alignItems: "center" }}>
-              <button onClick={() => setPhase("master")}
-                style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "6px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                📊 Master Dashboard
-              </button>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ color: C.success, fontSize: 11, fontWeight: 600 }}>✓ Connected to monday.com</span>
-                <button onClick={() => { localStorage.removeItem("mondayToken"); setMondayToken(""); setProjects([]); }}
-                  style={{ background: "rgba(255,255,255,0.07)", color: C.muted, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 5, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
-                  Change Token
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, gap: 8, alignItems: "center" }}>
+                <button onClick={() => setPhase("master")}
+                  style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "6px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  📊 Master Dashboard
                 </button>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ color: C.success, fontSize: 11, fontWeight: 600 }}>✓ Connected to monday.com</span>
+                  <button onClick={() => setColMapperOpen(v => !v)}
+                    style={{ background: "rgba(255,255,255,0.07)", color: C.accent, border: `1px solid rgba(0,174,239,0.3)`, borderRadius: 5, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
+                    ⚙ Column Map
+                  </button>
+                  <button onClick={() => { localStorage.removeItem("mondayToken"); setMondayToken(""); setProjects([]); }}
+                    style={{ background: "rgba(255,255,255,0.07)", color: C.muted, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 5, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
+                    Change Token
+                  </button>
+                </div>
               </div>
-            </div>
+
+              {/* ── Column Mapper Panel ── */}
+              {colMapperOpen && (
+                <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, border: `1px solid rgba(0,174,239,0.2)`, padding: 16, marginBottom: 16 }}>
+                  <div style={{ color: C.white, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>⚙ Monday.com Column Mapping</div>
+                  <div style={{ color: C.muted, fontSize: 11, marginBottom: 12 }}>
+                    Map your board columns to app fields so project info auto-fills when you select a project.
+                    Click <strong style={{ color: C.accent }}>Load Columns</strong> to see all column IDs from your board.
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setColMapperLoading(true);
+                      try {
+                        const cols = await fetchBoardColumns(mondayToken);
+                        setColMapperCols(cols);
+                        setColMapDraft({ ...colMap });
+                      } catch(e) { alert("Error: " + e.message); }
+                      setColMapperLoading(false);
+                    }}
+                    style={{ background: C.accent, color: C.white, border: "none", borderRadius: 5, padding: "5px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", marginBottom: 12 }}>
+                    {colMapperLoading ? "Loading…" : "Load Columns from Board"}
+                  </button>
+                  {colMapperCols.length > 0 && (
+                    <>
+                      <div style={{ overflowX: "auto", marginBottom: 12 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                          <thead>
+                            <tr style={{ borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
+                              <th style={{ padding: "5px 8px", textAlign: "left", color: C.muted }}>Column Title</th>
+                              <th style={{ padding: "5px 8px", textAlign: "left", color: C.muted }}>Column ID</th>
+                              <th style={{ padding: "5px 8px", textAlign: "left", color: C.muted }}>Sample Value</th>
+                              <th style={{ padding: "5px 8px", textAlign: "left", color: C.muted }}>Map to App Field</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {colMapperCols.map(col => (
+                              <tr key={col.id} style={{ borderBottom: `1px solid rgba(255,255,255,0.05)` }}>
+                                <td style={{ padding: "5px 8px", color: C.white, fontWeight: 600 }}>{col.title}</td>
+                                <td style={{ padding: "5px 8px", color: C.accent, fontFamily: "monospace", fontSize: 10 }}>{col.id}</td>
+                                <td style={{ padding: "5px 8px", color: C.muted, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{col.sample || "—"}</td>
+                                <td style={{ padding: "5px 8px" }}>
+                                  <select
+                                    value={Object.entries(colMapDraft).find(([, v]) => v === col.id)?.[0] || ""}
+                                    onChange={e => {
+                                      const field = e.target.value;
+                                      setColMapDraft(d => {
+                                        const next = { ...d };
+                                        // Clear any other mapping that used this col
+                                        Object.keys(next).forEach(k => { if (next[k] === col.id) next[k] = ""; });
+                                        if (field) next[field] = col.id;
+                                        return next;
+                                      });
+                                    }}
+                                    style={{ background: "rgba(255,255,255,0.07)", color: C.white, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 4, padding: "3px 6px", fontSize: 11 }}>
+                                    <option value="">— none —</option>
+                                    <option value="customer">Customer Name</option>
+                                    <option value="siteAddress">Site Address</option>
+                                    <option value="pm">Project Manager</option>
+                                  </select>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          onClick={() => {
+                            const next = colMapDraft;
+                            setColMap(next);
+                            localStorage.setItem("mondayColMap", JSON.stringify(next));
+                            setColMapperOpen(false);
+                            // Re-fetch projects with new mapping
+                            setLoadingProjects(true);
+                            fetchProjects(mondayToken, next)
+                              .then(ps => { setProjects(ps); setLoadingProjects(false); })
+                              .catch(() => setLoadingProjects(false));
+                          }}
+                          style={{ background: C.success, color: C.white, border: "none", borderRadius: 5, padding: "6px 16px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          ✓ Save Mapping
+                        </button>
+                        <button onClick={() => setColMapperOpen(false)}
+                          style={{ background: "rgba(255,255,255,0.07)", color: C.muted, border: "none", borderRadius: 5, padding: "6px 12px", fontSize: 11, cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           {loadingProjects ? (
@@ -1216,7 +1353,18 @@ export default function App() {
                       const saved = await loadWorkOrder(p.id);
                       if (saved?.state) {
                         const s = saved.state;
-                        if (s.info)          setInfo(s.info);
+                        // Load saved state but back-fill any Monday fields that are now mapped
+                        const mergedInfo = {
+                          customer:    p.customer    || "",
+                          siteAddress: p.siteAddress || "",
+                          techLead:    p.techLead    || "",
+                          ...(s.info || {}),
+                          // If Monday now has a value and the saved field is blank, use Monday's
+                          ...(p.customer    && !(s.info?.customer)    ? { customer:    p.customer }    : {}),
+                          ...(p.siteAddress && !(s.info?.siteAddress) ? { siteAddress: p.siteAddress } : {}),
+                          ...(p.techLead    && !(s.info?.techLead)    ? { techLead:    p.techLead }    : {}),
+                        };
+                        setInfo(mergedInfo);
                         if (s.nvrInfo)       setNVR(s.nvrInfo);
                         if (s.panelInfo)     setPanel(s.panelInfo);
                         if (s.cameraGroups)  setCameraGroups(s.cameraGroups);
@@ -1229,6 +1377,14 @@ export default function App() {
                         if (s.laborActual)   setLaborActual(s.laborActual);
                         if (s.specSheetUrls) setSpecSheetUrls(s.specSheetUrls);
                         if (s.changeLog)     setChangeLog(s.changeLog);
+                      } else {
+                        // New project — pre-fill from Monday.com
+                        setInfo(s => ({
+                          ...s,
+                          customer:    p.customer    || s.customer,
+                          siteAddress: p.siteAddress || s.siteAddress,
+                          techLead:    p.techLead    || s.techLead,
+                        }));
                       }
                     } catch (e) { console.warn("Could not load saved work order:", e); }
                     setPhase("build");
@@ -1236,6 +1392,11 @@ export default function App() {
                   style={{ background: selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.05)", border: `1px solid ${selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.1)"}`, borderRadius: 8, padding: "14px 18px", cursor: "pointer", transition: "background .15s" }}>
                   <div style={{ color: C.white, fontWeight: 700, fontSize: 14 }}>{p.name}</div>
                   <div style={{ color: C.muted, fontSize: 11, marginTop: 3 }}>ID: {p.projectId}  |  Lead: {p.techLead}  |  Status: {p.programmingStatus}</div>
+                  {(p.customer || p.siteAddress || p.pm) && (
+                    <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 2 }}>
+                      {[p.customer, p.siteAddress, p.pm ? `PM: ${p.pm}` : ""].filter(Boolean).join("  ·  ")}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -2007,6 +2168,102 @@ export default function App() {
                   </div>
                 )}
               </div>
+            </div>
+          );
+        })()}
+
+        {/* ─ PROJECT FILES ─ */}
+        {tab === "files" && (() => {
+          const FILE_CATS = ["Drawings", "Quotes", "Contracts", "Notes", "Photos", "Other"];
+          const catIcon = { Drawings: "📐", Quotes: "💰", Contracts: "📝", Notes: "🗒", Photos: "🖼", Other: "📎" };
+          const fmtSize = b => b > 1048576 ? `${(b/1048576).toFixed(1)} MB` : b > 1024 ? `${(b/1024).toFixed(0)} KB` : `${b} B`;
+          const grouped = FILE_CATS.reduce((acc, cat) => ({ ...acc, [cat]: projectFiles.filter(f => f.category === cat) }), {});
+
+          return (
+            <div>
+              {/* Upload bar */}
+              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 16, marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>📁 Upload File</span>
+                <select value={fileUploadCat} onChange={e => setFileUploadCat(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.border}`, fontSize: 12, color: C.navy, background: C.white }}>
+                  {FILE_CATS.map(c => <option key={c}>{c}</option>)}
+                </select>
+                <button onClick={() => fileInputRef.current?.click()}
+                  style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  + Choose File
+                </button>
+                <input ref={fileInputRef} type="file" style={{ display: "none" }}
+                  onChange={async e => {
+                    const file = e.target.files?.[0];
+                    if (!file || !selectedProject) return;
+                    e.target.value = "";
+                    try {
+                      await uploadProjectFile(selectedProject.id, fileUploadCat, file);
+                      const rows = await listProjectFiles(selectedProject.id);
+                      setProjectFiles(rows);
+                      showToast(`✓ ${file.name} uploaded to ${fileUploadCat}`);
+                    } catch(err) { showToast(`Upload failed: ${err.message}`); }
+                  }} />
+                <span style={{ color: C.muted, fontSize: 11 }}>Drawings · Quotes · Contracts · Notes · Photos · Portal.io CSVs</span>
+              </div>
+
+              {filesLoading ? (
+                <div style={{ textAlign: "center", color: C.muted, padding: 40 }}>Loading files…</div>
+              ) : projectFiles.length === 0 ? (
+                <div style={{ textAlign: "center", color: C.muted, padding: 40, fontSize: 13 }}>
+                  No files yet. Upload drawings, quotes, contracts, or notes for this project.
+                </div>
+              ) : (
+                FILE_CATS.map(cat => {
+                  const files = grouped[cat];
+                  if (!files.length) return null;
+                  return (
+                    <div key={cat} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 14 }}>
+                      <div style={{ background: C.surface, padding: "10px 16px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${C.border}` }}>
+                        <span style={{ fontSize: 15 }}>{catIcon[cat]}</span>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>{cat}</span>
+                        <span style={{ background: C.accent, color: C.white, borderRadius: 10, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>{files.length}</span>
+                      </div>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: C.surface }}>
+                            <th style={{ padding: "6px 14px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700 }}>File Name</th>
+                            <th style={{ padding: "6px 14px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, width: 80 }}>Size</th>
+                            <th style={{ padding: "6px 14px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, width: 110 }}>Uploaded</th>
+                            <th style={{ padding: "6px 14px", textAlign: "right", color: C.muted, fontSize: 11, fontWeight: 700, width: 110 }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {files.map((f, i) => (
+                            <tr key={f.id} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
+                              <td style={{ padding: "8px 14px", color: C.navy, fontWeight: 600 }}>{f.file_name}</td>
+                              <td style={{ padding: "8px 14px", color: C.muted }}>{f.file_size ? fmtSize(f.file_size) : "—"}</td>
+                              <td style={{ padding: "8px 14px", color: C.muted }}>{new Date(f.created_at).toLocaleDateString()}</td>
+                              <td style={{ padding: "8px 14px", textAlign: "right", display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                <a href={getProjectFileUrl(f.file_path)} target="_blank" rel="noopener noreferrer"
+                                  style={{ background: C.accent, color: C.white, borderRadius: 5, padding: "3px 10px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>
+                                  Open
+                                </a>
+                                <button onClick={async () => {
+                                    if (!confirm(`Delete "${f.file_name}"?`)) return;
+                                    try {
+                                      await deleteProjectFile(f.id, f.file_path);
+                                      setProjectFiles(p => p.filter(x => x.id !== f.id));
+                                      showToast("File deleted");
+                                    } catch(err) { showToast(`Delete failed: ${err.message}`); }
+                                  }}
+                                  style={{ background: "#FEE2E2", color: C.danger, border: "none", borderRadius: 5, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })
+              )}
             </div>
           );
         })()}

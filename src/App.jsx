@@ -888,12 +888,23 @@ function parseCSVLine(line) {
 }
 function areaToCategory(area) {
   const a = (area || "").toLowerCase();
-  if (/video|surveillance|camera|cctv/.test(a)) return "camera";
-  if (/access/.test(a))                          return "door";
-  if (/intrusion|alarm/.test(a))                 return "zone";
-  if (/audio|speaker|sound/.test(a))             return "speaker";
-  if (/network|switch|\bit\b/.test(a))           return "switch";
-  if (/server|nvr|dvr/.test(a))                  return "server";
+  // Camera / CCTV
+  if (/video surveil|cctv|surveillance camera|camera system/.test(a)) return "camera";
+  if (/^video$/.test(a.trim()))                                        return "camera";
+  // Access control
+  if (/access control|door control|door access/.test(a))              return "door";
+  if (/^access$/.test(a.trim()))                                       return "door";
+  // Intrusion / Alarm
+  if (/intrusion|alarm|burglar/.test(a))                               return "zone";
+  // Audio (check before generic "video" since "distributed audio" is common)
+  if (/audio|speaker|sound|a\/v distributed|distributed a/.test(a))   return "speaker";
+  // Networking
+  if (/network|switching|switch|structured|it infrastructure/.test(a)) return "switch";
+  // Servers / NVR
+  if (/server|nvr|dvr|recording|vms/.test(a))                         return "server";
+  // Fallback broader matches
+  if (/video|camera/.test(a))                                          return "camera";
+  if (/access/.test(a))                                                return "door";
   return "unknown";
 }
 // Detect header row by looking for known column names (case-insensitive)
@@ -919,47 +930,61 @@ function detectPortalHeaders(cols) {
   };
 }
 function parseProposalCSV(csvText) {
-  const lines = csvText.split(/\r?\n/).filter(l => l.trim());
+  // Strip BOM (Excel adds \uFEFF to the start of CSV exports — breaks Number() checks)
+  const text = csvText.replace(/^\uFEFF/, "");
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
   const rows = [];
   let proposalId = null;
   let headerMap = null;
   let isChangeOrder = false;
+
   for (const line of lines) {
     const cols = parseCSVLine(line);
-    // Try to detect header row by presence of known field names
+    if (!cols.length) continue;
+
+    // ── Detect header row ───────────────────────────────────────────────────
     if (!headerMap) {
       const candidate = detectPortalHeaders(cols);
-      // If we find at least proposal + area or itemtype cols, treat as header
       if (candidate.proposal !== -1 && (candidate.area !== -1 || candidate.itemtype !== -1)) {
         headerMap = candidate;
-        continue;
+        continue; // skip the header row itself
       }
-      // Fallback: assume legacy positional format
+      // Fallback: Portal.io default positional layout (A=Proposal, B=ChangeOrder, C=Area, D=ItemType, E=Brand, F=Model, G=ShortDesc, H=Recurring, I=AreaQty)
       headerMap = { proposal: 0, changeorder: 1, area: 2, itemtype: 3, brand: 4, model: 5, shortdesc: 6, recurring: 7, qty: 8 };
     }
+
     const g = (idx) => idx !== -1 && idx < cols.length ? (cols[idx] || "").trim() : "";
-    const colA     = g(headerMap.proposal);
-    const coB      = g(headerMap.changeorder);
-    const area     = g(headerMap.area);
-    const itemType = g(headerMap.itemtype);
-    const brand    = g(headerMap.brand);
-    const model    = g(headerMap.model);
+    const colA      = g(headerMap.proposal).replace(/[^\d]/g, ""); // strip any stray chars (BOM, spaces)
+    const coB       = g(headerMap.changeorder);
+    const area      = g(headerMap.area);
+    const itemType  = g(headerMap.itemtype).toLowerCase();
+    const brand     = g(headerMap.brand);
+    const model     = g(headerMap.model);
     const shortDesc = g(headerMap.shortdesc);
     const recurring = g(headerMap.recurring);
-    const qty      = g(headerMap.qty);
-    if (!colA || isNaN(Number(colA))) continue; // skip non-data rows
-    if (itemType.toLowerCase() !== "part") continue;
+    const qty       = g(headerMap.qty);
+
+    // Skip summary/blank rows (no proposal number or no itemtype)
+    if (!colA || !itemType) continue;
+
+    // Only import hardware line items — Portal uses "Part", "Parts", "Hardware", "Product"
+    const isHardware = /^parts?$|^hardware$|^product$|^equipment$/i.test(itemType);
+    if (!isHardware) continue;
+
     if (!proposalId) proposalId = colA;
-    if (coB && coB !== "0" && coB !== "") isChangeOrder = true;
-    const isRecurring = /yes|true|1|mrr|monthly|recurring/i.test(recurring);
+    if (coB && coB !== "0") isChangeOrder = true;
+
+    // "Non-Recurring" or "Non-Recu" → not recurring. "Recurring" or "Recu" → recurring.
+    const isRecurring = /^recu|^yes$|^true$|^1$|^mrr$/i.test(recurring) && !/^non/i.test(recurring);
+
     rows.push({
-      proposalId:   colA,
+      proposalId,
       changeOrder:  coB || "",
-      brand:        brand,
-      model:        model,
+      brand,
+      model,
       label:        shortDesc,
       qty:          Math.max(1, parseInt(qty) || 1),
-      area:         area,
+      area,
       category:     areaToCategory(area),
       recurring:    isRecurring,
     });
@@ -1225,7 +1250,13 @@ export default function App() {
     reader.onload = (ev) => {
       try {
         const { proposalId, rows, isChangeOrder } = parseProposalCSV(ev.target.result);
-        if (!rows.length) { alert("No Part rows found in this CSV. Make sure ItemType column contains 'Part'."); return; }
+        if (!rows.length) {
+          // Parse again to show what itemTypes were actually found
+          const debugLines = ev.target.result.replace(/^\uFEFF/, "").split(/\r?\n/).filter(l => l.trim()).slice(0, 30);
+          const foundTypes = [...new Set(debugLines.map(l => parseCSVLine(l)[3]).filter(Boolean))].join(", ");
+          alert(`No hardware rows found in this CSV.\n\nItemType values found in column D: ${foundTypes || "(none)"}\n\nParser looks for: Part, Parts, Hardware, Product, Equipment.\nIf your CSV uses different values, contact your admin.`);
+          return;
+        }
         setImportPreview({ proposalId, rows, isChangeOrder, overrideCats: {} });
       } catch (err) {
         alert("Error parsing CSV: " + err.message);

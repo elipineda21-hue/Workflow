@@ -1251,10 +1251,12 @@ export default function App() {
       try {
         const { proposalId, rows, isChangeOrder } = parseProposalCSV(ev.target.result);
         if (!rows.length) {
-          // Parse again to show what itemTypes were actually found
-          const debugLines = ev.target.result.replace(/^\uFEFF/, "").split(/\r?\n/).filter(l => l.trim()).slice(0, 30);
-          const foundTypes = [...new Set(debugLines.map(l => parseCSVLine(l)[3]).filter(Boolean))].join(", ");
-          alert(`No hardware rows found in this CSV.\n\nItemType values found in column D: ${foundTypes || "(none)"}\n\nParser looks for: Part, Parts, Hardware, Product, Equipment.\nIf your CSV uses different values, contact your admin.`);
+          // Show the actual header row so we can diagnose column layout issues
+          const raw = ev.target.result.replace(/^\uFEFF/, "");
+          const firstLines = raw.split(/\r?\n/).filter(l => l.trim()).slice(0, 3);
+          const headerRow  = firstLines[0] ? parseCSVLine(firstLines[0]).map((v, i) => `${String.fromCharCode(65+i)}: ${v}`).join("\n") : "(empty)";
+          const sampleData = firstLines[1] ? parseCSVLine(firstLines[1]).slice(0, 8).join(" | ") : "(none)";
+          alert(`No hardware rows found in this CSV.\n\nColumn layout detected:\n${headerRow}\n\nFirst data row (A–H):\n${sampleData}\n\nParser looks for a column named ItemType with values: Part, Parts, Hardware, Product, Equipment.\nPaste this output in the chat to get the column mapping fixed.`);
           return;
         }
         setImportPreview({ proposalId, rows, isChangeOrder, overrideCats: {} });

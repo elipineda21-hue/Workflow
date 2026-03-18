@@ -1318,7 +1318,7 @@ export default function App() {
     // ── Resources ─────────────────────────────────────────────────────────────
     { id: "files",     label: "Project Files", icon: "📁" },
     { id: "library",   label: "Device Library",icon: "📚" },
-    { id: "export",    label: "Export PDF",    icon: "📤" },
+    { id: "export",    label: "Reports",        icon: "📊" },
   ];
   // ─ PROJECT SELECT ─────────────────────────────────────────────────────────
   if (phase === "select") {
@@ -1596,18 +1596,10 @@ export default function App() {
                 {totalDevices} devices
               </span>
             )}
-            <button onClick={handleCSV} disabled={totalDevices === 0}
-              style={{ background: C.success, color: C.white, border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", opacity: totalDevices === 0 ? 0.5 : 1 }}>
-              ⬇ CSV
-            </button>
             <input ref={importFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleProposalFileChange} />
-            <button onClick={() => importFileRef.current?.click()}
-              style={{ background: C.steel, color: C.white, border: `1px solid rgba(255,255,255,0.2)`, borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
-              ⬆ Import Proposal
-            </button>
-            <button onClick={handleGenerate} disabled={generating || !sdkReady}
-              style={{ background: generating ? C.muted : C.gold, color: C.navy, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
-              {generating ? "⏳ Generating..." : "⬇ Export PDF"}
+            <button onClick={() => setTab("export")}
+              style={{ background: C.gold, color: C.navy, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+              📊 Reports
             </button>
           </div>
         </div>
@@ -2688,39 +2680,6 @@ export default function App() {
                 </div>
               ))}
 
-              {/* OEM Manual section */}
-              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 22, marginTop: 8 }}>
-                <div style={{ fontWeight: 800, color: C.navy, fontSize: 15, marginBottom: 6 }}>📦 Export OEM Manual</div>
-                <div style={{ color: C.muted, fontSize: 12, marginBottom: 16 }}>
-                  Compiles a single PDF: <strong>Cover page</strong> → <strong>Close-out report</strong> → <strong>Spec sheets</strong> for every model on this project that exists in the library.
-                </div>
-                {/* Cover page */}
-                <div style={{ background: C.surface, borderRadius: 8, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ color: C.muted, fontSize: 12, fontWeight: 700, minWidth: 90 }}>Cover page</span>
-                  <input ref={coverFileRef} type="file" accept=".pdf" style={{ display: "none" }}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) setCoverPageFile(f); e.target.value = ""; }} />
-                  <button onClick={() => coverFileRef.current?.click()}
-                    style={{ background: C.steel, color: C.white, border: "none", borderRadius: 5, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                    {coverPageFile ? "↻ Replace" : "⬆ Upload PDF"}
-                  </button>
-                  {coverPageFile
-                    ? <span style={{ color: C.success, fontSize: 12, fontWeight: 600 }}>✓ {coverPageFile.name}</span>
-                    : <span style={{ color: C.muted, fontSize: 12 }}>Optional — omitted if not uploaded</span>}
-                </div>
-                <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", gap: 12, fontSize: 12, flexWrap: "wrap" }}>
-                    <span style={{ color: coverPageFile ? C.success : C.muted }}>{coverPageFile ? "✓" : "○"} Cover page</span>
-                    <span style={{ color: C.success }}>✓ Close-out report</span>
-                    <span style={{ color: matchCount > 0 ? C.success : C.muted }}>
-                      {matchCount > 0 ? `✓ ${matchCount} spec sheet${matchCount !== 1 ? "s" : ""} matched from library` : "○ No library matches for this project's devices"}
-                    </span>
-                  </div>
-                  <button onClick={buildOEMManual} disabled={!pdfLibReady || !sdkReady}
-                    style={{ marginLeft: "auto", background: C.gold, color: C.navy, border: "none", borderRadius: 8, padding: "10px 28px", fontSize: 14, fontWeight: 800, cursor: "pointer", opacity: (!pdfLibReady || !sdkReady) ? 0.5 : 1 }}>
-                    📦 Export OEM Manual
-                  </button>
-                </div>
-              </div>
             </div>
           );
         })()}
@@ -2728,8 +2687,23 @@ export default function App() {
         {/* ─ EXPORT ─ */}
         {tab === "export" && (
           <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-            <CardHead icon="📤" title="Review & Export PDF Report" color={C.navy} />
+            <CardHead icon="📊" title="Reports" color={C.navy} />
             <div style={{ padding: 24 }}>
+              {/* Action buttons row */}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+                <button onClick={() => importFileRef.current?.click()}
+                  style={{ background: C.steel, color: C.white, border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                  ⬆ Import Proposal
+                </button>
+                <button onClick={handleCSV} disabled={totalDevices === 0}
+                  style={{ background: C.success, color: C.white, border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer", opacity: totalDevices === 0 ? 0.5 : 1 }}>
+                  ⬇ Export CSV
+                </button>
+                <button onClick={handleGenerate} disabled={generating || !sdkReady}
+                  style={{ background: generating ? C.muted : C.gold, color: C.navy, border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                  {generating ? "⏳ Building PDF..." : "⬇ Export PDF Report"}
+                </button>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
                 {[
                   ["🖥","Servers",srvCount,serverGroups.length],
@@ -2762,20 +2736,52 @@ export default function App() {
                   <div key={i} style={{ fontSize: 13, color: C.navy, padding: "4px 0", borderBottom: `1px solid ${C.border}` }}>{item}</div>
                 ))}
               </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-                  <button onClick={handleGenerate} disabled={generating || !sdkReady}
-                    style={{ background: generating ? C.muted : C.gold, color: C.navy, border: "none", borderRadius: 10, padding: "16px 44px", fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 18px rgba(244,163,0,.4)", letterSpacing: "0.03em" }}>
-                    {generating ? "⏳ Building PDF..." : "⬇ Export PDF Report"}
-                  </button>
-                  <button onClick={handleCSV} disabled={totalDevices === 0}
-                    style={{ background: C.success, color: C.white, border: "none", borderRadius: 10, padding: "16px 44px", fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 18px rgba(16,185,129,.3)", letterSpacing: "0.03em", opacity: totalDevices === 0 ? 0.5 : 1 }}>
-                    ⬇ Export CSV for CRM
-                  </button>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+                PDF = full close-out report with signatures &nbsp;·&nbsp; CSV = flat device list for CRM / spreadsheet import
+              </div>
+
+              {/* OEM Manual */}
+              <div style={{ background: C.bg, borderRadius: 10, border: `1px solid ${C.border}`, padding: 22, marginTop: 24 }}>
+                <div style={{ fontWeight: 800, color: C.navy, fontSize: 15, marginBottom: 6 }}>📦 OEM Manual</div>
+                <div style={{ color: C.muted, fontSize: 12, marginBottom: 16 }}>
+                  Compiles a single PDF: <strong>Cover page</strong> → <strong>Close-out report</strong> → <strong>Spec sheets</strong> for every model on this project that exists in the library.
                 </div>
-                <div style={{ marginTop: 10, fontSize: 12, color: C.muted }}>
-                  PDF = full close-out report with signatures. CSV = flat device list for CRM / spreadsheet import.
-                </div>
+                {(() => {
+                  const projectKeys = new Set(
+                    [...cameraGroups,...doorGroups,...zoneGroups,...speakerGroups,...switchGroups,...serverGroups]
+                      .map(g => `${g.brand}|${g.model}`.toLowerCase())
+                  );
+                  const matchCount = library.filter(e => projectKeys.has(`${e.brand}|${e.model}`.toLowerCase())).length;
+                  return (
+                    <>
+                      <div style={{ background: C.surface, borderRadius: 8, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ color: C.muted, fontSize: 12, fontWeight: 700, minWidth: 90 }}>Cover page</span>
+                        <input ref={coverFileRef} type="file" accept=".pdf" style={{ display: "none" }}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) setCoverPageFile(f); e.target.value = ""; }} />
+                        <button onClick={() => coverFileRef.current?.click()}
+                          style={{ background: C.steel, color: C.white, border: "none", borderRadius: 5, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          {coverPageFile ? "↻ Replace" : "⬆ Upload PDF"}
+                        </button>
+                        {coverPageFile
+                          ? <span style={{ color: C.success, fontSize: 12, fontWeight: 600 }}>✓ {coverPageFile.name}</span>
+                          : <span style={{ color: C.muted, fontSize: 12 }}>Optional — omitted if not uploaded</span>}
+                      </div>
+                      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", gap: 12, fontSize: 12, flexWrap: "wrap" }}>
+                          <span style={{ color: coverPageFile ? C.success : C.muted }}>{coverPageFile ? "✓" : "○"} Cover page</span>
+                          <span style={{ color: C.success }}>✓ Close-out report</span>
+                          <span style={{ color: matchCount > 0 ? C.success : C.muted }}>
+                            {matchCount > 0 ? `✓ ${matchCount} spec sheet${matchCount !== 1 ? "s" : ""} matched from library` : "○ No library matches for this project's devices"}
+                          </span>
+                        </div>
+                        <button onClick={buildOEMManual} disabled={!pdfLibReady || !sdkReady}
+                          style={{ marginLeft: "auto", background: C.gold, color: C.navy, border: "none", borderRadius: 8, padding: "10px 28px", fontSize: 14, fontWeight: 800, cursor: "pointer", opacity: (!pdfLibReady || !sdkReady) ? 0.5 : 1 }}>
+                          📦 Export OEM Manual
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

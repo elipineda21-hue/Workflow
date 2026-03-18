@@ -56,6 +56,19 @@ async function fetchBoardColumns(token) {
     sample: vals.find(v => v.id === c.id)?.text || "",
   }));
 }
+// ── Monday Write-back ─────────────────────────────────────────────────────────
+async function pushMondayUpdate(token, itemId, colId, textValue) {
+  if (!token || !itemId || !colId || !textValue) return;
+  const mutation = `mutation { change_simple_column_value(board_id: ${MONDAY_BOARD_ID}, item_id: "${itemId}", column_id: "${colId}", value: ${JSON.stringify(String(textValue))}) { id } }`;
+  const res = await fetch("https://api.monday.com/v2", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": token },
+    body: JSON.stringify({ query: mutation }),
+  });
+  const data = await res.json();
+  if (data.errors) throw new Error(data.errors[0].message);
+  return data;
+}
 // ── Utilities ─────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 9);
 const nextIP = (base, n) => {
@@ -65,17 +78,18 @@ const nextIP = (base, n) => {
   return last > 254 ? base : `${p[0]}.${p[1]}.${p[2]}.${last}`;
 };
 // ── Group data makers ─────────────────────────────────────────────────────────
-const mkCamGroup = () => ({ id: uid(), groupLabel: "", brand: "", model: "", codec: "H.265", resolution: "4MP", lens: "2.8mm", type: "Outdoor Dome", port: "80", rtspPort: "554", fps: "15", bitrate: "", ptz: false, username: "", password: "", storageGroup: "", quantity: "4", ipStart: "", devices: [] });
+const mkProcurement = () => ({ procurementStatus: "not_ordered", vendor: "", poNumber: "", eta: "", trackingNumber: "" });
+const mkCamGroup = () => ({ id: uid(), groupLabel: "", brand: "", model: "", codec: "H.265", resolution: "4MP", lens: "2.8mm", type: "Outdoor Dome", port: "80", rtspPort: "554", fps: "15", bitrate: "", ptz: false, username: "", password: "", storageGroup: "", quantity: "4", ipStart: "", devices: [], ...mkProcurement() });
 const mkCamDev = (ip = "", idx = 0) => ({ id: uid(), name: `Camera ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", ip, mac: "", serial: "", notes: "", installed: false, programmed: false });
-const mkSwGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", vlan: "", uplink: "", quantity: "1", ipStart: "", devices: [] });
+const mkSwGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", vlan: "", uplink: "", quantity: "1", ipStart: "", devices: [], ...mkProcurement() });
 const mkSwDev = (ip = "", idx = 0) => ({ id: uid(), name: `Switch ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", ip, mac: "", serial: "", ports: "", notes: "", installed: false, programmed: false });
-const mkSrvGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", role: "VMS Server", os: "", storage: "", quantity: "1", ipStart: "", devices: [] });
+const mkSrvGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", role: "VMS Server", os: "", storage: "", quantity: "1", ipStart: "", devices: [], ...mkProcurement() });
 const mkSrvDev = (ip = "", idx = 0) => ({ id: uid(), name: `Server ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", ip, mac: "", serial: "", notes: "", installed: false, programmed: false });
-const mkDoorGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", readerType: "OSDP", credentialType: "Smart Card", lockType: "Electric Strike", cardFormat: "", facilityCode: "", accessGroup: "", schedule: "", quantity: "1", devices: [] });
+const mkDoorGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", readerType: "OSDP", credentialType: "Smart Card", lockType: "Electric Strike", cardFormat: "", facilityCode: "", accessGroup: "", schedule: "", quantity: "1", devices: [], ...mkProcurement() });
 const mkDoorDev = (idx = 0) => ({ id: uid(), name: `Door ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", controllerName: "", controllerIP: "", controllerSerial: "", readerSerial: "", rex: false, doorContact: false, notes: "", installed: false, programmed: false });
-const mkZoneGrp = () => ({ id: uid(), groupLabel: "", zoneType: "Motion", partitions: "", bypassable: false, quantity: "1", startNumber: "1", devices: [] });
+const mkZoneGrp = () => ({ id: uid(), groupLabel: "", zoneType: "Motion", partitions: "", bypassable: false, quantity: "1", startNumber: "1", devices: [], ...mkProcurement() });
 const mkZoneDev = (idx = 0, g = {}) => ({ id: uid(), name: `Zone ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", zoneNumber: String((parseInt(g.startNumber) || 1) + idx), zoneType: g.zoneType || "Motion", partitions: g.partitions || "", bypassable: g.bypassable || false, notes: "", installed: false, programmed: false });
-const mkSpkGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", zoneGroup: "", ampZone: "", volume: "70", quantity: "1", ipStart: "", devices: [] });
+const mkSpkGrp = () => ({ id: uid(), groupLabel: "", brand: "", model: "", zoneGroup: "", ampZone: "", volume: "70", quantity: "1", ipStart: "", devices: [], ...mkProcurement() });
 const mkSpkDev = (ip = "", idx = 0) => ({ id: uid(), name: `Speaker ${String(idx + 1).padStart(2, "0")}`, location: "", cableId: "", ip, notes: "", installed: false, programmed: false });
 // Generate device arrays from a group config
 const genCam  = g => Array.from({ length: Math.min(parseInt(g.quantity) || 1, 64) }, (_, i) => mkCamDev(nextIP(g.ipStart, i), i));
@@ -882,28 +896,75 @@ function areaToCategory(area) {
   if (/server|nvr|dvr/.test(a))                  return "server";
   return "unknown";
 }
+// Detect header row by looking for known column names (case-insensitive)
+function detectPortalHeaders(cols) {
+  const norm = cols.map(c => (c || "").toLowerCase().replace(/[^a-z]/g, ""));
+  const find = (...keys) => {
+    for (const k of keys) {
+      const idx = norm.findIndex(n => n.includes(k));
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  };
+  return {
+    proposal:    find("proposal"),
+    changeorder: find("changeorder", "change"),
+    area:        find("area"),
+    itemtype:    find("itemtype", "type"),
+    brand:       find("brand", "mfr", "manufacturer"),
+    model:       find("model", "partnum", "partnumber", "sku"),
+    shortdesc:   find("shortdesc", "description", "desc", "name"),
+    recurring:   find("recurring", "mrr", "monthly"),
+    qty:         find("areaqty", "qty", "quantity"),
+  };
+}
 function parseProposalCSV(csvText) {
   const lines = csvText.split(/\r?\n/).filter(l => l.trim());
   const rows = [];
   let proposalId = null;
+  let headerMap = null;
+  let isChangeOrder = false;
   for (const line of lines) {
     const cols = parseCSVLine(line);
-    // Col indices: 0=Proposal, 1=ChangeOrder, 2=Area, 3=ItemType, 4=Brand, 5=Model, 6=ShortDesc, 7=Recurring, 8=AreaQty
-    const [colA,, area, itemType, brand, model, shortDesc,, qty] = cols;
-    if (!colA || isNaN(Number(colA))) continue; // skip header rows
-    if ((itemType || "").trim().toLowerCase() !== "part") continue;
-    if (!proposalId) proposalId = colA.trim();
+    // Try to detect header row by presence of known field names
+    if (!headerMap) {
+      const candidate = detectPortalHeaders(cols);
+      // If we find at least proposal + area or itemtype cols, treat as header
+      if (candidate.proposal !== -1 && (candidate.area !== -1 || candidate.itemtype !== -1)) {
+        headerMap = candidate;
+        continue;
+      }
+      // Fallback: assume legacy positional format
+      headerMap = { proposal: 0, changeorder: 1, area: 2, itemtype: 3, brand: 4, model: 5, shortdesc: 6, recurring: 7, qty: 8 };
+    }
+    const g = (idx) => idx !== -1 && idx < cols.length ? (cols[idx] || "").trim() : "";
+    const colA     = g(headerMap.proposal);
+    const coB      = g(headerMap.changeorder);
+    const area     = g(headerMap.area);
+    const itemType = g(headerMap.itemtype);
+    const brand    = g(headerMap.brand);
+    const model    = g(headerMap.model);
+    const shortDesc = g(headerMap.shortdesc);
+    const recurring = g(headerMap.recurring);
+    const qty      = g(headerMap.qty);
+    if (!colA || isNaN(Number(colA))) continue; // skip non-data rows
+    if (itemType.toLowerCase() !== "part") continue;
+    if (!proposalId) proposalId = colA;
+    if (coB && coB !== "0" && coB !== "") isChangeOrder = true;
+    const isRecurring = /yes|true|1|mrr|monthly|recurring/i.test(recurring);
     rows.push({
-      proposalId: colA.trim(),
-      brand: (brand || "").trim(),
-      model: (model || "").trim(),
-      label: (shortDesc || "").trim(),
-      qty: Math.max(1, parseInt(qty) || 1),
-      area: (area || "").trim(),
-      category: areaToCategory(area),
+      proposalId:   colA,
+      changeOrder:  coB || "",
+      brand:        brand,
+      model:        model,
+      label:        shortDesc,
+      qty:          Math.max(1, parseInt(qty) || 1),
+      area:         area,
+      category:     areaToCategory(area),
+      recurring:    isRecurring,
     });
   }
-  return { proposalId, rows };
+  return { proposalId, rows, isChangeOrder };
 }
 function buildGroupsFromRows(rows, overrideCats = {}) {
   const result = { cameraGroups: [], switchGroups: [], serverGroups: [], doorGroups: [], zoneGroups: [], speakerGroups: [] };
@@ -978,6 +1039,9 @@ export default function App() {
   const [webhookUrl,    setWebhookUrl]    = useState(() => localStorage.getItem("agentWebhookUrl") || "");
   const [aiLoading,     setAiLoading]     = useState(false);
   const [dashCollapsed, setDashCollapsed] = useState({});   // category collapse in dashboard
+  // Monday write-back
+  const [mondaySyncEnabled, setMondaySyncEnabled] = useState(() => localStorage.getItem("mondaySyncEnabled") === "true");
+  const [mondaySyncColId,   setMondaySyncColId]   = useState(() => localStorage.getItem("mondaySyncColId") || "");
   const addLog = (type, desc) =>
     setChangeLog(l => [{ id: uid(), ts: new Date().toISOString(), type, desc }, ...l].slice(0, 500));
   // proposal import
@@ -1007,15 +1071,34 @@ export default function App() {
   const setPan = (k, v) => setPanel(s => ({ ...s, [k]: v }));
   // ── Auto-save to Supabase ─────────────────────────────────────────────────
   const pendingSnapRef = useRef(null);
-  const flushSave = useCallback(async (project) => {
-    if (!project?.id || !pendingSnapRef.current) return;
-    const snap = pendingSnapRef.current;
+  const flushSave = useCallback(async (project, extraSnap) => {
+    const snap = extraSnap || pendingSnapRef.current;
+    if (!project?.id || !snap) return;
     pendingSnapRef.current = null;
     if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
     try {
       await saveWorkOrder(project.id, project.name, project.projectId, snap);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 3000);
+      // Monday.com write-back: push programming % to configured column
+      const syncEnabled = localStorage.getItem("mondaySyncEnabled") === "true";
+      const syncColId   = localStorage.getItem("mondaySyncColId") || "";
+      const token       = import.meta.env.VITE_MONDAY_TOKEN || localStorage.getItem("mondayToken") || "";
+      if (syncEnabled && syncColId && token && project?.id) {
+        try {
+          const allDevs = [
+            ...(snap.cameraGroups || []), ...(snap.switchGroups || []),
+            ...(snap.serverGroups || []), ...(snap.doorGroups   || []),
+            ...(snap.zoneGroups   || []), ...(snap.speakerGroups || []),
+          ].flatMap(g => g.devices || []);
+          const total = allDevs.length;
+          const pgmd  = allDevs.filter(d => d.programmed).length;
+          const inst  = allDevs.filter(d => d.installed).length;
+          const pct   = total ? Math.round((pgmd / total) * 100) : 0;
+          const statusText = total === 0 ? "No Devices" : pgmd === total ? "Complete" : inst === total ? "Installed" : inst > 0 ? `In Progress (${pct}%)` : "Not Started";
+          await pushMondayUpdate(token, project.id, syncColId, statusText);
+        } catch (e) { console.warn("Monday write-back failed:", e.message); }
+      }
     } catch { setSaveStatus("error"); }
   }, []);
   const triggerSave = useCallback((snap, project) => {
@@ -1141,9 +1224,9 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const { proposalId, rows } = parseProposalCSV(ev.target.result);
+        const { proposalId, rows, isChangeOrder } = parseProposalCSV(ev.target.result);
         if (!rows.length) { alert("No Part rows found in this CSV. Make sure ItemType column contains 'Part'."); return; }
-        setImportPreview({ proposalId, rows, overrideCats: {} });
+        setImportPreview({ proposalId, rows, isChangeOrder, overrideCats: {} });
       } catch (err) {
         alert("Error parsing CSV: " + err.message);
       }
@@ -1153,8 +1236,10 @@ export default function App() {
   };
   const handleProposalImport = () => {
     if (!importPreview) return;
-    const { rows, overrideCats } = importPreview;
-    const newGroups = buildGroupsFromRows(rows, overrideCats);
+    const { rows, overrideCats, isChangeOrder } = importPreview;
+    // Only import one-time (non-recurring) hardware items
+    const hardwareRows = rows.filter(r => !r.recurring);
+    const newGroups = buildGroupsFromRows(hardwareRows, overrideCats);
     setCameraGroups(g => [...g, ...newGroups.cameraGroups]);
     setSwitchGroups(g => [...g, ...newGroups.switchGroups]);
     setServerGroups(g => [...g, ...newGroups.serverGroups]);
@@ -1164,13 +1249,32 @@ export default function App() {
     setImportPreview(null);
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 3000);
-    addLog("import", `Imported proposal #${importPreview.proposalId} — ${rows.filter((r,i)=>(importPreview.overrideCats[i]||r.category)!=="unknown").length} hardware groups`);
+    const importedCount = hardwareRows.filter((r, i) => (overrideCats[i] || r.category) !== "unknown").length;
+    const recurringCount = rows.filter(r => r.recurring).length;
+    addLog("import", `${isChangeOrder ? "Change Order" : "Proposal"} #${importPreview.proposalId} — ${importedCount} hardware groups imported${recurringCount ? `, ${recurringCount} MRR items skipped` : ""}`);
   };
+  const PROC_STATUSES = [
+    { value: "not_ordered", label: "Not Ordered", color: C.muted,    bg: "#F1F5F9" },
+    { value: "ordered",     label: "Ordered",     color: C.accent,   bg: "#E0F2FE" },
+    { value: "in_transit",  label: "In Transit",  color: C.gold,     bg: "#FEF3C7" },
+    { value: "received",    label: "Received",    color: "#059669",  bg: "#D1FAE5" },
+    { value: "in_house",    label: "In House",    color: C.success,  bg: "#ECFDF5" },
+  ];
+  const procStatusMeta = Object.fromEntries(PROC_STATUSES.map(s => [s.value, s]));
+  const allGroupsForProc = [
+    ...(cameraGroups.map(g  => ({ ...g, _cat: "camera",  _icon: "📷", _label: "CCTV",     _setter: setCameraGroups  }))),
+    ...(switchGroups.map(g  => ({ ...g, _cat: "switch",  _icon: "🔀", _label: "Switch",    _setter: setSwitchGroups  }))),
+    ...(serverGroups.map(g  => ({ ...g, _cat: "server",  _icon: "🖥", _label: "Server",    _setter: setServerGroups  }))),
+    ...(doorGroups.map(g    => ({ ...g, _cat: "door",    _icon: "🚪", _label: "Access",    _setter: setDoorGroups    }))),
+    ...(zoneGroups.map(g    => ({ ...g, _cat: "zone",    _icon: "🔔", _label: "Intrusion", _setter: setZoneGroups    }))),
+    ...(speakerGroups.map(g => ({ ...g, _cat: "speaker", _icon: "🔊", _label: "Audio",     _setter: setSpeakerGroups }))),
+  ];
   const TABS = [
     // ── Exec overview ─────────────────────────────────────────────────────────
-    { id: "info",      label: "Project Info",  icon: "📋" },
-    { id: "dashboard", label: "Dashboard",     icon: "📊" },
-    { id: "labor",     label: "Labor",         icon: "⏱" },
+    { id: "info",        label: "Project Info",  icon: "📋" },
+    { id: "dashboard",   label: "Dashboard",     icon: "📊" },
+    { id: "labor",       label: "Labor",         icon: "⏱" },
+    { id: "procurement", label: "Procurement",   icon: "📦" },
     // ── Hardware (alphabetical) ────────────────────────────────────────────────
     { id: "access",    label: "Access",        icon: "🚪", count: doorCount },
     { id: "audio",     label: "Audio",         icon: "🔊", count: spkCount },
@@ -2172,6 +2276,114 @@ export default function App() {
           );
         })()}
 
+        {/* ─ PROCUREMENT ─ */}
+        {tab === "procurement" && (() => {
+          const procCounts = PROC_STATUSES.map(s => ({
+            ...s,
+            count: allGroupsForProc.filter(g => (g.procurementStatus || "not_ordered") === s.value).length,
+          }));
+          const setGrpProc = (g, key, val) => updGrp(g._setter, g.id, key, val);
+          return (
+            <div>
+              {/* Summary bar */}
+              <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+                {procCounts.map(s => (
+                  <div key={s.value} style={{ background: s.bg, border: `1.5px solid ${s.color}33`, borderRadius: 10, padding: "10px 18px", minWidth: 100, textAlign: "center" }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.count}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: s.color, whiteSpace: "nowrap" }}>{s.label}</div>
+                  </div>
+                ))}
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
+                  <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>{allGroupsForProc.length} total groups across all categories</div>
+                </div>
+              </div>
+
+              {/* Monday sync settings */}
+              <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: "14px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>📅 Monday.com Write-back</span>
+                <Tog label="Auto-push status after save" val={mondaySyncEnabled} set={v => { setMondaySyncEnabled(v); localStorage.setItem("mondaySyncEnabled", v); }} />
+                {mondaySyncEnabled && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>Status Column ID:</label>
+                      <input value={mondaySyncColId} onChange={e => { setMondaySyncColId(e.target.value); localStorage.setItem("mondaySyncColId", e.target.value); }}
+                        placeholder="e.g. status or text_abc123"
+                        style={{ padding: "4px 8px", borderRadius: 5, border: `1px solid ${C.border}`, fontSize: 12, width: 180, color: C.navy, background: C.bg }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: C.muted }}>Find column ID in ⚙ Column Map on the project select screen</span>
+                  </>
+                )}
+              </div>
+
+              {/* Group table */}
+              {allGroupsForProc.length === 0 ? (
+                <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 40, textAlign: "center", color: C.muted }}>
+                  No device groups yet. Add groups under the CCTV, Access, etc. tabs then track them here.
+                </div>
+              ) : (
+                <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+                  <div style={{ background: C.navy, padding: "10px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 18 }}>📦</span>
+                    <span style={{ color: C.white, fontWeight: 700, fontSize: 13 }}>Device Group Procurement Tracker</span>
+                    <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, marginLeft: 4 }}>{allGroupsForProc.length} groups</span>
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: C.surface }}>
+                          {["Cat","Group / Model","Qty","Status","Vendor","PO #","ETA","Tracking #"].map(h => (
+                            <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allGroupsForProc.map((g, i) => {
+                          const status   = g.procurementStatus || "not_ordered";
+                          const meta     = procStatusMeta[status] || procStatusMeta["not_ordered"];
+                          const rowLabel = g.groupLabel || [g.brand, g.model].filter(Boolean).join(" ") || `${g._label} Group ${i + 1}`;
+                          const qty      = g.devices.length || parseInt(g.quantity) || "—";
+                          const inpSt    = { padding: "5px 8px", borderRadius: 4, border: `1px solid ${C.border}`, fontSize: 11, background: C.white, color: C.navy, outline: "none", width: "100%", boxSizing: "border-box" };
+                          return (
+                            <tr key={g.id} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
+                              <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
+                                <span style={{ fontSize: 15 }}>{g._icon}</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, marginLeft: 4 }}>{g._label}</span>
+                              </td>
+                              <td style={{ padding: "8px 10px", fontWeight: 700, color: C.navy, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {rowLabel}
+                              </td>
+                              <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 700, color: C.navy }}>{qty}</td>
+                              <td style={{ padding: "6px 8px", minWidth: 140 }}>
+                                <select value={status}
+                                  onChange={e => { setGrpProc(g, "procurementStatus", e.target.value); addLog("procurement", `"${rowLabel}" → ${procStatusMeta[e.target.value]?.label || e.target.value}`); }}
+                                  style={{ padding: "4px 8px", borderRadius: 6, border: `1.5px solid ${meta.color}`, background: meta.bg, color: meta.color, fontSize: 11, fontWeight: 700, cursor: "pointer", width: "100%" }}>
+                                  {PROC_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                </select>
+                              </td>
+                              <td style={{ padding: "4px 6px", minWidth: 130 }}>
+                                <input value={g.vendor || ""} onChange={e => setGrpProc(g, "vendor", e.target.value)} placeholder="e.g. Anixter" style={inpSt} />
+                              </td>
+                              <td style={{ padding: "4px 6px", minWidth: 110 }}>
+                                <input value={g.poNumber || ""} onChange={e => setGrpProc(g, "poNumber", e.target.value)} placeholder="PO-00000" style={inpSt} />
+                              </td>
+                              <td style={{ padding: "4px 6px", minWidth: 120 }}>
+                                <input type="date" value={g.eta || ""} onChange={e => setGrpProc(g, "eta", e.target.value)} style={{ ...inpSt, colorScheme: "light" }} />
+                              </td>
+                              <td style={{ padding: "4px 6px", minWidth: 140 }}>
+                                <input value={g.trackingNumber || ""} onChange={e => setGrpProc(g, "trackingNumber", e.target.value)} placeholder="1Z…" style={inpSt} />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* ─ PROJECT FILES ─ */}
         {tab === "files" && (() => {
           const FILE_CATS = ["Drawings", "Quotes", "Contracts", "Notes", "Photos", "Other"];
@@ -2545,11 +2757,17 @@ export default function App() {
             {/* Modal header */}
             <div style={{ background: C.navy, borderRadius: "12px 12px 0 0", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>Import Proposal Hardware</div>
+                <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>
+                  {importPreview.isChangeOrder ? "Import Change Order Hardware" : "Import Proposal Hardware"}
+                  {importPreview.isChangeOrder && <span style={{ background: C.gold, color: C.navy, fontSize: 10, fontWeight: 800, borderRadius: 8, padding: "2px 8px", marginLeft: 8 }}>CHANGE ORDER</span>}
+                </div>
                 <div style={{ color: C.accent, fontSize: 12, marginTop: 2 }}>
                   Proposal #{importPreview.proposalId}
                   {selectedProject?.projectId && importPreview.proposalId !== selectedProject.projectId && (
                     <span style={{ color: C.warn, marginLeft: 8 }}>⚠ Proposal ID doesn't match project ID ({selectedProject.projectId})</span>
+                  )}
+                  {importPreview.rows.some(r => r.recurring) && (
+                    <span style={{ color: C.gold, marginLeft: 8 }}>· {importPreview.rows.filter(r => r.recurring).length} recurring MRR item{importPreview.rows.filter(r => r.recurring).length !== 1 ? "s" : ""} (shown separately)</span>
                   )}
                 </div>
               </div>
@@ -2563,49 +2781,95 @@ export default function App() {
             )}
             {/* Parts table */}
             <div style={{ overflowY: "auto", flex: 1, padding: "0 0 4px" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: C.surface, position: "sticky", top: 0 }}>
-                    {["Brand","Model","Description","Qty","Category"].map(h => (
-                      <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}` }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {importPreview.rows.map((row, i) => {
-                    const cat = importPreview.overrideCats[i] || row.category;
-                    const isUnknown = cat === "unknown";
-                    const CAT_OPTIONS = [
-                      { value: "camera",  label: "CCTV / Camera" },
-                      { value: "door",    label: "Access Control" },
-                      { value: "zone",    label: "Intrusion" },
-                      { value: "speaker", label: "Audio" },
-                      { value: "switch",  label: "Network Switch" },
-                      { value: "server",  label: "Server / NVR" },
-                      { value: "unknown", label: "Skip this row" },
-                    ];
-                    return (
-                      <tr key={i} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
-                        <td style={{ padding: "7px 12px", color: C.navy }}>{row.brand || <span style={{ color: C.muted }}>—</span>}</td>
-                        <td style={{ padding: "7px 12px", color: C.navy, fontFamily: "monospace", fontSize: 11 }}>{row.model || <span style={{ color: C.muted }}>—</span>}</td>
-                        <td style={{ padding: "7px 12px", color: C.muted, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.label || "—"}</td>
-                        <td style={{ padding: "7px 12px", color: C.navy, fontWeight: 700, textAlign: "center" }}>{row.qty}</td>
-                        <td style={{ padding: "7px 12px" }}>
-                          <select value={cat} onChange={e => setImportPreview(s => ({ ...s, overrideCats: { ...s.overrideCats, [i]: e.target.value } }))}
-                            style={{ padding: "3px 8px", borderRadius: 5, border: `1px solid ${isUnknown ? C.warn : C.border}`, background: isUnknown ? "#FEF3C7" : C.white, color: isUnknown ? "#92400E" : C.navy, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                            {CAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                          </select>
-                        </td>
+              {/* One-time hardware */}
+              {importPreview.rows.some(r => !r.recurring) && (
+                <>
+                  {importPreview.rows.some(r => r.recurring) && (
+                    <div style={{ background: C.navy, padding: "6px 12px" }}>
+                      <span style={{ color: C.accent, fontWeight: 700, fontSize: 11 }}>ONE-TIME HARDWARE</span>
+                    </div>
+                  )}
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: C.surface, position: "sticky", top: 0 }}>
+                        {["Brand","Model","Description","Qty","Area","Category"].map(h => (
+                          <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                        ))}
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {importPreview.rows.map((row, i) => {
+                        if (row.recurring) return null;
+                        const cat = importPreview.overrideCats[i] || row.category;
+                        const isUnknown = cat === "unknown";
+                        const CAT_OPTIONS = [
+                          { value: "camera",  label: "CCTV / Camera" },
+                          { value: "door",    label: "Access Control" },
+                          { value: "zone",    label: "Intrusion" },
+                          { value: "speaker", label: "Audio" },
+                          { value: "switch",  label: "Network Switch" },
+                          { value: "server",  label: "Server / NVR" },
+                          { value: "unknown", label: "Skip this row" },
+                        ];
+                        return (
+                          <tr key={i} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
+                            <td style={{ padding: "7px 12px", color: C.navy }}>{row.brand || <span style={{ color: C.muted }}>—</span>}</td>
+                            <td style={{ padding: "7px 12px", color: C.navy, fontFamily: "monospace", fontSize: 11 }}>{row.model || <span style={{ color: C.muted }}>—</span>}</td>
+                            <td style={{ padding: "7px 12px", color: C.muted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.label || "—"}</td>
+                            <td style={{ padding: "7px 12px", color: C.navy, fontWeight: 700, textAlign: "center" }}>{row.qty}</td>
+                            <td style={{ padding: "7px 12px", color: C.muted, fontSize: 11, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.area || "—"}</td>
+                            <td style={{ padding: "7px 12px" }}>
+                              <select value={cat} onChange={e => setImportPreview(s => ({ ...s, overrideCats: { ...s.overrideCats, [i]: e.target.value } }))}
+                                style={{ padding: "3px 8px", borderRadius: 5, border: `1px solid ${isUnknown ? C.warn : C.border}`, background: isUnknown ? "#FEF3C7" : C.white, color: isUnknown ? "#92400E" : C.navy, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                {CAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              )}
+              {/* Recurring / MRR items (read-only, not imported) */}
+              {importPreview.rows.some(r => r.recurring) && (
+                <>
+                  <div style={{ background: "#78350F", padding: "6px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: C.gold, fontWeight: 700, fontSize: 11 }}>RECURRING / MRR ITEMS</span>
+                    <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>— not imported as hardware, for reference only</span>
+                  </div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "#FEF3C7" }}>
+                        {["Brand","Model","Description","Qty","Area"].map(h => (
+                          <th key={h} style={{ padding: "7px 12px", textAlign: "left", color: "#92400E", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid #FDE68A` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.rows.map((row, i) => {
+                        if (!row.recurring) return null;
+                        return (
+                          <tr key={i} style={{ background: i % 2 === 0 ? "#FFFBEB" : "#FEF9E7", borderBottom: `1px solid #FDE68A` }}>
+                            <td style={{ padding: "6px 12px", color: "#92400E" }}>{row.brand || "—"}</td>
+                            <td style={{ padding: "6px 12px", color: "#92400E", fontFamily: "monospace", fontSize: 11 }}>{row.model || "—"}</td>
+                            <td style={{ padding: "6px 12px", color: "#B45309", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.label || "—"}</td>
+                            <td style={{ padding: "6px 12px", color: "#92400E", fontWeight: 700, textAlign: "center" }}>{row.qty}</td>
+                            <td style={{ padding: "6px 12px", color: "#B45309", fontSize: 11 }}>{row.area || "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              )}
             </div>
             {/* Footer */}
             <div style={{ padding: "14px 20px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 12, background: C.surface, borderRadius: "0 0 12px 12px" }}>
               <div style={{ flex: 1, fontSize: 12, color: C.muted }}>
-                {importPreview.rows.filter((r, i) => (importPreview.overrideCats[i] || r.category) !== "unknown").length} parts will be imported as device groups. Devices not generated yet — set IP start + hit Generate in each group.
+                {importPreview.rows.filter((r, i) => !r.recurring && (importPreview.overrideCats[i] || r.category) !== "unknown").length} hardware items will be imported as device groups.
+                {importPreview.rows.some(r => r.recurring) && ` · ${importPreview.rows.filter(r => r.recurring).length} recurring MRR items skipped.`}
+                {" "}Devices not generated yet — set IP start + hit Generate in each group.
               </div>
               <button onClick={() => setImportPreview(null)} style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
               <button onClick={handleProposalImport} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 7, padding: "8px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>

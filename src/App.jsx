@@ -1081,6 +1081,7 @@ export default function App() {
   const [library,        setLibrary]        = useState([]);  // all device_library rows
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libUploadForm,  setLibUploadForm]  = useState(null); // null | { category, brand, model, displayName, file, uploading, error }
+  const [libShowAll,     setLibShowAll]     = useState(false); // false = show only project-matched entries
   const libUploadFileRef = useRef(null);
   // device counts
   const camCount  = cameraGroups.reduce((s, g) => s + g.devices.length, 0);
@@ -1171,9 +1172,9 @@ export default function App() {
       .then(ps => { setProjects(ps); setLoadingProjects(false); })
       .catch(e => { setProjectsError(e.message || "Failed to load projects"); setLoadingProjects(false); });
   }, [mondayToken, colMap]);
-  // Load library whenever the library tab is opened
+  // Load library whenever the library or export tab is opened (export needs it for OEM match count)
   useEffect(() => {
-    if (tab !== "library") return;
+    if (tab !== "library" && tab !== "export") return;
     setLibraryLoading(true);
     listLibrary()
       .then(rows => { setLibrary(rows); setLibraryLoading(false); })
@@ -2517,19 +2518,24 @@ export default function App() {
             server:  { label: "Server / NVR",         icon: "🖥" },
           };
           const CAT_ORDER = ["camera","door","zone","speaker","switch","server"];
-          // Group library rows: { category: { brand: [entries] } }
+          // Unique models on this project for matching
+          const projectKeys = new Set(
+            [...cameraGroups,...doorGroups,...zoneGroups,...speakerGroups,...switchGroups,...serverGroups]
+              .map(g => `${g.brand}|${g.model}`.toLowerCase())
+              .filter(k => k !== "|")
+          );
+          const hasProjectDevices = projectKeys.size > 0;
+          const matchedRows = library.filter(e => projectKeys.has(`${e.brand}|${e.model}`.toLowerCase()));
+          const matchCount  = matchedRows.length;
+          // Only show matched entries unless admin toggled "show all"
+          const visibleRows = (hasProjectDevices && !libShowAll) ? matchedRows : library;
+          // Group visible rows: { category: { brand: [entries] } }
           const tree = {};
-          for (const row of library) {
+          for (const row of visibleRows) {
             if (!tree[row.category]) tree[row.category] = {};
             if (!tree[row.category][row.brand]) tree[row.category][row.brand] = [];
             tree[row.category][row.brand].push(row);
           }
-          // Unique models on this project for OEM match preview
-          const projectKeys = new Set(
-            [...cameraGroups,...doorGroups,...zoneGroups,...speakerGroups,...switchGroups,...serverGroups]
-              .map(g => `${g.brand}|${g.model}`.toLowerCase())
-          );
-          const matchCount = library.filter(e => projectKeys.has(`${e.brand}|${e.model}`.toLowerCase())).length;
 
           return (
             <div>
@@ -2613,21 +2619,33 @@ export default function App() {
                 <div>
                   <div style={{ fontWeight: 800, color: C.navy, fontSize: 16 }}>📚 Device Library</div>
                   <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
-                    {library.length} spec sheet{library.length !== 1 ? "s" : ""} stored · shared across all projects
+                    {hasProjectDevices && !libShowAll
+                      ? `${matchCount} spec sheet${matchCount !== 1 ? "s" : ""} matched to this project · ${library.length} total in library`
+                      : `${library.length} spec sheet${library.length !== 1 ? "s" : ""} stored · shared across all projects`}
                   </div>
                 </div>
-                <button onClick={() => setLibUploadForm({ category: "", brand: "", model: "", displayName: "", file: null, uploading: false, error: null })}
-                  style={{ background: C.accent, color: C.white, border: "none", borderRadius: 7, padding: "9px 18px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                  + Add Spec Sheet
-                </button>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {hasProjectDevices && (
+                    <button onClick={() => setLibShowAll(v => !v)}
+                      style={{ background: libShowAll ? C.bg : C.surface, color: libShowAll ? C.muted : C.accent, border: `1px solid ${C.border}`, borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      {libShowAll ? "Show project only" : `Show all ${library.length}`}
+                    </button>
+                  )}
+                  <button onClick={() => setLibUploadForm({ category: "", brand: "", model: "", displayName: "", file: null, uploading: false, error: null })}
+                    style={{ background: C.accent, color: C.white, border: "none", borderRadius: 7, padding: "9px 18px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                    + Add Spec Sheet
+                  </button>
+                </div>
               </div>
 
               {/* Library tree */}
               {libraryLoading ? (
                 <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 40, textAlign: "center", color: C.muted }}>Loading library…</div>
-              ) : library.length === 0 ? (
+              ) : visibleRows.length === 0 ? (
                 <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 40, textAlign: "center", color: C.muted }}>
-                  No spec sheets yet. Click <strong>+ Add Spec Sheet</strong> to upload your first PDF.
+                  {library.length === 0
+                    ? <>No spec sheets yet. Click <strong>+ Add Spec Sheet</strong> to upload your first PDF.</>
+                    : <>No spec sheets in the library match this project's devices. <button onClick={() => setLibShowAll(true)} style={{ background: "none", border: "none", color: C.accent, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>View full library</button></>}
                 </div>
               ) : CAT_ORDER.filter(cat => tree[cat]).map(catKey => (
                 <div key={catKey} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 12, overflow: "hidden" }}>

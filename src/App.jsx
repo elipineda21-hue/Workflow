@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { parseSurveyorBOM, buildSurveyorGroups } from "./api/surveyor";
 import { CAM_DB, SWITCH_DB, SERVER_DB, ACCESS_DB, PANEL_DB } from "./deviceDB";
 import { loadWorkOrder, saveWorkOrder, listWorkOrders, listLibrary, uploadSpecSheet, deleteLibraryEntry, getSpecSheetUrl, uploadProjectFile, listProjectFiles, deleteProjectFile, getProjectFileUrl } from "./supabase";
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -1072,6 +1073,7 @@ export default function App() {
   // proposal import
   const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
   const importFileRef = useRef(null);
+  const surveyorFileRef = useRef(null);
   // device library / OEM manual
   const [specSheetUrls,  setSpecSheetUrls]  = useState({}); // {"brand|model": url} — persisted (reference links only)
   const [coverPageFile,  setCoverPageFile]  = useState(null);
@@ -1286,6 +1288,42 @@ export default function App() {
     const importedCount = hardwareRows.filter((r, i) => (overrideCats[i] || r.category) !== "unknown").length;
     const recurringCount = rows.filter(r => r.recurring).length;
     addLog("import", `${isChangeOrder ? "Change Order" : "Proposal"} #${importPreview.proposalId} — ${importedCount} hardware groups imported${recurringCount ? `, ${recurringCount} MRR items skipped` : ""}`);
+  };
+  // ── System Surveyor BOM Excel Import ────────────────────────────────────────
+  const handleSurveyorFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const { surveyName, rows } = parseSurveyorBOM(ev.target.result);
+        if (!rows.length) {
+          alert("No equipment rows found in this Excel file.\n\nMake sure you're uploading a System Surveyor BOM export (.xlsx) that contains element/product line items with quantities.");
+          return;
+        }
+        setImportPreview({ proposalId: surveyName || "Survey", rows, isChangeOrder: false, overrideCats: {}, source: "surveyor" });
+      } catch (err) {
+        alert("Error parsing Excel file: " + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+  const handleSurveyorImport = () => {
+    if (!importPreview) return;
+    const { rows, overrideCats } = importPreview;
+    const newGroups = buildSurveyorGroups(rows, overrideCats);
+    setCameraGroups(g => [...g, ...newGroups.cameraGroups]);
+    setSwitchGroups(g => [...g, ...newGroups.switchGroups]);
+    setServerGroups(g => [...g, ...newGroups.serverGroups]);
+    setDoorGroups(g => [...g, ...newGroups.doorGroups]);
+    setZoneGroups(g => [...g, ...newGroups.zoneGroups]);
+    setSpeakerGroups(g => [...g, ...newGroups.speakerGroups]);
+    setImportPreview(null);
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus("idle"), 3000);
+    const importedCount = rows.filter((r, i) => (overrideCats[i] || r.category) !== "unknown").length;
+    addLog("import", `System Surveyor "${importPreview.proposalId}" — ${importedCount} equipment groups imported`);
   };
   const PROC_STATUSES = [
     { value: "not_ordered", label: "Not Ordered", color: C.muted,    bg: "#F1F5F9" },
@@ -1598,6 +1636,7 @@ export default function App() {
               </span>
             )}
             <input ref={importFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleProposalFileChange} />
+            <input ref={surveyorFileRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={handleSurveyorFileChange} />
             <button onClick={() => setTab("export")}
               style={{ background: C.gold, color: C.navy, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
               📊 Reports
@@ -2713,6 +2752,10 @@ export default function App() {
                   style={{ background: C.steel, color: C.white, border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
                   ⬆ Import Proposal
                 </button>
+                <button onClick={() => surveyorFileRef.current?.click()}
+                  style={{ background: "#1E6F5C", color: C.white, border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                  ⬆ Import Survey
+                </button>
                 <button onClick={handleCSV} disabled={totalDevices === 0}
                   style={{ background: C.success, color: C.white, border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer", opacity: totalDevices === 0 ? 0.5 : 1 }}>
                   ⬇ Export CSV
@@ -2815,12 +2858,15 @@ export default function App() {
             <div style={{ background: C.navy, borderRadius: "12px 12px 0 0", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>
-                  {importPreview.isChangeOrder ? "Import Change Order Hardware" : "Import Proposal Hardware"}
+                  {importPreview.source === "surveyor"
+                    ? "Import System Surveyor BOM"
+                    : importPreview.isChangeOrder ? "Import Change Order Hardware" : "Import Proposal Hardware"}
                   {importPreview.isChangeOrder && <span style={{ background: C.gold, color: C.navy, fontSize: 10, fontWeight: 800, borderRadius: 8, padding: "2px 8px", marginLeft: 8 }}>CHANGE ORDER</span>}
+                  {importPreview.source === "surveyor" && <span style={{ background: "#1E6F5C", color: C.white, fontSize: 10, fontWeight: 800, borderRadius: 8, padding: "2px 8px", marginLeft: 8 }}>SURVEY</span>}
                 </div>
                 <div style={{ color: C.accent, fontSize: 12, marginTop: 2 }}>
-                  Proposal #{importPreview.proposalId}
-                  {selectedProject?.projectId && importPreview.proposalId !== selectedProject.projectId && (
+                  {importPreview.source === "surveyor" ? `Survey: ${importPreview.proposalId}` : `Proposal #${importPreview.proposalId}`}
+                  {importPreview.source !== "surveyor" && selectedProject?.projectId && importPreview.proposalId !== selectedProject.projectId && (
                     <span style={{ color: C.warn, marginLeft: 8 }}>⚠ Proposal ID doesn't match project ID ({selectedProject.projectId})</span>
                   )}
                   {importPreview.rows.some(r => r.recurring) && (
@@ -2929,8 +2975,8 @@ export default function App() {
                 {" "}Devices not generated yet — set IP start + hit Generate in each group.
               </div>
               <button onClick={() => setImportPreview(null)} style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
-              <button onClick={handleProposalImport} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 7, padding: "8px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                ⬆ Import Hardware
+              <button onClick={importPreview.source === "surveyor" ? handleSurveyorImport : handleProposalImport} style={{ background: importPreview.source === "surveyor" ? "#1E6F5C" : C.accent, color: C.white, border: "none", borderRadius: 7, padding: "8px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                ⬆ {importPreview.source === "surveyor" ? "Import Survey Equipment" : "Import Hardware"}
               </button>
             </div>
           </div>

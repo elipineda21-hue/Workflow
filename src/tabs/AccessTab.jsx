@@ -1,6 +1,6 @@
 import { ACCESS_DB } from "../deviceDB";
 import { mkDoorGrp, mkDoorDev, genDoor, updGrp, remGrp } from "../models";
-import { CardHead, Empty, G, F, Inp, Sel, SectionLabel } from "../components/ui";
+import { CardHead, Empty, G, F, Inp, Sel, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
@@ -40,8 +40,11 @@ export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collap
                 <F label="Access Group"><Inp value={grp.accessGroup} onChange={e => updGrp(setDoorGroups, grp.id, "accessGroup", e.target.value)} /></F>
                 <F label="Schedule"><Inp value={grp.schedule} onChange={e => updGrp(setDoorGroups, grp.id, "schedule", e.target.value)} placeholder="e.g. 24/7 or M-F 7a-6p" /></F>
               </G>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: grp.noProgramming ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${grp.noProgramming ? "#FDE68A" : "#BBF7D0"}` }}>
+                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: grp.noProgramming ? "#92400E" : "#065F46" }}>{grp.noProgramming ? "No programming required — customer-provided or physical-only hardware" : "Programming required — devices need configuration"}</span>} val={grp.noProgramming} set={v => updGrp(setDoorGroups, grp.id, "noProgramming", v)} />
+              </div>
               <GenerateBar group={grp} setter={setDoorGroups} genFn={genDoor} showIP={false} />
-              <DevTable gid={grp.id} setter={setDoorGroups} devices={grp.devices} newDevFn={(i) => mkDoorDev(i || grp.devices.length)}
+              <DevTable gid={grp.id} setter={setDoorGroups} noProgramming={grp.noProgramming} devices={grp.devices} newDevFn={(i) => mkDoorDev(i || grp.devices.length)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Access)`)}
                 onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Access)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Access)`); }}
                 cols={[

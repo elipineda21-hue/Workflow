@@ -1,5 +1,5 @@
 import { mkSpkGrp, mkSpkDev, genSpk, updGrp, remGrp, getNextIpStart } from "../models";
-import { CardHead, Empty, G, F, Inp, SectionLabel } from "../components/ui";
+import { CardHead, Empty, G, F, Inp, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import GenerateBar from "../components/GenerateBar";
@@ -28,8 +28,11 @@ export default function AudioTab({ speakerGroups, setSpeakerGroups, spkCount, co
                 <F label="Amp Zone / Tap"><Inp value={grp.ampZone} onChange={e => updGrp(setSpeakerGroups, grp.id, "ampZone", e.target.value)} placeholder="e.g. Amp 1 Zone A" /></F>
                 <F label="Volume (%)"><Inp type="number" min="0" max="100" value={grp.volume} onChange={e => updGrp(setSpeakerGroups, grp.id, "volume", e.target.value)} /></F>
               </G>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: grp.noProgramming ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${grp.noProgramming ? "#FDE68A" : "#BBF7D0"}` }}>
+                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: grp.noProgramming ? "#92400E" : "#065F46" }}>{grp.noProgramming ? "No programming required — customer-provided or physical-only hardware" : "Programming required — devices need configuration"}</span>} val={grp.noProgramming} set={v => updGrp(setSpeakerGroups, grp.id, "noProgramming", v)} />
+              </div>
               <GenerateBar group={grp} setter={setSpeakerGroups} genFn={genSpk} />
-              <DevTable gid={grp.id} setter={setSpeakerGroups} devices={grp.devices} newDevFn={(i) => mkSpkDev("", i || grp.devices.length)}
+              <DevTable gid={grp.id} setter={setSpeakerGroups} noProgramming={grp.noProgramming} devices={grp.devices} newDevFn={(i) => mkSpkDev("", i || grp.devices.length)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Audio)`)}
                 onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Audio)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Audio)`); }}
                 cols={[

@@ -2,7 +2,7 @@ import { C } from "../constants";
 import { addDev, remDev, updDev } from "../models";
 import DevRow from "./DevRow";
 
-export default function DevTable({ cols, devices, gid, setter, newDevFn, onLog, onFieldLog }) {
+export default function DevTable({ cols, devices, gid, setter, newDevFn, onLog, onFieldLog, noProgramming }) {
   if (!devices.length) {
     return (
       <div style={{ textAlign: "center", padding: "16px", color: C.muted, fontSize: 12, border: `1px dashed ${C.border}`, borderRadius: 6, marginTop: 8 }}>
@@ -30,7 +30,7 @@ export default function DevTable({ cols, devices, gid, setter, newDevFn, onLog, 
               <th style={{ padding: "5px 8px", color: C.muted, fontSize: 10, fontWeight: 700, textAlign: "center", width: 30 }}>#</th>
               {cols.map(c => <th key={c.key} style={{ padding: "5px 8px", color: "rgba(255,255,255,0.7)", fontSize: 10, fontWeight: 700, textAlign: "left", whiteSpace: "nowrap" }}>{c.label}</th>)}
               <th style={{ padding: "5px 8px", color: C.warn, fontSize: 10, fontWeight: 700, textAlign: "center", width: 50, whiteSpace: "nowrap" }}>Inst</th>
-              <th style={{ padding: "5px 8px", color: C.success, fontSize: 10, fontWeight: 700, textAlign: "center", width: 50, whiteSpace: "nowrap" }}>Pgmd</th>
+              {!noProgramming && <th style={{ padding: "5px 8px", color: C.success, fontSize: 10, fontWeight: 700, textAlign: "center", width: 50, whiteSpace: "nowrap" }}>Pgmd</th>}
               <th style={{ padding: "5px 8px", width: 30 }}></th>
             </tr>
           </thead>
@@ -41,6 +41,7 @@ export default function DevTable({ cols, devices, gid, setter, newDevFn, onLog, 
                 onUpd={(k, v) => updDev(setter, gid, dev.id, k, v)}
                 onLog={onLog}
                 onFieldLog={onFieldLog}
+                noProgramming={noProgramming}
               />
             ))}
           </tbody>

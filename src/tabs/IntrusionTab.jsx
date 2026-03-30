@@ -27,8 +27,11 @@ export default function IntrusionTab({ zoneGroups, setZoneGroups, zoneCount, col
                 <F label="Start Zone #"><Inp type="number" value={grp.startNumber} onChange={e => updGrp(setZoneGroups, grp.id, "startNumber", e.target.value)} placeholder="1" /></F>
                 <F label="Bypassable"><div style={{ paddingTop: 6 }}><Tog label="Bypassable" val={grp.bypassable} set={v => updGrp(setZoneGroups, grp.id, "bypassable", v)} /></div></F>
               </G>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: grp.noProgramming ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${grp.noProgramming ? "#FDE68A" : "#BBF7D0"}` }}>
+                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: grp.noProgramming ? "#92400E" : "#065F46" }}>{grp.noProgramming ? "No programming required — customer-provided or physical-only hardware" : "Programming required — devices need configuration"}</span>} val={grp.noProgramming} set={v => updGrp(setZoneGroups, grp.id, "noProgramming", v)} />
+              </div>
               <GenerateBar group={grp} setter={setZoneGroups} genFn={genZone} showIP={false} />
-              <DevTable gid={grp.id} setter={setZoneGroups} devices={grp.devices} newDevFn={(i) => mkZoneDev(i || grp.devices.length, grp)}
+              <DevTable gid={grp.id} setter={setZoneGroups} noProgramming={grp.noProgramming} devices={grp.devices} newDevFn={(i) => mkZoneDev(i || grp.devices.length, grp)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Intrusion)`)}
                 onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Intrusion)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Intrusion)`); }}
                 cols={[

@@ -1,7 +1,7 @@
 import { SERVER_DB } from "../deviceDB";
 import { SERVER_ROLES } from "../constants";
 import { mkSrvGrp, mkSrvDev, genSrv, updGrp, remGrp, getNextIpStart } from "../models";
-import { CardHead, Empty, G, F, Inp, Sel, SectionLabel } from "../components/ui";
+import { CardHead, Empty, G, F, Inp, Sel, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
@@ -37,8 +37,11 @@ export default function ServersTab({ serverGroups, setServerGroups, srvCount, co
                 <F label="OS / Platform"><Inp value={grp.os} onChange={e => updGrp(setServerGroups, grp.id, "os", e.target.value)} placeholder="e.g. Windows Server 2022" /></F>
                 <F label="Storage Config"><Inp value={grp.storage} onChange={e => updGrp(setServerGroups, grp.id, "storage", e.target.value)} placeholder="e.g. RAID 5 / 8TB" /></F>
               </G>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: grp.noProgramming ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${grp.noProgramming ? "#FDE68A" : "#BBF7D0"}` }}>
+                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: grp.noProgramming ? "#92400E" : "#065F46" }}>{grp.noProgramming ? "No programming required — customer-provided or physical-only hardware" : "Programming required — devices need configuration"}</span>} val={grp.noProgramming} set={v => updGrp(setServerGroups, grp.id, "noProgramming", v)} />
+              </div>
               <GenerateBar group={grp} setter={setServerGroups} genFn={genSrv} />
-              <DevTable gid={grp.id} setter={setServerGroups} devices={grp.devices} newDevFn={(i) => mkSrvDev("", i || grp.devices.length)}
+              <DevTable gid={grp.id} setter={setServerGroups} noProgramming={grp.noProgramming} devices={grp.devices} newDevFn={(i) => mkSrvDev("", i || grp.devices.length)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Server)`)}
                 onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Server)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Server)`); }}
                 cols={[

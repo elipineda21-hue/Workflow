@@ -10,17 +10,17 @@ export default function DashboardTab({
   dashCollapsed, setDashCollapsed,
 }) {
   const catSections = [
-    { id: "cameras",   label: "CCTV / Cameras",    icon: "📷", devs: cameraGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
-    { id: "access",    label: "Access Control",    icon: "🚪", devs: doorGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
-    { id: "audio",     label: "Audio / Speakers",  icon: "🔊", devs: speakerGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
-    { id: "intrusion", label: "Intrusion / Zones", icon: "🔔", devs: zoneGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || "" }))) },
-    { id: "servers",   label: "Server / NVR",      icon: "🖥", devs: serverGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
-    { id: "switches",  label: "Switching",         icon: "🔀", devs: switchGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "" }))) },
+    { id: "cameras",   label: "CCTV / Cameras",    icon: "📷", devs: cameraGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "", _noProg: g.noProgramming }))) },
+    { id: "access",    label: "Access Control",    icon: "🚪", devs: doorGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "", _noProg: g.noProgramming }))) },
+    { id: "audio",     label: "Audio / Speakers",  icon: "🔊", devs: speakerGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "", _noProg: g.noProgramming }))) },
+    { id: "intrusion", label: "Intrusion / Zones", icon: "🔔", devs: zoneGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || "", _noProg: g.noProgramming }))) },
+    { id: "servers",   label: "Server / NVR",      icon: "🖥", devs: serverGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "", _noProg: g.noProgramming }))) },
+    { id: "switches",  label: "Switching",         icon: "🔀", devs: switchGroups.flatMap(g => g.devices.map(d => ({ ...d, _grp: g.groupLabel || g.model || g.brand || "", _noProg: g.noProgramming }))) },
   ].filter(c => c.devs.length > 0);
 
   const allDevs = catSections.flatMap(c => c.devs);
   const installedCount  = allDevs.filter(d => d.installed).length;
-  const programmedCount = allDevs.filter(d => d.programmed).length;
+  const programmedCount = allDevs.filter(d => d.programmed || d._noProg).length;
   const instPct = allDevs.length ? Math.round((installedCount / allDevs.length) * 100) : 0;
   const pct     = allDevs.length ? Math.round((programmedCount / allDevs.length) * 100) : 0;
   const totalBudget = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborBudget[t.key]) || 0), 0);
@@ -79,7 +79,7 @@ export default function DashboardTab({
       ) : (
         <div style={{ marginBottom: 16 }}>
           {catSections.map(cat => {
-            const done = cat.devs.filter(d => d.programmed).length;
+            const done = cat.devs.filter(d => d.programmed || d._noProg).length;
             const cp = cat.devs.length ? Math.round((done / cat.devs.length) * 100) : 0;
             const isCollapsed = dashCollapsed[cat.id];
             return (
@@ -111,10 +111,10 @@ export default function DashboardTab({
                     </thead>
                     <tbody>
                       {cat.devs.map((dev, i) => (
-                        <tr key={dev.id} style={{ background: dev.programmed ? "#F0FDF4" : (i % 2 === 0 ? C.white : C.surface) }}>
+                        <tr key={dev.id} style={{ background: (dev.programmed || dev._noProg) ? "#F0FDF4" : (i % 2 === 0 ? C.white : C.surface) }}>
                           <td style={{ padding: "6px 12px" }}>
-                            <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: dev.programmed ? "#D1FAE5" : "#FEF3C7", color: dev.programmed ? C.success : C.warn }}>
-                              {dev.programmed ? "✓ Done" : "Pending"}
+                            <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: dev._noProg ? "#E0F2FE" : dev.programmed ? "#D1FAE5" : "#FEF3C7", color: dev._noProg ? C.accent : dev.programmed ? C.success : C.warn }}>
+                              {dev._noProg ? "N/A" : dev.programmed ? "✓ Done" : "Pending"}
                             </span>
                           </td>
                           <td style={{ padding: "6px 12px", fontWeight: 600, color: C.navy }}>

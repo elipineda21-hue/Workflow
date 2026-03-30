@@ -44,7 +44,8 @@ export default function PdfImportModal({ open, onClose, onImport }) {
       }
       setItems(parsed.map((p, i) => ({ ...p, _idx: i, _include: true })));
     } catch (err) {
-      setError("Error reading PDF: " + err.message);
+      console.error("PDF import error:", err);
+      setError("Error reading PDF: " + (err.message || String(err)));
     }
     setLoading(false);
   };

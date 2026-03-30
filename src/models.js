@@ -37,3 +37,63 @@ export const remGrp = (set, gid) => set(gs => gs.filter(g => g.id !== gid));
 export const remDev = (set, gid, did) => set(gs => gs.map(g => g.id === gid ? { ...g, devices: g.devices.filter(d => d.id !== did) } : g));
 export const addDev = (set, gid, dev) => set(gs => gs.map(g => g.id === gid ? { ...g, devices: [...g.devices, dev] } : g));
 export const applyGen = (set, gid, genFn) => set(gs => gs.map(g => g.id === gid ? { ...g, devices: genFn(g) } : g));
+
+// ── Category → VLAN mapping for auto-IP ──────────────────────────────────────
+// Maps device categories to their VLAN ID from the network SOP
+const CATEGORY_VLAN_MAP = {
+  camera: "40",  // VMS — cameras / VSS / CCTV
+  server: "40",  // VMS — NVRs, VMS servers
+  switch: "1",   // Default / Mgmt
+  door:   "1",   // Default / Mgmt — access controllers
+  zone:   "50",  // Intrusion — alarm panels
+  speaker:"30",  // AV — audio systems
+};
+
+// Get the subnet base IP (first 3 octets) from a VLAN's subnet string
+const subnetBase = (subnet) => {
+  if (!subnet) return null;
+  const parts = subnet.split("/")[0].split(".");
+  if (parts.length !== 4) return null;
+  return `${parts[0]}.${parts[1]}.${parts[2]}`;
+};
+
+// Find the next available IP start for a category based on network config and existing groups
+export function getNextIpStart(category, networkConfig, allGroups) {
+  if (!networkConfig || !networkConfig.vlans) return "";
+  const vlanId = CATEGORY_VLAN_MAP[category];
+  if (!vlanId) return "";
+  const vlan = networkConfig.vlans.find(v => v.vlanId === vlanId);
+  if (!vlan) return "";
+  const base = subnetBase(vlan.subnet);
+  if (!base) return "";
+
+  // Find the highest IP already in use across all groups on this VLAN
+  const sameVlanCats = Object.entries(CATEGORY_VLAN_MAP)
+    .filter(([, vid]) => vid === vlanId)
+    .map(([cat]) => cat);
+
+  let maxOctet = 0;
+  for (const grp of allGroups) {
+    if (!sameVlanCats.includes(grp._cat)) continue;
+    // Check group ipStart
+    const ip = grp.ipStart || "";
+    const parts = ip.split(".");
+    if (parts.length === 4 && ip.startsWith(base)) {
+      const last = parseInt(parts[3], 10) + (grp.devices?.length || parseInt(grp.quantity) || 1);
+      if (last > maxOctet) maxOctet = last;
+    }
+    // Check individual device IPs
+    for (const dev of (grp.devices || [])) {
+      const dip = dev.ip || "";
+      const dparts = dip.split(".");
+      if (dparts.length === 4 && dip.startsWith(base)) {
+        const last = parseInt(dparts[3], 10) + 1;
+        if (last > maxOctet) maxOctet = last;
+      }
+    }
+  }
+
+  // Start at .10 minimum (reserve .1-.9 for gateways/infra), or after the last used
+  const startOctet = Math.max(10, maxOctet);
+  return startOctet > 254 ? "" : `${base}.${startOctet}`;
+}

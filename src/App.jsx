@@ -102,6 +102,15 @@ export default function App() {
     const label = group.groupLabel || group.brand || group.model || "Group";
     addLog("move", `Moved "${label}" from ${fromCat} → ${toCat}`);
   };
+  // All groups with category tags (for IP allocation)
+  const allGroupsTagged = [
+    ...cameraGroups.map(g => ({ ...g, _cat: "camera" })),
+    ...switchGroups.map(g => ({ ...g, _cat: "switch" })),
+    ...serverGroups.map(g => ({ ...g, _cat: "server" })),
+    ...doorGroups.map(g => ({ ...g, _cat: "door" })),
+    ...zoneGroups.map(g => ({ ...g, _cat: "zone" })),
+    ...speakerGroups.map(g => ({ ...g, _cat: "speaker" })),
+  ];
   // proposal import
   const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
   const importFileRef = useRef(null);
@@ -406,7 +415,7 @@ export default function App() {
             serverGroups={serverGroups} setServerGroups={setServerGroups}
             srvCount={srvCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
           />
         )}
         {/* ─ SWITCHES ─ */}
@@ -415,7 +424,7 @@ export default function App() {
             switchGroups={switchGroups} setSwitchGroups={setSwitchGroups}
             swCount={swCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
           />
         )}
         {/* ─ CAMERAS ─ */}
@@ -424,7 +433,7 @@ export default function App() {
             cameraGroups={cameraGroups} setCameraGroups={setCameraGroups}
             camCount={camCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
           />
         )}
         {/* ─ ACCESS ─ */}
@@ -433,7 +442,7 @@ export default function App() {
             doorGroups={doorGroups} setDoorGroups={setDoorGroups}
             doorCount={doorCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
           />
         )}
         {/* ─ INTRUSION ─ */}
@@ -442,7 +451,7 @@ export default function App() {
             zoneGroups={zoneGroups} setZoneGroups={setZoneGroups}
             zoneCount={zoneCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
           />
         )}
         {/* ─ AUDIO ─ */}
@@ -451,7 +460,7 @@ export default function App() {
             speakerGroups={speakerGroups} setSpeakerGroups={setSpeakerGroups}
             spkCount={spkCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
           />
         )}
         {/* ─ NETWORK ─ */}

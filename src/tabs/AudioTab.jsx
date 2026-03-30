@@ -1,14 +1,14 @@
-import { mkSpkGrp, mkSpkDev, genSpk, updGrp, remGrp } from "../models";
+import { mkSpkGrp, mkSpkDev, genSpk, updGrp, remGrp, getNextIpStart } from "../models";
 import { CardHead, Empty, G, F, Inp, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import GenerateBar from "../components/GenerateBar";
 
-export default function AudioTab({ speakerGroups, setSpeakerGroups, spkCount, collapsed, toggleCollapse, addLog, moveGroup }) {
+export default function AudioTab({ speakerGroups, setSpeakerGroups, spkCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
-        <CardHead icon="🔊" title="Audio Zone Programming" count={spkCount} onAdd={() => { setSpeakerGroups(g => [...g, mkSpkGrp()]); addLog("group_added", "Audio group added"); }} addLabel="Add Audio Group" color="#0B1F3A" />
+        <CardHead icon="🔊" title="Audio Zone Programming" count={spkCount} onAdd={() => { const ip = getNextIpStart("speaker", networkConfig, allGroupsTagged); setSpeakerGroups(g => [...g, { ...mkSpkGrp(), ipStart: ip }]); addLog("group_added", "Audio group added"); }} addLabel="Add Audio Group" color="#0B1F3A" />
         <div style={{ padding: 18 }}>
           {speakerGroups.length === 0 && <Empty icon="🔊" msg="No audio groups yet. Click + Add Audio Group." />}
           {speakerGroups.map((grp, gi) => (

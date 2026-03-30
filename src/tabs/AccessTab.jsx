@@ -6,7 +6,7 @@ import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collapsed, toggleCollapse, addLog, moveGroup }) {
+export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>

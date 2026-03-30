@@ -1,17 +1,17 @@
 import { SERVER_DB } from "../deviceDB";
 import { SERVER_ROLES } from "../constants";
-import { mkSrvGrp, mkSrvDev, genSrv, updGrp, remGrp } from "../models";
+import { mkSrvGrp, mkSrvDev, genSrv, updGrp, remGrp, getNextIpStart } from "../models";
 import { CardHead, Empty, G, F, Inp, Sel, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function ServersTab({ serverGroups, setServerGroups, srvCount, collapsed, toggleCollapse, addLog, moveGroup }) {
+export default function ServersTab({ serverGroups, setServerGroups, srvCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
-        <CardHead icon="🖥" title="Servers & Computing" count={srvCount} onAdd={() => { setServerGroups(g => [...g, mkSrvGrp()]); addLog("group_added", "Server group added"); }} addLabel="Add Server Group" color="#0B1F3A" />
+        <CardHead icon="🖥" title="Servers & Computing" count={srvCount} onAdd={() => { const ip = getNextIpStart("server", networkConfig, allGroupsTagged); setServerGroups(g => [...g, { ...mkSrvGrp(), ipStart: ip }]); addLog("group_added", "Server group added"); }} addLabel="Add Server Group" color="#0B1F3A" />
         <div style={{ padding: 18 }}>
           {serverGroups.length === 0 && <Empty icon="🖥" msg="No server groups yet. Click + Add Server Group." />}
           {serverGroups.map((grp, gi) => (

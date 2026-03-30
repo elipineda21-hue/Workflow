@@ -1,16 +1,16 @@
 import { CAM_DB } from "../deviceDB";
-import { mkCamGroup, mkCamDev, genCam, updGrp, remGrp } from "../models";
+import { mkCamGroup, mkCamDev, genCam, updGrp, remGrp, getNextIpStart } from "../models";
 import { CardHead, Empty, G, F, Inp, Sel, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, collapsed, toggleCollapse, addLog, moveGroup }) {
+export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
-        <CardHead icon="📷" title="CCTV Camera Programming" count={camCount} onAdd={() => { setCameraGroups(g => [...g, mkCamGroup()]); addLog("group_added", "Camera group added"); }} addLabel="Add Camera Group" color="#0B1F3A" />
+        <CardHead icon="📷" title="CCTV Camera Programming" count={camCount} onAdd={() => { const ip = getNextIpStart("camera", networkConfig, allGroupsTagged); setCameraGroups(g => [...g, { ...mkCamGroup(), ipStart: ip }]); addLog("group_added", "Camera group added"); }} addLabel="Add Camera Group" color="#0B1F3A" />
         <div style={{ padding: 18 }}>
           {cameraGroups.length === 0 && <Empty icon="📷" msg="No camera groups yet. Click + Add Camera Group to get started." />}
           {cameraGroups.map((grp, gi) => {

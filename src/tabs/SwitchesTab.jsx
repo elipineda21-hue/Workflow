@@ -1,16 +1,16 @@
 import { SWITCH_DB } from "../deviceDB";
-import { mkSwGrp, mkSwDev, genSw, updGrp, remGrp } from "../models";
+import { mkSwGrp, mkSwDev, genSw, updGrp, remGrp, getNextIpStart } from "../models";
 import { CardHead, Empty, G, F, Inp, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, collapsed, toggleCollapse, addLog, moveGroup }) {
+export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
-        <CardHead icon="🔀" title="Network Switching" count={swCount} onAdd={() => { setSwitchGroups(g => [...g, mkSwGrp()]); addLog("group_added", "Switch group added"); }} addLabel="Add Switch Group" color="#0B1F3A" />
+        <CardHead icon="🔀" title="Network Switching" count={swCount} onAdd={() => { const ip = getNextIpStart("switch", networkConfig, allGroupsTagged); setSwitchGroups(g => [...g, { ...mkSwGrp(), ipStart: ip }]); addLog("group_added", "Switch group added"); }} addLabel="Add Switch Group" color="#0B1F3A" />
         <div style={{ padding: 18 }}>
           {switchGroups.length === 0 && <Empty icon="🔀" msg="No switch groups yet. Click + Add Switch Group." />}
           {switchGroups.map((grp, gi) => (

@@ -4,7 +4,7 @@ import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import GenerateBar from "../components/GenerateBar";
 
-export default function IntrusionTab({ zoneGroups, setZoneGroups, zoneCount, collapsed, toggleCollapse, addLog, moveGroup }) {
+export default function IntrusionTab({ zoneGroups, setZoneGroups, zoneCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>

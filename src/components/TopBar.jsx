@@ -4,7 +4,7 @@ export default function TopBar({
   selectedProject, saveStatus, totalDevices,
   importFileRef, handleProposalFileChange,
   tab, setTab, TABS,
-  onBack, onReports,
+  onBack, onReports, onPdfImport,
 }) {
   return (
     <div style={{ background: C.navy, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(0,0,0,.35)" }}>
@@ -25,6 +25,10 @@ export default function TopBar({
             </span>
           )}
           <input ref={importFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleProposalFileChange} />
+          <button onClick={onPdfImport}
+            style={{ background: C.steel, color: C.white, border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 6, padding: "7px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+            📄 Import PDF
+          </button>
           <button onClick={onReports}
             style={{ background: C.gold, color: C.navy, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
             📊 Reports

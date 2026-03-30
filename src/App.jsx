@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { saveWorkOrder, listLibrary, getSpecSheetUrl, listProjectFiles } from "./supabase";
 import { C, SOP_VLANS, SOP_SSIDS, SOP_FIREWALL } from "./constants";
 import NetworkTab from "./components/NetworkTab";
-import { uid } from "./models";
+import { uid, mkCamGroup, mkSwGrp, mkSrvGrp, mkDoorGrp, mkZoneGrp, mkSpkGrp, getNextIpStart } from "./models";
 import { fetchProjects, pushMondayUpdate } from "./api/monday";
 import { parseCSVLine, parseProposalCSV, buildGroupsFromRows } from "./api/portal";
 import { buildCSV } from "./utils/buildCSV";
@@ -11,6 +11,7 @@ import SelectProjectPage from "./components/SelectProjectPage";
 import TopBar from "./components/TopBar";
 import ImportPreviewModal from "./components/ImportPreviewModal";
 import MasterDashboard from "./components/MasterDashboard";
+import PdfImportModal from "./components/PdfImportModal";
 import InfoTab from "./tabs/InfoTab";
 import DashboardTab from "./tabs/DashboardTab";
 import LaborTab from "./tabs/LaborTab";
@@ -113,6 +114,7 @@ export default function App() {
   ];
   // proposal import
   const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
+  const [pdfImportOpen, setPdfImportOpen] = useState(false);
   const importFileRef = useRef(null);
   // device library / OEM manual
   const [specSheetUrls,  setSpecSheetUrls]  = useState({}); // {"brand|model": url} — persisted (reference links only)
@@ -206,6 +208,15 @@ export default function App() {
         s2.src = "https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js";
         s2.onload = () => setPdfLibReady(true);
         document.head.appendChild(s2);
+      }
+    }
+    // pdf.js for text extraction from procurement PDFs
+    if (!window.pdfjsLib) {
+      if (!document.querySelector('script[src*="pdf.min"]')) {
+        const s3 = document.createElement("script");
+        s3.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+        s3.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; };
+        document.head.appendChild(s3);
       }
     }
   }, []);
@@ -332,6 +343,20 @@ export default function App() {
     const recurringCount = rows.filter(r => r.recurring).length;
     addLog("import", `${isChangeOrder ? "Change Order" : "Proposal"} #${importPreview.proposalId} — ${importedCount} hardware groups imported${recurringCount ? `, ${recurringCount} MRR items skipped` : ""}`);
   };
+  // PDF parts import handler
+  const handlePdfImport = (items) => {
+    const makers = { camera: mkCamGroup, switch: mkSwGrp, server: mkSrvGrp, door: mkDoorGrp, zone: mkZoneGrp, speaker: mkSpkGrp };
+    const setters = { camera: setCameraGroups, switch: setSwitchGroups, server: setServerGroups, door: setDoorGroups, zone: setZoneGroups, speaker: setSpeakerGroups };
+    for (const item of items) {
+      const mk = makers[item.category];
+      const setter = setters[item.category];
+      if (!mk || !setter) continue;
+      const ip = getNextIpStart(item.category, networkConfig, allGroupsTagged);
+      const grp = { ...mk(), brand: item.brand, model: item.model, quantity: String(item.qty), groupLabel: "", noProgramming: !!item.hardware, ...(ip ? { ipStart: ip } : {}) };
+      setter(gs => [...gs, grp]);
+    }
+    addLog("import", `PDF import — ${items.length} groups added (${items.filter(i => i.hardware).length} hardware-only)`);
+  };
   const TABS = [
     // ── Exec overview ─────────────────────────────────────────────────────────
     { id: "info",        label: "Project Info",  icon: "📋" },
@@ -402,6 +427,7 @@ export default function App() {
           setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]); setNetworkConfig(emptyNetworkConfig());
         }}
         onReports={() => setTab("export")}
+        onPdfImport={() => setPdfImportOpen(true)}
       />
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "22px 16px" }}>
 
@@ -549,6 +575,11 @@ export default function App() {
 
       </div>
 
+      <PdfImportModal
+        open={pdfImportOpen}
+        onClose={() => setPdfImportOpen(false)}
+        onImport={handlePdfImport}
+      />
       <ImportPreviewModal
         importPreview={importPreview} setImportPreview={setImportPreview}
         handleProposalImport={handleProposalImport}

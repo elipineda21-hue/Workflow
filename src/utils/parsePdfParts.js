@@ -1,6 +1,6 @@
 // ── PDF Parts List Parser ─────────────────────────────────────────────────────
 // Extracts brand, model, quantity from procurement/proposal PDFs.
-// Strategy: catch EVERY line item, let the user exclude in the preview.
+// Portal.io token order: brand → qty → lineNum → model (due to PDF Y positions)
 
 function sectionToCategory(text) {
   const t = (text || "").toLowerCase().trim();
@@ -8,15 +8,16 @@ function sectionToCategory(text) {
   if (/access\s*control/i.test(t))                                      return "door";
   if (/intrusion|alarm|burglar|detection/i.test(t))                     return "zone";
   if (/audio|speaker|sound|intercom|paging/i.test(t))                   return "speaker";
-  if (/network|switch|structured|infrastructure/i.test(t))              return "switch";
+  if (/network/i.test(t))                                               return "switch";
   if (/server|nvr|dvr|recording|storage|vms/i.test(t))                  return "server";
   if (/^video$/i.test(t))                                               return "camera";
-  if (/connector|adapter|cable|wire/i.test(t))                          return "hardware";
+  if (/connector|adapter|cable/i.test(t))                               return "hardware";
   if (/equipment\s*rack|rack/i.test(t))                                 return "hardware";
   if (/installation\s*suppli|suppli|misc/i.test(t))                     return "hardware";
   if (/power\s*manage|power\s*supply/i.test(t))                         return "hardware";
   if (/mount|bracket|enclosure/i.test(t))                               return "hardware";
   if (/software|license/i.test(t))                                      return "hardware";
+  if (/wire/i.test(t))                                                  return "hardware";
   return null;
 }
 
@@ -25,6 +26,7 @@ const HARDWARE_PATTERNS = [
   /power\s*supply/i, /transformer/i, /conduit/i, /backbox/i,
   /faceplate/i, /patch\s*panel/i, /rack/i, /enclosure/i, /housing/i,
   /wall\s*plate/i, /connector/i, /splitter/i, /^tr-/i, /maximal/i,
+  /vevor/i, /cat6/i, /plenum/i, /pdu/i,
 ];
 
 function isHardwareOnly(model, brand) {
@@ -32,11 +34,10 @@ function isHardwareOnly(model, brand) {
   return HARDWARE_PATTERNS.some(p => p.test(combined));
 }
 
-// Tokens to completely discard
 const NOISE = new Set([
   "required", "in-stock", "instock", "order", "received",
   "qty", "taken", "by", "x", "select", "select...",
-  "items", "item", "portal", "-", "=",
+  "items", "item", "-", "=", "|",
 ]);
 
 function isNoise(text) {
@@ -44,36 +45,27 @@ function isNoise(text) {
   if (!t) return true;
   if (NOISE.has(t)) return true;
   if (/^x\.+$/.test(t)) return true;
-  if (/^=+$/.test(t)) return true;
-  if (/^-+$/.test(t)) return true;
+  if (/^=+$|^-+$/.test(t)) return true;
   if (/order\s*received/i.test(t)) return true;
   if (/taken\s*by/i.test(t)) return true;
   if (/pick\s*list/i.test(t)) return true;
   if (/proposal\s*#/i.test(t)) return true;
-  if (/options\s*x\s/i.test(t)) return true;
-  if (/low\s*voltage\s*r\d/i.test(t)) return true;
   if (/^\d+\s*items?$/i.test(t)) return true;
   if (/^in\s*stock$/i.test(t)) return true;
+  if (/^\d+\s+of\s+\d+$/i.test(t)) return true; // "1 of 3" page numbers
   return false;
 }
 
-// Does this look like a part/model number?
 function looksLikeModel(text) {
   const t = (text || "").trim();
   if (t.length < 2) return false;
   if (/^\d{1,3}$/.test(t)) return false;
-  // Dashes with alphanumeric = very likely model
   if (/[A-Z0-9]+-[A-Z0-9]/i.test(t)) return true;
-  // Mixed letters+digits, 4+ chars
   if (t.length >= 4 && /[A-Z]/i.test(t) && /\d/.test(t)) return true;
-  // Pure digits 4+ = part number
   if (/^\d{4,}$/.test(t)) return true;
-  // Short codes with digits like "6U", "1G"
-  if (/^\d+[A-Z]+$/i.test(t) && t.length >= 2) return true;
   return false;
 }
 
-// Extract all text from PDF in reading order
 export async function extractPdfText(file) {
   const pdfjsLib = window.pdfjsLib;
   if (!pdfjsLib) throw new Error("PDF.js not loaded yet. Please wait and try again.");
@@ -98,20 +90,17 @@ export async function extractPdfText(file) {
   return allTokens;
 }
 
-// Main parser
+// Main parser — works with the actual Portal.io token order:
+// brand → qty → lineNum → model
 export function parsePdfParts(textItems) {
   const results = [];
 
-  // Get clean token list
   const tokens = textItems.map(t => t.text).filter(t => !isNoise(t));
-  console.log("PDF tokens (filtered):", tokens.slice(0, 200));
+  console.log("PDF tokens (filtered):", tokens);
 
-  // PASS 1: Find all section header positions and their categories
-  // This lets us know what category each line item belongs to without
-  // the section header detection interfering with item parsing.
-  const sectionBreaks = []; // { tokenIndex, category }
+  // PASS 1: Find section header positions
+  const sectionBreaks = [];
   for (let i = 0; i < tokens.length; i++) {
-    // Try combining 1-3 tokens to match section headers
     for (let span = 1; span <= 3 && i + span - 1 < tokens.length; span++) {
       const combined = tokens.slice(i, i + span).join(" ");
       const cat = sectionToCategory(combined);
@@ -122,11 +111,10 @@ export function parsePdfParts(textItems) {
     }
   }
 
-  // Build a set of token indices that are part of section headers (so we skip them)
   const headerIndices = new Set();
   for (const sb of sectionBreaks) {
     for (let j = sb.idx; j < sb.idx + sb.span; j++) headerIndices.add(j);
-    // Also skip any number immediately after (the "4" in "4 Items")
+    // Skip trailing number (the "4" in "4 Items")
     let after = sb.idx + sb.span;
     while (after < tokens.length && /^\d{1,3}$/.test(tokens[after])) {
       headerIndices.add(after);
@@ -134,7 +122,6 @@ export function parsePdfParts(textItems) {
     }
   }
 
-  // Function to get category for a given token index
   const getCategoryAt = (idx) => {
     let cat = "unknown";
     for (const sb of sectionBreaks) {
@@ -144,96 +131,110 @@ export function parsePdfParts(textItems) {
     return cat;
   };
 
-  // PASS 2: Find all line items using the simple pattern:
-  // lineNumber → brand (1+ text tokens) → model (1 token) → qty (1 number)
-  let i = 0;
-  while (i < tokens.length) {
-    // Skip section header tokens
-    if (headerIndices.has(i)) { i++; continue; }
-
+  // PASS 2: Find line numbers (two-digit patterns like "01", "02" or small numbers)
+  // Then look BEFORE for brand+qty and AFTER for model
+  // Portal.io order: brand → qty → lineNum → model
+  const lineNumIndices = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (headerIndices.has(i)) continue;
     const t = tokens[i];
-
-    // Look for a line number (1-200)
-    if (/^\d{1,3}$/.test(t) && parseInt(t) >= 1 && parseInt(t) <= 200) {
-      const lineNum = parseInt(t);
-
-      // Collect brand tokens until we hit a model number
-      let j = i + 1;
-      const brandParts = [];
-      let model = null;
-      let qty = 1;
-
-      // Skip any header indices
-      while (j < tokens.length && headerIndices.has(j)) j++;
-
-      // Collect brand: text tokens that aren't models or numbers
-      while (j < tokens.length && j < i + 15) {
-        if (headerIndices.has(j)) { j++; continue; }
-        const tok = tokens[j];
-        if (isNoise(tok)) { j++; continue; }
-
-        if (looksLikeModel(tok)) {
-          model = tok;
-          j++;
-          break;
-        }
-        if (/^\d{1,3}$/.test(tok) && brandParts.length > 0) {
-          // Could be qty if we haven't found model yet — but brand must come before model
-          // This is probably the next line number, so stop
-          break;
-        }
-        if (/[A-Za-z]/.test(tok)) {
-          brandParts.push(tok);
-          j++;
-        } else {
-          break;
-        }
-      }
-
-      // If we found brand but no model, the "model" might be a text-only string
-      // (like "VEVOR 6U" where "VEVOR" is brand and "6U" might not pass looksLikeModel)
-      // Try: if next token after brand collection is a short alphanumeric, use it as model
-      if (brandParts.length > 0 && !model && j < tokens.length) {
-        while (j < tokens.length && headerIndices.has(j)) j++;
-        if (j < tokens.length && !isNoise(tokens[j])) {
-          const candidate = tokens[j];
-          if (candidate.length >= 2 && !/^\d{1,3}$/.test(candidate)) {
-            model = candidate;
-            j++;
-          }
-        }
-      }
-
-      // Now look for quantity: next number
-      if (model) {
-        while (j < tokens.length && headerIndices.has(j)) j++;
-        if (j < tokens.length && /^\d{1,4}$/.test(tokens[j])) {
-          qty = parseInt(tokens[j]);
-          j++;
-        }
-      }
-
-      if (brandParts.length > 0 && model) {
-        const brand = brandParts.join(" ").trim();
-        const category = getCategoryAt(i);
-        const isHwSection = category === "hardware";
-        results.push({
-          lineNum,
-          brand,
-          model,
-          qty: Math.max(1, qty),
-          category: isHwSection ? "unknown" : category,
-          sectionLabel: category,
-          hardware: isHwSection || isHardwareOnly(model, brand),
-        });
-        i = j;
-        continue;
-      }
+    // Line numbers: "01"-"99" (zero-padded) or plain 1-200
+    if (/^0\d$/.test(t) || (/^\d{1,3}$/.test(t) && parseInt(t) >= 1 && parseInt(t) <= 200)) {
+      lineNumIndices.push(i);
     }
-
-    i++;
   }
 
-  console.log("Parsed results:", results);
-  return results;
+  // For each line number, look backward for brand+qty and forward for model
+  for (const lnIdx of lineNumIndices) {
+    const lineNum = parseInt(tokens[lnIdx]);
+
+    // Look FORWARD for model (next non-header, non-noise token that looks like a model)
+    let model = null;
+    let modelIdx = lnIdx + 1;
+    while (modelIdx < tokens.length && modelIdx < lnIdx + 5) {
+      if (headerIndices.has(modelIdx)) { modelIdx++; continue; }
+      const tok = tokens[modelIdx];
+      if (isNoise(tok)) { modelIdx++; continue; }
+      // Accept as model: has dashes, or mixed alpha+digits, or is non-numeric text
+      if (looksLikeModel(tok) || (tok.length >= 2 && !/^\d{1,3}$/.test(tok) && /[A-Za-z]/.test(tok))) {
+        model = tok;
+        break;
+      }
+      break; // if next token isn't model-like, stop
+    }
+
+    if (!model) continue;
+
+    // Look BACKWARD for brand and qty
+    // The pattern before lineNum is: brand → qty (or just brand)
+    let brand = null;
+    let qty = 1;
+
+    // Walk backwards from lineNum, skipping headers and noise
+    let j = lnIdx - 1;
+    let backTokens = [];
+    while (j >= 0 && backTokens.length < 5) {
+      if (headerIndices.has(j)) { j--; continue; }
+      const tok = tokens[j];
+      if (isNoise(tok)) { j--; continue; }
+      backTokens.unshift({ tok, idx: j });
+      j--;
+    }
+
+    // In backTokens, the last token before lineNum should be qty (a number)
+    // and everything before that is brand
+    if (backTokens.length >= 2) {
+      const lastBack = backTokens[backTokens.length - 1];
+      if (/^\d{1,4}$/.test(lastBack.tok) && !headerIndices.has(lastBack.idx)) {
+        qty = parseInt(lastBack.tok);
+        // Check if this "qty" is actually another line's lineNum — if it matches a lineNumIndex, skip it
+        if (!lineNumIndices.includes(lastBack.idx)) {
+          brand = backTokens.slice(0, -1).map(b => b.tok).join(" ").trim();
+        } else {
+          // The number is another line number, not qty
+          brand = backTokens.map(b => b.tok).join(" ").trim();
+          qty = 1;
+        }
+      } else {
+        // No qty found, all back tokens are brand
+        brand = backTokens.map(b => b.tok).join(" ").trim();
+      }
+    } else if (backTokens.length === 1) {
+      // Just one token — it's the brand (no separate qty)
+      brand = backTokens[0].tok;
+    }
+
+    // Clean up brand — remove parenthetical aliases but keep the main name
+    if (brand) {
+      // Don't let brand be just a number
+      if (/^\d+$/.test(brand)) continue;
+      // Don't let brand be page text like "Sisler and Sisler"
+      // (This will be caught because it appears before any section header)
+    }
+
+    if (brand && model) {
+      const category = getCategoryAt(lnIdx);
+      const isHwSection = category === "hardware";
+      results.push({
+        lineNum,
+        brand,
+        model,
+        qty: Math.max(1, qty),
+        category: isHwSection ? "unknown" : category,
+        sectionLabel: category,
+        hardware: isHwSection || isHardwareOnly(model, brand),
+      });
+    }
+  }
+
+  // Deduplicate by lineNum (keep first occurrence)
+  const seen = new Set();
+  const deduped = results.filter(r => {
+    if (seen.has(r.lineNum)) return false;
+    seen.add(r.lineNum);
+    return true;
+  });
+
+  console.log("Parsed results:", deduped);
+  return deduped;
 }

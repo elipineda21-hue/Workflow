@@ -103,21 +103,25 @@ export function parsePdfParts(textItems) {
     const t = tokens[i];
 
     // Check for section header: "Access Control" or "Surveillance"
-    // May be followed by "N Items" on same or next token
-    const cat = sectionToCategory(t);
-    if (cat) {
-      currentCategory = cat;
-      // Skip "N Items" if next
-      if (i + 1 < tokens.length && /^\d+$/.test(tokens[i + 1])) i++;
-      if (i + 1 < tokens.length && /^items?$/i.test(tokens[i + 1])) i++;
-      i++;
-      continue;
-    }
-    // Combined: "Access Control 9 Items"
-    const secMatch = t.match(/^(.+?)\s+\d+\s*Items?\s*$/i);
-    if (secMatch) {
-      const c = sectionToCategory(secMatch[1]);
-      if (c) { currentCategory = c; i++; continue; }
+    // Try single token, then combine with next 1-2 tokens for multi-word headers
+    {
+      let foundSection = false;
+      let headerText = "";
+      for (let look = 0; look <= 2 && i + look < tokens.length; look++) {
+        headerText = (look === 0) ? t : headerText + " " + tokens[i + look];
+        const cleaned = headerText.replace(/\s+\d+\s*Items?\s*$/i, "").trim();
+        const cat = sectionToCategory(cleaned);
+        if (cat) {
+          currentCategory = cat;
+          // Skip past header + any "N Items" tokens
+          let skip = i + look + 1;
+          while (skip < tokens.length && (/^\d+$/.test(tokens[skip]) || /^items?$/i.test(tokens[skip]))) skip++;
+          i = skip;
+          foundSection = true;
+          break;
+        }
+      }
+      if (foundSection) continue;
     }
 
     // Check for line number (1-999)
@@ -140,14 +144,21 @@ export function parsePdfParts(textItems) {
         while (j < tokens.length && j < i + MAX_LOOKAHEAD) {
           const tok = tokens[j];
 
-          // Hit next line number? Stop.
-          if (/^\d{1,3}$/.test(tok) && parseInt(tok) >= 1 && parseInt(tok) <= 200 && brand && model) break;
-
           // Skip noise
           if (shouldSkip(tok)) { j++; continue; }
 
           // Section header? Stop.
           if (sectionToCategory(tok)) break;
+
+          // If we have brand+model, the very next number is the quantity
+          if (brand && model && /^\d{1,4}$/.test(tok)) {
+            qty = parseInt(tok);
+            j++;
+            break; // done with this item
+          }
+
+          // If we already have brand+model and hit non-qty text, stop
+          if (brand && model) break;
 
           if (!brand && !looksLikeModel(tok) && /[A-Za-z]/.test(tok)) {
             // This is the brand
@@ -178,12 +189,6 @@ export function parsePdfParts(textItems) {
             model = tok;
             j++;
             continue;
-          }
-
-          if (brand && model && /^\d{1,4}$/.test(tok)) {
-            qty = parseInt(tok);
-            j++;
-            break;
           }
 
           j++;

@@ -6,11 +6,19 @@ function sectionToCategory(text) {
   const t = (text || "").toLowerCase().trim();
   if (/surveillance|cctv|video\s*surveil|camera\s*system|vss/i.test(t)) return "camera";
   if (/access\s*control/i.test(t))                                      return "door";
-  if (/intrusion|alarm|burglar/i.test(t))                               return "zone";
+  if (/intrusion|alarm|burglar|detection/i.test(t))                     return "zone";
   if (/audio|speaker|sound|intercom|paging/i.test(t))                   return "speaker";
   if (/network|switch|structured|infrastructure/i.test(t))              return "switch";
   if (/server|nvr|dvr|recording|storage|vms/i.test(t))                  return "server";
   if (/^video$/i.test(t))                                               return "camera";
+  // Portal.io section headers that don't map to a device category
+  // but should still be recognized so they don't bleed into brand names
+  if (/connector|adapter|cable|wire/i.test(t))                          return "hardware";
+  if (/equipment\s*rack|rack/i.test(t))                                 return "hardware";
+  if (/installation\s*suppli|suppli|misc/i.test(t))                     return "hardware";
+  if (/power\s*manage|power\s*supply|low\s*voltage/i.test(t))           return "hardware";
+  if (/mount|bracket|enclosure/i.test(t))                               return "hardware";
+  if (/software|license/i.test(t))                                      return "hardware";
   return null;
 }
 
@@ -46,6 +54,11 @@ function shouldSkip(text) {
   if (/order\s*received/i.test(t)) return true;
   if (/taken\s*by/i.test(t)) return true;
   if (/^\d+\s*items?$/i.test(t)) return true;
+  if (/proposal\s*#/i.test(t)) return true;
+  if (/pick\s*list/i.test(t)) return true;
+  if (/^portal$/i.test(t)) return true;
+  if (/options\s*x\s/i.test(t)) return true;
+  if (/low\s*voltage\s*r\d/i.test(t)) return true;
   return false;
 }
 
@@ -100,10 +113,30 @@ export function parsePdfParts(textItems) {
 
   console.log("PDF tokens (filtered):", tokens);
 
+  // Skip everything before the first section header or line number "01"
+  // This filters out company names, proposal titles, etc.
+  let seenSectionOrItem = false;
+
   // Scan for section headers and items
   let i = 0;
   while (i < tokens.length) {
     const t = tokens[i];
+
+    // Before we've seen any section header or line item, skip everything
+    if (!seenSectionOrItem) {
+      // Check if this is a section header
+      let isSec = false;
+      let headerText = "";
+      for (let look = 0; look <= 2 && i + look < tokens.length; look++) {
+        headerText = (look === 0) ? t : headerText + " " + tokens[i + look];
+        if (sectionToCategory(headerText.replace(/\s+\d+\s*Items?\s*$/i, "").trim())) { isSec = true; break; }
+      }
+      // Or a line number
+      const isLineNum = /^\d{1,3}$/.test(t) && parseInt(t) >= 1 && parseInt(t) <= 200;
+      if (!isSec && !isLineNum) { i++; continue; }
+      seenSectionOrItem = true;
+      // Don't increment — fall through to process this token
+    }
 
     // Check for section header: "Access Control" or "Surveillance"
     // Try single token, then combine with next 1-2 tokens for multi-word headers
@@ -198,14 +231,17 @@ export function parsePdfParts(textItems) {
         }
 
         if (brand && model) {
+          // "hardware" sections (racks, connectors, supplies) map to "unknown" for category
+          // but auto-flag as hardware-only
+          const isHwSection = currentCategory === "hardware";
           results.push({
             lineNum,
             brand,
             model,
             qty: Math.max(1, qty),
-            category: currentCategory,
+            category: isHwSection ? "unknown" : currentCategory,
             sectionLabel: currentCategory,
-            hardware: isHardwareOnly(model, brand),
+            hardware: isHwSection || isHardwareOnly(model, brand),
           });
           i = j; // skip past what we consumed
           continue;

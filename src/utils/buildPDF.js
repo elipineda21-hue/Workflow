@@ -239,6 +239,103 @@ export async function buildPDF(state, projectMeta, opts = {}) {
       });
     });
   }
+  // ─ NETWORK CONFIGURATION ─────────────────────────────────────────────────
+  if (state.networkConfig && state.networkConfig.vlans && state.networkConfig.vlans.length > 0) {
+    np();
+    const net = state.networkConfig;
+    sectionBanner("NETWORK CONFIGURATION", "Network");
+    // Site info
+    if (net.routerModel || net.apCount || net.isp || net.itContact) {
+      doc.setFillColor(235,244,255); doc.roundedRect(M, y, CW, 14, 1.5, 1.5, "F");
+      y += 3;
+      row([["Router:", net.routerModel || "—"], ["APs:", net.apCount || "—"], ["ISP:", net.isp || "—"], ["IT Contact:", net.itContact || "—"]]);
+      row([["Controller:", net.controllerType || "—"], ["Site Prefix:", net.sitePrefix || "—"], ["Mode:", net.useDefaults ? "Calidad SOP Defaults" : "Customer Required"]]);
+      y += 2;
+    }
+    // VLAN table
+    groupBanner("VLAN & Subnet Configuration");
+    chk(12 + net.vlans.length * 6);
+    // Header
+    const vColW = [CW * 0.22, CW * 0.1, CW * 0.22, CW * 0.08, CW * 0.1, CW * 0.28];
+    const vHeaders = ["Network Name", "VLAN", "Subnet", "DHCP", "Pool", "Purpose"];
+    doc.setFillColor(240, 244, 248);
+    doc.rect(M, y, CW, 6, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(107, 126, 150);
+    let vx = M;
+    vHeaders.forEach((h, i) => { doc.text(h, vx + 2, y + 4); vx += vColW[i]; });
+    y += 7;
+    // Rows
+    net.vlans.forEach((vlan, vi) => {
+      chk(7);
+      if (vi % 2 === 0) { doc.setFillColor(248, 250, 253); doc.rect(M, y - 1, CW, 6, "F"); }
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(20, 20, 20);
+      vx = M;
+      [vlan.name, vlan.vlanId, vlan.subnet, vlan.dhcp ? "Yes" : "No", String(vlan.poolSize), (vlan.purpose || "").substring(0, 45)].forEach((val, i) => {
+        doc.text(String(val), vx + 2, y + 3); vx += vColW[i];
+      });
+      y += 6;
+    });
+    y += 4;
+    // SSID table
+    groupBanner("Wireless (WiFi) Configuration");
+    chk(12 + net.ssids.length * 6);
+    const sColW = [CW * 0.28, CW * 0.28, CW * 0.2, CW * 0.24];
+    const sHeaders = ["SSID Name", "Mapped Network", "Band", "Security"];
+    doc.setFillColor(240, 244, 248);
+    doc.rect(M, y, CW, 6, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(107, 126, 150);
+    let sx = M;
+    sHeaders.forEach((h, i) => { doc.text(h, sx + 2, y + 4); sx += sColW[i]; });
+    y += 7;
+    const prefix = net.sitePrefix || "SITE";
+    net.ssids.forEach((ssid, si) => {
+      chk(7);
+      if (si % 2 === 0) { doc.setFillColor(248, 250, 253); doc.rect(M, y - 1, CW, 6, "F"); }
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(20, 20, 20);
+      sx = M;
+      [ssid.pattern.replace("[SITE]", prefix), ssid.mappedVlan, ssid.band, ssid.security].forEach((val, i) => {
+        doc.text(String(val), sx + 2, y + 3); sx += sColW[i];
+      });
+      y += 6;
+    });
+    y += 4;
+    // Firewall matrix
+    const fw = net.firewall;
+    if (fw && fw.matrix) {
+      groupBanner("Inter-VLAN Firewall Rules");
+      chk(14 + fw.rows.length * 6);
+      const fwColCount = fw.cols.length + 1;
+      const fwColW = CW / fwColCount;
+      // Header row
+      doc.setFillColor(11, 31, 58); doc.rect(M, y, CW, 6, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(255, 255, 255);
+      doc.text("From / To", M + 2, y + 4);
+      fw.cols.forEach((col, ci) => { doc.text(col, M + (ci + 1) * fwColW + 2, y + 4); });
+      y += 7;
+      // Data rows
+      fw.rows.forEach((rowLabel, ri) => {
+        chk(7);
+        doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(20, 20, 20);
+        doc.text(rowLabel, M + 2, y + 3);
+        fw.matrix[ri].forEach((cell, ci) => {
+          const cx = M + (ci + 1) * fwColW;
+          if (cell === "ALLOW") {
+            doc.setFillColor(209, 250, 229); doc.rect(cx, y - 1, fwColW, 6, "F");
+            doc.setTextColor(6, 95, 70);
+          } else if (cell === "DENY") {
+            doc.setFillColor(254, 226, 226); doc.rect(cx, y - 1, fwColW, 6, "F");
+            doc.setTextColor(153, 27, 27);
+          } else {
+            doc.setTextColor(150, 150, 150);
+          }
+          doc.setFont("helvetica", "bold"); doc.setFontSize(6.5);
+          doc.text(cell, cx + 2, y + 3);
+        });
+        y += 6;
+      });
+      y += 4;
+    }
+  }
   // ─ Sign-off ───────────────────────────────────────────────────────────────
   np();
   sectionBanner("SIGN-OFF & CERTIFICATION", "Sign");

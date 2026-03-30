@@ -98,6 +98,37 @@ export function buildCSV(state, projectMeta) {
     });
   });
 
+  // ── Network Configuration sheet (appended as separate section) ──
+  if (state.networkConfig && state.networkConfig.vlans && state.networkConfig.vlans.length > 0) {
+    const net = state.networkConfig;
+    const prefix = net.sitePrefix || "SITE";
+    rows.push(""); // blank line separator
+    rows.push([esc("--- NETWORK CONFIGURATION ---")].join(","));
+    rows.push([esc("Mode"), esc(net.useDefaults ? "Calidad SOP Defaults" : "Customer Required")].join(","));
+    rows.push([esc("Router"), esc(net.routerModel), esc("APs"), esc(net.apCount), esc("ISP"), esc(net.isp)].join(","));
+    rows.push("");
+    // VLAN table
+    rows.push([esc("Network Name"), esc("VLAN ID"), esc("Subnet"), esc("DHCP"), esc("Pool Size"), esc("Purpose")].join(","));
+    net.vlans.forEach(v => {
+      rows.push([esc(v.name), esc(v.vlanId), esc(v.subnet), esc(v.dhcp ? "Yes" : "No"), esc(v.poolSize), esc(v.purpose)].join(","));
+    });
+    rows.push("");
+    // SSID table
+    rows.push([esc("SSID Name"), esc("Mapped Network"), esc("Band"), esc("Security")].join(","));
+    net.ssids.forEach(s => {
+      rows.push([esc(s.pattern.replace("[SITE]", prefix)), esc(s.mappedVlan), esc(s.band), esc(s.security)].join(","));
+    });
+    // Firewall matrix
+    const fw = net.firewall;
+    if (fw && fw.matrix) {
+      rows.push("");
+      rows.push([esc("Firewall: From / To"), ...fw.cols.map(esc)].join(","));
+      fw.rows.forEach((rowLabel, ri) => {
+        rows.push([esc(rowLabel), ...fw.matrix[ri].map(esc)].join(","));
+      });
+    }
+  }
+
   const csv = rows.join("\r\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

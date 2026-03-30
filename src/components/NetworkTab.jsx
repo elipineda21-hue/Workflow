@@ -4,6 +4,7 @@ import { CardHead, G, F, Inp, Sel, Tog, SectionLabel } from "./ui";
 export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix }) {
   const cfg = networkConfig;
   const useDefaults = cfg.useDefaults;
+  const fw = cfg.firewall || { rows: SOP_FIREWALL.rows, cols: SOP_FIREWALL.cols, matrix: SOP_FIREWALL.matrix.map(r => [...r]) };
   const set = (k, v) => setNetworkConfig(s => ({ ...s, [k]: v }));
   const setVlan = (idx, k, v) => setNetworkConfig(s => {
     const vlans = [...s.vlans];
@@ -40,6 +41,7 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
                 set("useDefaults", true);
                 set("vlans", SOP_VLANS.map(v => ({ ...v })));
                 set("ssids", SOP_SSIDS.map(s => ({ ...s })));
+                set("firewall", { rows: SOP_FIREWALL.rows, cols: SOP_FIREWALL.cols, matrix: SOP_FIREWALL.matrix.map(r => [...r]) });
               } else {
                 set("useDefaults", false);
               }
@@ -185,28 +187,50 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
       {/* Firewall Matrix */}
       <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 16 }}>
         <CardHead icon="🛡" title="Inter-VLAN Firewall Rules" color={C.steel} />
-        <div style={{ padding: "10px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.muted }}>
-          Default-deny model: all inter-VLAN traffic is blocked unless explicitly allowed. Green = ALLOW, Red = DENY.
+        <div style={{ padding: "10px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.muted, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>Default-deny model: all inter-VLAN traffic is blocked unless explicitly allowed. <strong>Click a cell</strong> to toggle ALLOW / DENY.</span>
+          <button onClick={() => set("firewall", { rows: SOP_FIREWALL.rows, cols: SOP_FIREWALL.cols, matrix: SOP_FIREWALL.matrix.map(r => [...r]) })}
+            style={{ background: C.steel, color: C.white, border: "none", borderRadius: 5, padding: "4px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            ↻ Reset to SOP Defaults
+          </button>
         </div>
         <div style={{ overflowX: "auto", padding: 16 }}>
           <table style={{ borderCollapse: "collapse", fontSize: 11, margin: "0 auto" }}>
             <thead>
               <tr>
                 <th style={{ padding: "6px 10px", background: C.navy, color: C.white, fontWeight: 700, fontSize: 10, borderRadius: "6px 0 0 0" }}>From ↓ \ To →</th>
-                {SOP_FIREWALL.cols.map(col => (
+                {fw.cols.map(col => (
                   <th key={col} style={{ padding: "6px 10px", background: C.navy, color: "rgba(255,255,255,0.8)", fontWeight: 700, fontSize: 10, whiteSpace: "nowrap" }}>{col}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {SOP_FIREWALL.rows.map((row, ri) => (
+              {fw.rows.map((row, ri) => (
                 <tr key={row}>
                   <td style={{ padding: "6px 10px", fontWeight: 700, color: C.navy, background: C.surface, whiteSpace: "nowrap", borderBottom: `1px solid ${C.border}` }}>{row}</td>
-                  {SOP_FIREWALL.matrix[ri].map((cell, ci) => {
+                  {fw.matrix[ri].map((cell, ci) => {
+                    const isDiag = cell === "—";
                     const bg = cell === "ALLOW" ? "#D1FAE5" : cell === "DENY" ? "#FEE2E2" : C.surface;
                     const color = cell === "ALLOW" ? "#065F46" : cell === "DENY" ? "#991B1B" : C.muted;
                     return (
-                      <td key={ci} style={{ padding: "6px 10px", textAlign: "center", fontWeight: 700, fontSize: 10, background: bg, color, borderBottom: `1px solid ${C.border}`, borderLeft: `1px solid ${C.border}` }}>
+                      <td key={ci}
+                        onClick={() => {
+                          if (isDiag) return;
+                          const newVal = cell === "ALLOW" ? "DENY" : "ALLOW";
+                          setNetworkConfig(s => {
+                            const newMatrix = s.firewall.matrix.map(r => [...r]);
+                            newMatrix[ri][ci] = newVal;
+                            return { ...s, firewall: { ...s.firewall, matrix: newMatrix } };
+                          });
+                        }}
+                        style={{
+                          padding: "6px 10px", textAlign: "center", fontWeight: 700, fontSize: 10,
+                          background: bg, color, borderBottom: `1px solid ${C.border}`, borderLeft: `1px solid ${C.border}`,
+                          cursor: isDiag ? "default" : "pointer", userSelect: "none",
+                          transition: "background .15s",
+                        }}
+                        title={isDiag ? "" : `Click to toggle ${cell === "ALLOW" ? "DENY" : "ALLOW"}`}
+                      >
                         {cell}
                       </td>
                     );

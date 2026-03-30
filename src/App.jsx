@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { saveWorkOrder, listLibrary, getSpecSheetUrl, listProjectFiles } from "./supabase";
-import { C, SOP_VLANS, SOP_SSIDS } from "./constants";
+import { C, SOP_VLANS, SOP_SSIDS, SOP_FIREWALL } from "./constants";
 import NetworkTab from "./components/NetworkTab";
 import { uid } from "./models";
 import { fetchProjects, pushMondayUpdate } from "./api/monday";
@@ -101,7 +101,7 @@ export default function App() {
   const [libUploadForm,  setLibUploadForm]  = useState(null); // null | { category, brand, model, displayName, file, uploading, error }
   const [libShowAll,     setLibShowAll]     = useState(false); // false = show only project-matched entries
   // network config
-  const emptyNetworkConfig = () => ({ useDefaults: true, sitePrefix: "", routerModel: "", apCount: "", isp: "", itContact: "", controllerType: "cloud", vlans: SOP_VLANS.map(v => ({ ...v })), ssids: SOP_SSIDS.map(s => ({ ...s })), checklist: {} });
+  const emptyNetworkConfig = () => ({ useDefaults: true, sitePrefix: "", routerModel: "", apCount: "", isp: "", itContact: "", controllerType: "cloud", vlans: SOP_VLANS.map(v => ({ ...v })), ssids: SOP_SSIDS.map(s => ({ ...s })), firewall: { rows: SOP_FIREWALL.rows, cols: SOP_FIREWALL.cols, matrix: SOP_FIREWALL.matrix.map(r => [...r]) }, checklist: {} });
   const [networkConfig, setNetworkConfig] = useState(emptyNetworkConfig());
   const libUploadFileRef = useRef(null);
   // device counts

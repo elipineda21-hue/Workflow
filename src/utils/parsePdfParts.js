@@ -43,6 +43,9 @@ function shouldSkip(text) {
   if (/^\d+\s+of\s+\d+$/.test(t)) return true;
   if (/^pathways\s/i.test(t)) return true;
   if (/^proposal\s/i.test(t)) return true;
+  if (/order\s*received/i.test(t)) return true;
+  if (/taken\s*by/i.test(t)) return true;
+  if (/^\d+\s*items?$/i.test(t)) return true;
   return false;
 }
 

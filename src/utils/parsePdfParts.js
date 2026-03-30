@@ -1,6 +1,6 @@
 // ── PDF Parts List Parser ─────────────────────────────────────────────────────
 // Extracts brand, model, quantity from procurement/proposal PDFs.
-// Portal.io PDFs have: section header → line items (lineNum, brand, model, qty)
+// Strategy: catch EVERY line item, let the user exclude in the preview.
 
 function sectionToCategory(text) {
   const t = (text || "").toLowerCase().trim();
@@ -11,12 +11,10 @@ function sectionToCategory(text) {
   if (/network|switch|structured|infrastructure/i.test(t))              return "switch";
   if (/server|nvr|dvr|recording|storage|vms/i.test(t))                  return "server";
   if (/^video$/i.test(t))                                               return "camera";
-  // Portal.io section headers that don't map to a device category
-  // but should still be recognized so they don't bleed into brand names
   if (/connector|adapter|cable|wire/i.test(t))                          return "hardware";
   if (/equipment\s*rack|rack/i.test(t))                                 return "hardware";
   if (/installation\s*suppli|suppli|misc/i.test(t))                     return "hardware";
-  if (/power\s*manage|power\s*supply|low\s*voltage/i.test(t))           return "hardware";
+  if (/power\s*manage|power\s*supply/i.test(t))                         return "hardware";
   if (/mount|bracket|enclosure/i.test(t))                               return "hardware";
   if (/software|license/i.test(t))                                      return "hardware";
   return null;
@@ -34,49 +32,48 @@ function isHardwareOnly(model, brand) {
   return HARDWARE_PATTERNS.some(p => p.test(combined));
 }
 
-// Skip these tokens entirely
-const SKIP_WORDS = new Set([
-  "required", "in-stock", "instock", "in stock", "order", "received",
+// Tokens to completely discard
+const NOISE = new Set([
+  "required", "in-stock", "instock", "order", "received",
   "qty", "taken", "by", "x", "select", "select...",
+  "items", "item", "portal", "-", "=",
 ]);
 
-function shouldSkip(text) {
+function isNoise(text) {
   const t = (text || "").toLowerCase().trim();
   if (!t) return true;
-  if (SKIP_WORDS.has(t)) return true;
+  if (NOISE.has(t)) return true;
   if (/^x\.+$/.test(t)) return true;
   if (/^=+$/.test(t)) return true;
   if (/^-+$/.test(t)) return true;
-  if (/^page\s+\d/i.test(t)) return true;
-  if (/^\d+\s+of\s+\d+$/.test(t)) return true;
-  if (/^pathways\s/i.test(t)) return true;
-  if (/^proposal\s/i.test(t)) return true;
   if (/order\s*received/i.test(t)) return true;
   if (/taken\s*by/i.test(t)) return true;
-  if (/^\d+\s*items?$/i.test(t)) return true;
-  if (/proposal\s*#/i.test(t)) return true;
   if (/pick\s*list/i.test(t)) return true;
-  if (/^portal$/i.test(t)) return true;
+  if (/proposal\s*#/i.test(t)) return true;
   if (/options\s*x\s/i.test(t)) return true;
   if (/low\s*voltage\s*r\d/i.test(t)) return true;
+  if (/^\d+\s*items?$/i.test(t)) return true;
+  if (/^in\s*stock$/i.test(t)) return true;
   return false;
 }
 
-// Is this likely a model/part number?
+// Does this look like a part/model number?
 function looksLikeModel(text) {
   const t = (text || "").trim();
   if (t.length < 2) return false;
-  if (/^\d{1,3}$/.test(t)) return false; // small numbers are line nums or qty
-  // Contains dash + alphanumeric = very likely model
+  if (/^\d{1,3}$/.test(t)) return false;
+  // Dashes with alphanumeric = very likely model
   if (/[A-Z0-9]+-[A-Z0-9]/i.test(t)) return true;
-  // Mixed letters and digits, 4+ chars
+  // Mixed letters+digits, 4+ chars
   if (t.length >= 4 && /[A-Z]/i.test(t) && /\d/.test(t)) return true;
   // Pure digits 4+ = part number
   if (/^\d{4,}$/.test(t)) return true;
+  // Short codes with digits like "6U", "1G"
+  if (/^\d+[A-Z]+$/i.test(t) && t.length >= 2) return true;
   return false;
 }
 
-// Extract all text from PDF preserving reading order
+// Extract all text from PDF in reading order
 export async function extractPdfText(file) {
   const pdfjsLib = window.pdfjsLib;
   if (!pdfjsLib) throw new Error("PDF.js not loaded yet. Please wait and try again.");
@@ -88,164 +85,149 @@ export async function extractPdfText(file) {
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const content = await page.getTextContent();
-    // Sort by Y (top to bottom) then X (left to right)
     const items = content.items
       .filter(i => i.str.trim())
-      .map(i => ({ text: i.str.trim(), x: i.transform[4], y: i.transform[5], fs: i.transform[0], page: p }))
+      .map(i => ({ text: i.str.trim(), x: i.transform[4], y: i.transform[5], page: p }))
       .sort((a, b) => {
-        const dy = b.y - a.y; // top to bottom
+        const dy = b.y - a.y;
         if (Math.abs(dy) > 2) return dy;
-        return a.x - b.x; // left to right
+        return a.x - b.x;
       });
     allTokens.push(...items);
   }
-
   return allTokens;
 }
 
-// Main parser: processes sequential tokens
+// Main parser
 export function parsePdfParts(textItems) {
   const results = [];
-  let currentCategory = "unknown";
 
-  // Flatten to just an ordered list of text strings
-  const tokens = textItems.map(t => t.text).filter(t => !shouldSkip(t));
+  // Get clean token list
+  const tokens = textItems.map(t => t.text).filter(t => !isNoise(t));
+  console.log("PDF tokens (filtered):", tokens.slice(0, 200));
 
-  console.log("PDF tokens (filtered):", tokens);
+  // PASS 1: Find all section header positions and their categories
+  // This lets us know what category each line item belongs to without
+  // the section header detection interfering with item parsing.
+  const sectionBreaks = []; // { tokenIndex, category }
+  for (let i = 0; i < tokens.length; i++) {
+    // Try combining 1-3 tokens to match section headers
+    for (let span = 1; span <= 3 && i + span - 1 < tokens.length; span++) {
+      const combined = tokens.slice(i, i + span).join(" ");
+      const cat = sectionToCategory(combined);
+      if (cat) {
+        sectionBreaks.push({ idx: i, span, category: cat });
+        break;
+      }
+    }
+  }
 
-  // Skip everything before the first section header or line number "01"
-  // This filters out company names, proposal titles, etc.
-  let seenSectionOrItem = false;
+  // Build a set of token indices that are part of section headers (so we skip them)
+  const headerIndices = new Set();
+  for (const sb of sectionBreaks) {
+    for (let j = sb.idx; j < sb.idx + sb.span; j++) headerIndices.add(j);
+    // Also skip any number immediately after (the "4" in "4 Items")
+    let after = sb.idx + sb.span;
+    while (after < tokens.length && /^\d{1,3}$/.test(tokens[after])) {
+      headerIndices.add(after);
+      after++;
+    }
+  }
 
-  // Scan for section headers and items
+  // Function to get category for a given token index
+  const getCategoryAt = (idx) => {
+    let cat = "unknown";
+    for (const sb of sectionBreaks) {
+      if (sb.idx <= idx) cat = sb.category;
+      else break;
+    }
+    return cat;
+  };
+
+  // PASS 2: Find all line items using the simple pattern:
+  // lineNumber → brand (1+ text tokens) → model (1 token) → qty (1 number)
   let i = 0;
   while (i < tokens.length) {
+    // Skip section header tokens
+    if (headerIndices.has(i)) { i++; continue; }
+
     const t = tokens[i];
 
-    // Before we've seen any section header or line item, skip everything
-    if (!seenSectionOrItem) {
-      // Check if this is a section header
-      let isSec = false;
-      let headerText = "";
-      for (let look = 0; look <= 2 && i + look < tokens.length; look++) {
-        headerText = (look === 0) ? t : headerText + " " + tokens[i + look];
-        if (sectionToCategory(headerText.replace(/\s+\d+\s*Items?\s*$/i, "").trim())) { isSec = true; break; }
-      }
-      // Or a line number
-      const isLineNum = /^\d{1,3}$/.test(t) && parseInt(t) >= 1 && parseInt(t) <= 200;
-      if (!isSec && !isLineNum) { i++; continue; }
-      seenSectionOrItem = true;
-      // Don't increment — fall through to process this token
-    }
+    // Look for a line number (1-200)
+    if (/^\d{1,3}$/.test(t) && parseInt(t) >= 1 && parseInt(t) <= 200) {
+      const lineNum = parseInt(t);
 
-    // Check for section header: "Access Control" or "Surveillance"
-    // Try single token, then combine with next 1-2 tokens for multi-word headers
-    {
-      let foundSection = false;
-      let headerText = "";
-      for (let look = 0; look <= 2 && i + look < tokens.length; look++) {
-        headerText = (look === 0) ? t : headerText + " " + tokens[i + look];
-        const cleaned = headerText.replace(/\s+\d+\s*Items?\s*$/i, "").trim();
-        const cat = sectionToCategory(cleaned);
-        if (cat) {
-          currentCategory = cat;
-          // Skip past header + any "N Items" tokens
-          let skip = i + look + 1;
-          while (skip < tokens.length && (/^\d+$/.test(tokens[skip]) || /^items?$/i.test(tokens[skip]))) skip++;
-          i = skip;
-          foundSection = true;
+      // Collect brand tokens until we hit a model number
+      let j = i + 1;
+      const brandParts = [];
+      let model = null;
+      let qty = 1;
+
+      // Skip any header indices
+      while (j < tokens.length && headerIndices.has(j)) j++;
+
+      // Collect brand: text tokens that aren't models or numbers
+      while (j < tokens.length && j < i + 15) {
+        if (headerIndices.has(j)) { j++; continue; }
+        const tok = tokens[j];
+        if (isNoise(tok)) { j++; continue; }
+
+        if (looksLikeModel(tok)) {
+          model = tok;
+          j++;
+          break;
+        }
+        if (/^\d{1,3}$/.test(tok) && brandParts.length > 0) {
+          // Could be qty if we haven't found model yet — but brand must come before model
+          // This is probably the next line number, so stop
+          break;
+        }
+        if (/[A-Za-z]/.test(tok)) {
+          brandParts.push(tok);
+          j++;
+        } else {
           break;
         }
       }
-      if (foundSection) continue;
-    }
 
-    // Check for line number (1-999)
-    if (/^\d{1,3}$/.test(t)) {
-      const lineNum = parseInt(t);
-      // Line numbers should be reasonable (1-200)
-      if (lineNum >= 1 && lineNum <= 200) {
-        // Look ahead for brand then model
-        // Pattern: lineNum → brand text → model number → quantity
-        // Brand: next non-skip token that has letters
-        // Model: next token that looks like a model/part number
-        // Qty: next small number
-
-        let brand = null;
-        let model = null;
-        let qty = 1;
-        let j = i + 1;
-        const MAX_LOOKAHEAD = 12; // don't look too far ahead
-
-        while (j < tokens.length && j < i + MAX_LOOKAHEAD) {
-          const tok = tokens[j];
-
-          // Skip noise
-          if (shouldSkip(tok)) { j++; continue; }
-
-          // Section header? Stop.
-          if (sectionToCategory(tok)) break;
-
-          // If we have brand+model, the very next number is the quantity
-          if (brand && model && /^\d{1,4}$/.test(tok)) {
-            qty = parseInt(tok);
+      // If we found brand but no model, the "model" might be a text-only string
+      // (like "VEVOR 6U" where "VEVOR" is brand and "6U" might not pass looksLikeModel)
+      // Try: if next token after brand collection is a short alphanumeric, use it as model
+      if (brandParts.length > 0 && !model && j < tokens.length) {
+        while (j < tokens.length && headerIndices.has(j)) j++;
+        if (j < tokens.length && !isNoise(tokens[j])) {
+          const candidate = tokens[j];
+          if (candidate.length >= 2 && !/^\d{1,3}$/.test(candidate)) {
+            model = candidate;
             j++;
-            break; // done with this item
           }
+        }
+      }
 
-          // If we already have brand+model and hit non-qty text, stop
-          if (brand && model) break;
-
-          if (!brand && !looksLikeModel(tok) && /[A-Za-z]/.test(tok)) {
-            // This is the brand
-            // Brand might span multiple tokens: "UniView Technologies (UniView Tec) (ATV)"
-            // Keep collecting until we find a model number
-            let brandParts = [tok];
-            let k = j + 1;
-            while (k < tokens.length && k < i + MAX_LOOKAHEAD) {
-              const nextTok = tokens[k];
-              if (shouldSkip(nextTok)) { k++; continue; }
-              if (looksLikeModel(nextTok)) break;
-              if (/^\d{1,3}$/.test(nextTok)) break;
-              if (sectionToCategory(nextTok)) break;
-              // If it looks like more brand text (has letters, no digits or parenthetical)
-              if (/[A-Za-z]/.test(nextTok) && !looksLikeModel(nextTok)) {
-                brandParts.push(nextTok);
-                k++;
-              } else {
-                break;
-              }
-            }
-            brand = brandParts.join(" ").trim();
-            j = k;
-            continue;
-          }
-
-          if (brand && !model && looksLikeModel(tok)) {
-            model = tok;
-            j++;
-            continue;
-          }
-
+      // Now look for quantity: next number
+      if (model) {
+        while (j < tokens.length && headerIndices.has(j)) j++;
+        if (j < tokens.length && /^\d{1,4}$/.test(tokens[j])) {
+          qty = parseInt(tokens[j]);
           j++;
         }
+      }
 
-        if (brand && model) {
-          // "hardware" sections (racks, connectors, supplies) map to "unknown" for category
-          // but auto-flag as hardware-only
-          const isHwSection = currentCategory === "hardware";
-          results.push({
-            lineNum,
-            brand,
-            model,
-            qty: Math.max(1, qty),
-            category: isHwSection ? "unknown" : currentCategory,
-            sectionLabel: currentCategory,
-            hardware: isHwSection || isHardwareOnly(model, brand),
-          });
-          i = j; // skip past what we consumed
-          continue;
-        }
+      if (brandParts.length > 0 && model) {
+        const brand = brandParts.join(" ").trim();
+        const category = getCategoryAt(i);
+        const isHwSection = category === "hardware";
+        results.push({
+          lineNum,
+          brand,
+          model,
+          qty: Math.max(1, qty),
+          category: isHwSection ? "unknown" : category,
+          sectionLabel: category,
+          hardware: isHwSection || isHardwareOnly(model, brand),
+        });
+        i = j;
+        continue;
       }
     }
 

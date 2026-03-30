@@ -1,17 +1,18 @@
 // ── PDF Parts List Parser ─────────────────────────────────────────────────────
 // Extracts brand, model, quantity, and category from procurement/proposal PDFs
-// like Portal.io printouts with section headers (Surveillance, Access Control, etc.)
+// like Portal.io printouts with section headers and line items.
 
 // Category detection from section headers
 function sectionToCategory(text) {
   const t = (text || "").toLowerCase();
-  if (/surveillance|cctv|video|camera|vss/.test(t))            return "camera";
-  if (/access\s*control|door|credential|reader/.test(t))       return "door";
-  if (/intrusion|alarm|burglar|panel/.test(t))                 return "zone";
-  if (/audio|speaker|sound|intercom|paging/.test(t))           return "speaker";
-  if (/network|switch|structured|infrastructure|it\b/.test(t)) return "switch";
-  if (/server|nvr|dvr|recording|storage|vms/.test(t))          return "server";
-  return "unknown";
+  if (/surveillance|cctv|video\s*surveil|camera\s*system|vss/.test(t)) return "camera";
+  if (/access\s*control|door\s*control/.test(t))                      return "door";
+  if (/intrusion|alarm|burglar|panel/.test(t))                        return "zone";
+  if (/audio|speaker|sound|intercom|paging/.test(t))                  return "speaker";
+  if (/network|switch|structured|infrastructure/.test(t))             return "switch";
+  if (/server|nvr|dvr|recording|storage|vms/.test(t))                 return "server";
+  if (/^video$/.test(t.trim()))                                       return "camera";
+  return null;
 }
 
 // Known hardware-only items (no programming needed)
@@ -20,8 +21,8 @@ const HARDWARE_PATTERNS = [
   /power\s*supply/i, /transformer/i, /cable/i, /conduit/i,
   /backbox/i, /gang\s*box/i, /faceplate/i, /patch\s*panel/i,
   /rack/i, /shelf/i, /rail/i, /enclosure/i, /housing/i,
-  /^tr-/i, /^al\d/i,  // common part prefixes for mounts/power supplies
-  /wall\s*plate/i, /connector/i, /splitter/i,
+  /wall\s*plate/i, /connector/i, /splitter/i, /^tr-/i,
+  /maximal/i, /al\d{3}/i, /^ps-/i,
 ];
 
 function isHardwareOnly(model, brand) {
@@ -29,153 +30,271 @@ function isHardwareOnly(model, brand) {
   return HARDWARE_PATTERNS.some(p => p.test(combined));
 }
 
-// Extract text from all pages of a PDF file
+// Known noise text to filter out
+const NOISE_PATTERNS = [
+  /^required$/i, /^in-?stock$/i, /^order$/i, /^received$/i,
+  /^qty$/i, /^taken\s*by$/i, /^x\.+/i, /^page\s/i,
+  /^pathways/i, /^proposal/i, /^\d+\s*of\s*\d+$/i,
+  /^select\.*/i, /^=$/,  /^-$/,
+];
+
+function isNoise(text) {
+  const t = (text || "").trim();
+  if (!t) return true;
+  return NOISE_PATTERNS.some(p => p.test(t));
+}
+
+// Check if a string looks like a model number (has letters+digits or has dashes)
+function isModelNumber(text) {
+  const t = (text || "").trim();
+  if (t.length < 2) return false;
+  // Model numbers: contain digits AND letters, or contain dashes
+  // Examples: BOS-DS160, B-ACS6100-DB, MAXIMAL33, 832028, QNV-C8083R
+  if (/^[A-Z0-9]+-[A-Z0-9-]+$/i.test(t)) return true;  // dash-separated
+  if (/[A-Z].*\d|\d.*[A-Z]/i.test(t) && t.length >= 3) return true;  // mixed alpha+digit
+  if (/^\d{4,}$/.test(t)) return true;  // pure number 4+ digits (part numbers like 832028)
+  return false;
+}
+
+// Check if a string looks like a brand name
+function isBrandName(text) {
+  const t = (text || "").trim();
+  if (t.length < 2 || t.length > 60) return false;
+  if (/^\d+$/.test(t)) return false;  // pure numbers
+  if (isNoise(t)) return false;
+  // Brands are typically title-case words, possibly with parenthetical
+  if (/^[A-Z][a-z]/.test(t)) return true;  // starts with capital letter
+  if (/^[A-Z]{2,}/.test(t) && !/^\d/.test(t)) return true;  // all caps like "RCI"
+  return false;
+}
+
+// Extract text from all pages of a PDF, preserving position info
 export async function extractPdfText(file) {
   const pdfjsLib = window.pdfjsLib;
   if (!pdfjsLib) throw new Error("PDF.js not loaded yet. Please wait a moment and try again.");
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  const pages = [];
+  const allItems = [];
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
-    // Group text items by Y position to reconstruct lines
-    const lines = {};
+
+    // Collect all text items with positions
     for (const item of content.items) {
-      const y = Math.round(item.transform[5]); // Y position
-      if (!lines[y]) lines[y] = [];
-      lines[y].push({ x: item.transform[4], text: item.str });
-    }
-    // Sort lines top to bottom, items left to right
-    const sortedYs = Object.keys(lines).map(Number).sort((a, b) => b - a);
-    for (const y of sortedYs) {
-      const lineItems = lines[y].sort((a, b) => a.x - b.x);
-      const lineText = lineItems.map(i => i.text).join(" ").trim();
-      if (lineText) pages.push(lineText);
-    }
-    pages.push("---PAGE_BREAK---");
-  }
-  return pages.filter(l => l !== "---PAGE_BREAK---" || true);
-}
-
-// Parse extracted text lines into structured items
-export function parsePdfParts(lines) {
-  const items = [];
-  let currentCategory = "unknown";
-  let currentSectionLabel = "";
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line || line === "---PAGE_BREAK---") continue;
-
-    // Detect section headers: "Surveillance  8 Items" or "Access Control  12 Items"
-    const sectionMatch = line.match(/^([A-Za-z][A-Za-z &/]+?)\s+(\d+)\s*Items?\s*$/i);
-    if (sectionMatch) {
-      const detected = sectionToCategory(sectionMatch[1]);
-      if (detected !== "unknown") {
-        currentCategory = detected;
-        currentSectionLabel = sectionMatch[1].trim();
-        continue;
-      }
-    }
-
-    // Also detect standalone section headers without item count
-    const standaloneSec = line.match(/^(Surveillance|Access Control|Intrusion|Audio|Network|Server|Switching)\s*$/i);
-    if (standaloneSec) {
-      const detected = sectionToCategory(standaloneSec[1]);
-      if (detected !== "unknown") {
-        currentCategory = detected;
-        currentSectionLabel = standaloneSec[1].trim();
-        continue;
-      }
-    }
-
-    // Detect line items: starts with a line number, has brand text, model text, and quantity
-    // Pattern: "31 Altronix AL400ACM220 2 Required In-Stock Order Received..."
-    // Or multiline: line number + brand on one line, model on next
-    const lineNumMatch = line.match(/^(\d{1,4})\s+(.+)/);
-    if (!lineNumMatch) continue;
-
-    const rest = lineNumMatch[2];
-
-    // Try to extract brand and model from the text
-    // Look for pattern: "Brand (Parenthetical) MODEL-NUMBER qty"
-    // or "Brand MODEL qty"
-    const parsed = parseItemLine(rest, lines, i);
-    if (parsed) {
-      items.push({
-        lineNum: parseInt(lineNumMatch[1]),
-        brand: parsed.brand,
-        model: parsed.model,
-        qty: parsed.qty,
-        category: currentCategory,
-        sectionLabel: currentSectionLabel,
-        hardware: isHardwareOnly(parsed.model, parsed.brand),
+      const text = item.str.trim();
+      if (!text) continue;
+      allItems.push({
+        text,
+        x: Math.round(item.transform[4]),
+        y: Math.round(item.transform[5]),
+        page: pageNum,
+        fontSize: Math.round(item.transform[0]),  // approximate font size
       });
     }
   }
 
-  return items;
+  return allItems;
 }
 
-function parseItemLine(text, allLines, lineIdx) {
-  // Skip footer/header lines
-  if (/^Pathways|^Proposal|^Page\s/i.test(text)) return null;
-  if (/Required.*In-Stock.*Order/i.test(text) && !/\w{3,}/.test(text.split(/Required/)[0])) return null;
+// Parse text items into structured parts
+export function parsePdfParts(textItems) {
+  const items = [];
+  let currentCategory = "unknown";
 
-  // Strategy: find the quantity (a standalone number typically 1-999)
-  // The text before qty contains brand + model
-  // Format variations:
-  //   "Altronix AL400ACM220 2 Required..."
-  //   "Hanwha Techwin (Vision) QNV-C8083R 1 Required..."
-  //   "UniView Technologies (UniView Tec) (ATV) IPC3628SR-ADF28KM-WP 4 Required..."
+  // Group by approximate Y position (within 3px = same line)
+  // Sort by page then Y (descending = top to bottom) then X
+  const sorted = [...textItems].sort((a, b) => {
+    if (a.page !== b.page) return a.page - b.page;
+    if (Math.abs(a.y - b.y) > 3) return b.y - a.y; // top to bottom
+    return a.x - b.x; // left to right
+  });
 
-  // Strip trailing "Required In-Stock Order Received Qty Taken by" and similar
-  const cleaned = text
-    .replace(/\s+(Required|In-Stock|In Stock|Order|Received|Qty|Taken\s*by|x\.+).*$/i, "")
-    .replace(/\s+$/, "");
+  // Build lines by grouping items within 3px Y
+  const lines = [];
+  let currentLine = [];
+  let currentY = null;
+  let currentPage = null;
 
-  if (!cleaned || cleaned.length < 3) return null;
-
-  // Find the quantity: last standalone number in the cleaned string
-  // Model numbers contain letters+digits, so we look for a number preceded by space
-  const qtyMatch = cleaned.match(/\s+(\d{1,4})\s*$/);
-  let qty = 1;
-  let brandModel = cleaned;
-
-  if (qtyMatch) {
-    qty = parseInt(qtyMatch[1]);
-    brandModel = cleaned.substring(0, qtyMatch.index).trim();
+  for (const item of sorted) {
+    if (currentY === null || item.page !== currentPage || Math.abs(item.y - currentY) > 3) {
+      if (currentLine.length > 0) lines.push(currentLine);
+      currentLine = [item];
+      currentY = item.y;
+      currentPage = item.page;
+    } else {
+      currentLine.push(item);
+    }
   }
+  if (currentLine.length > 0) lines.push(currentLine);
 
-  // Now split brand from model
-  // Model numbers typically contain: uppercase letters + digits + hyphens
-  // Brand is the text before the model number
-  const modelMatch = brandModel.match(/\b([A-Z0-9][A-Z0-9]+-[A-Z0-9-]+(?:-[A-Z0-9]+)*)\b/i)
-    || brandModel.match(/\b([A-Z][A-Z0-9]{3,}[A-Z0-9-]*)\b/i);
+  // Now process lines looking for the pattern:
+  // Section header: "Access Control" ... "9 Items"
+  // Item lines come in pairs:
+  //   Line A (brand line): lineNum + brand text (smaller font)
+  //   Line B (model line): model number (larger/bold font)
+  // Quantity is on a nearby line or same line as brand
 
-  if (modelMatch) {
-    const model = modelMatch[1];
-    const modelIdx = brandModel.indexOf(model);
-    const brand = brandModel.substring(0, modelIdx).trim()
-      .replace(/\s*\(.*?\)\s*/g, " ")  // clean up parentheticals for display
-      .replace(/\s+/g, " ")
-      .trim();
+  let pendingBrand = null;
+  let pendingLineNum = null;
+  let pendingQty = null;
 
-    if (brand && model) {
-      return { brand: brand || "Unknown", model, qty: Math.max(1, qty) };
+  for (let li = 0; li < lines.length; li++) {
+    const lineItems = lines[li].sort((a, b) => a.x - b.x);
+    const fullText = lineItems.map(i => i.text).join(" ").trim();
+
+    // Skip noise
+    if (isNoise(fullText)) continue;
+    if (/^x\.+$/.test(fullText)) continue;
+
+    // Check for section headers: "Access Control  9 Items" or just "Surveillance"
+    const sectionMatch = fullText.match(/^([A-Za-z][A-Za-z &/]+?)\s+(\d+)\s*Items?\s*$/i);
+    if (sectionMatch) {
+      const cat = sectionToCategory(sectionMatch[1]);
+      if (cat) { currentCategory = cat; pendingBrand = null; continue; }
+    }
+    const standaloneSection = sectionToCategory(fullText);
+    if (standaloneSection && fullText.length < 30) {
+      currentCategory = standaloneSection;
+      pendingBrand = null;
+      continue;
+    }
+
+    // Look for line number at the start (leftmost item)
+    const firstItem = lineItems[0];
+    const lineNumMatch = firstItem.text.match(/^(\d{1,3})$/);
+
+    if (lineNumMatch) {
+      const lineNum = parseInt(lineNumMatch[1]);
+      // Rest of the line after the line number
+      const restItems = lineItems.slice(1).filter(i => !isNoise(i.text));
+      const restText = restItems.map(i => i.text).join(" ").trim();
+
+      if (!restText) {
+        // Just a line number alone — skip
+        continue;
+      }
+
+      // Check if rest contains both brand and model on same line
+      // Pattern: "Brivo B-ACS6100-DB" or "Altronix MAXIMAL33"
+      // Or just brand: "Brivo" with model on next line
+      // Or brand + qty: "Brivo 5"
+
+      // Try to find a model number in the rest
+      const words = restText.split(/\s+/);
+      let foundModel = null;
+      let foundBrand = null;
+      let foundQty = null;
+
+      for (let w = 0; w < words.length; w++) {
+        if (isModelNumber(words[w]) && !foundModel) {
+          foundModel = words[w];
+          foundBrand = words.slice(0, w).join(" ").trim();
+        } else if (/^\d{1,3}$/.test(words[w]) && w > 0) {
+          foundQty = parseInt(words[w]);
+        }
+      }
+
+      if (foundModel && foundBrand) {
+        // Complete item on one line
+        items.push({
+          lineNum,
+          brand: foundBrand || "Unknown",
+          model: foundModel,
+          qty: foundQty || 1,
+          category: currentCategory,
+          sectionLabel: currentCategory,
+          hardware: isHardwareOnly(foundModel, foundBrand),
+        });
+        pendingBrand = null;
+      } else {
+        // Likely just the brand on this line, model on next
+        // Filter out numbers that look like quantities
+        const brandParts = [];
+        for (const w of words) {
+          if (/^\d{1,3}$/.test(w)) {
+            foundQty = parseInt(w);
+          } else if (!isNoise(w)) {
+            brandParts.push(w);
+          }
+        }
+        pendingBrand = brandParts.join(" ").trim() || null;
+        pendingLineNum = lineNum;
+        pendingQty = foundQty;
+      }
+    } else if (pendingBrand) {
+      // No line number — this might be the model line for the pending brand
+      const restItems = lineItems.filter(i => !isNoise(i.text));
+      const restText = restItems.map(i => i.text).join(" ").trim();
+
+      if (restText && !isNoise(restText)) {
+        // Check for quantity in this line too
+        const words = restText.split(/\s+/);
+        let model = null;
+        let qty = pendingQty || 1;
+
+        for (const w of words) {
+          if (isModelNumber(w) && !model) {
+            model = w;
+          } else if (/^\d{1,3}$/.test(w) && !model) {
+            qty = parseInt(w);
+          } else if (/^\d{1,3}$/.test(w) && model) {
+            qty = parseInt(w);
+          }
+        }
+
+        if (model) {
+          items.push({
+            lineNum: pendingLineNum || 0,
+            brand: pendingBrand,
+            model,
+            qty: Math.max(1, qty),
+            category: currentCategory,
+            sectionLabel: currentCategory,
+            hardware: isHardwareOnly(model, pendingBrand),
+          });
+          pendingBrand = null;
+          pendingLineNum = null;
+          pendingQty = null;
+        } else if (isModelNumber(restText)) {
+          // The whole line is the model number
+          items.push({
+            lineNum: pendingLineNum || 0,
+            brand: pendingBrand,
+            model: restText,
+            qty: Math.max(1, qty),
+            category: currentCategory,
+            sectionLabel: currentCategory,
+            hardware: isHardwareOnly(restText, pendingBrand),
+          });
+          pendingBrand = null;
+          pendingLineNum = null;
+          pendingQty = null;
+        }
+      }
+    } else {
+      // No line number, no pending brand — check if this is a standalone quantity
+      // or other metadata we should capture
+      // Skip for now
     }
   }
 
-  // Fallback: treat last word as model, rest as brand
-  const parts = brandModel.split(/\s+/);
-  if (parts.length >= 2) {
-    const model = parts.pop();
-    const brand = parts.join(" ").replace(/\s*\(.*?\)\s*/g, " ").trim();
-    return { brand: brand || "Unknown", model, qty: Math.max(1, qty) };
+  // Deduplicate: if same model appears twice (from different parsing paths), keep the one with higher qty
+  const seen = new Map();
+  const deduped = [];
+  for (const item of items) {
+    const key = `${item.brand}|${item.model}`;
+    if (seen.has(key)) {
+      const existing = seen.get(key);
+      if (item.qty > existing.qty) {
+        existing.qty = item.qty;
+      }
+    } else {
+      seen.set(key, item);
+      deduped.push(item);
+    }
   }
 
-  return null;
+  return deduped;
 }

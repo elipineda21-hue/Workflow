@@ -218,9 +218,10 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
                           if (isDiag) return;
                           const newVal = cell === "ALLOW" ? "DENY" : "ALLOW";
                           setNetworkConfig(s => {
-                            const newMatrix = s.firewall.matrix.map(r => [...r]);
+                            const currentFw = s.firewall || { rows: SOP_FIREWALL.rows, cols: SOP_FIREWALL.cols, matrix: SOP_FIREWALL.matrix.map(r => [...r]) };
+                            const newMatrix = currentFw.matrix.map(r => [...r]);
                             newMatrix[ri][ci] = newVal;
-                            return { ...s, firewall: { ...s.firewall, matrix: newMatrix } };
+                            return { ...s, firewall: { ...currentFw, matrix: newMatrix } };
                           });
                         }}
                         style={{
@@ -281,7 +282,7 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
                 return (
                   <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", cursor: "pointer", fontSize: 12, color: checked ? C.success : C.navy }}>
                     <input type="checkbox" checked={checked}
-                      onChange={e => setNetworkConfig(s => ({ ...s, checklist: { ...s.checklist, [key]: e.target.checked } }))}
+                      onChange={e => setNetworkConfig(s => ({ ...s, checklist: { ...(s.checklist || {}), [key]: e.target.checked } }))}
                       style={{ accentColor: C.success, width: 15, height: 15 }} />
                     <span style={{ textDecoration: checked ? "line-through" : "none" }}>{item}</span>
                   </label>

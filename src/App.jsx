@@ -87,6 +87,21 @@ export default function App() {
   const [mondaySyncColId,   setMondaySyncColId]   = useState(() => localStorage.getItem("mondaySyncColId") || "");
   const addLog = (type, desc) =>
     setChangeLog(l => [{ id: uid(), ts: new Date().toISOString(), type, desc }, ...l].slice(0, 500));
+  // move group between categories
+  const categorySetters = {
+    camera: setCameraGroups, switch: setSwitchGroups, server: setServerGroups,
+    door: setDoorGroups, zone: setZoneGroups, speaker: setSpeakerGroups,
+  };
+  const moveGroup = (group, fromCat, toCat) => {
+    if (fromCat === toCat) return;
+    const fromSetter = categorySetters[fromCat];
+    const toSetter = categorySetters[toCat];
+    if (!fromSetter || !toSetter) return;
+    fromSetter(gs => gs.filter(g => g.id !== group.id));
+    toSetter(gs => [...gs, { ...group }]);
+    const label = group.groupLabel || group.brand || group.model || "Group";
+    addLog("move", `Moved "${label}" from ${fromCat} → ${toCat}`);
+  };
   // proposal import
   const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
   const importFileRef = useRef(null);
@@ -391,6 +406,7 @@ export default function App() {
             serverGroups={serverGroups} setServerGroups={setServerGroups}
             srvCount={srvCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
+            moveGroup={moveGroup}
           />
         )}
         {/* ─ SWITCHES ─ */}
@@ -399,6 +415,7 @@ export default function App() {
             switchGroups={switchGroups} setSwitchGroups={setSwitchGroups}
             swCount={swCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
+            moveGroup={moveGroup}
           />
         )}
         {/* ─ CAMERAS ─ */}
@@ -407,6 +424,7 @@ export default function App() {
             cameraGroups={cameraGroups} setCameraGroups={setCameraGroups}
             camCount={camCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
+            moveGroup={moveGroup}
           />
         )}
         {/* ─ ACCESS ─ */}
@@ -415,6 +433,7 @@ export default function App() {
             doorGroups={doorGroups} setDoorGroups={setDoorGroups}
             doorCount={doorCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
+            moveGroup={moveGroup}
           />
         )}
         {/* ─ INTRUSION ─ */}
@@ -423,6 +442,7 @@ export default function App() {
             zoneGroups={zoneGroups} setZoneGroups={setZoneGroups}
             zoneCount={zoneCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
+            moveGroup={moveGroup}
           />
         )}
         {/* ─ AUDIO ─ */}
@@ -431,6 +451,7 @@ export default function App() {
             speakerGroups={speakerGroups} setSpeakerGroups={setSpeakerGroups}
             spkCount={spkCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
+            moveGroup={moveGroup}
           />
         )}
         {/* ─ NETWORK ─ */}
@@ -477,6 +498,7 @@ export default function App() {
             mondaySyncEnabled={mondaySyncEnabled} setMondaySyncEnabled={setMondaySyncEnabled}
             mondaySyncColId={mondaySyncColId} setMondaySyncColId={setMondaySyncColId}
             addLog={addLog}
+            moveGroup={moveGroup}
           />
         )}
         {/* ─ FILES ─ */}

@@ -4,7 +4,7 @@ import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import GenerateBar from "../components/GenerateBar";
 
-export default function AudioTab({ speakerGroups, setSpeakerGroups, spkCount, collapsed, toggleCollapse, addLog }) {
+export default function AudioTab({ speakerGroups, setSpeakerGroups, spkCount, collapsed, toggleCollapse, addLog, moveGroup }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
@@ -16,7 +16,9 @@ export default function AudioTab({ speakerGroups, setSpeakerGroups, spkCount, co
               title={grp.groupLabel || (grp.brand ? `${grp.brand} ${grp.model}`.trim() : null)}
               idx={gi} devCount={grp.devices.length}
               collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
-              onRemove={() => remGrp(setSpeakerGroups, grp.id)}>
+              onRemove={() => remGrp(setSpeakerGroups, grp.id)}
+              onMove={cat => moveGroup(grp, "speaker", cat)}
+              currentCategory="speaker">
               <SectionLabel text="Group Settings" />
               <G cols={4}>
                 <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setSpeakerGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. Lobby PA" /></F>

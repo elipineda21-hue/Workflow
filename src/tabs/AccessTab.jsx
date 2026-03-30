@@ -6,7 +6,7 @@ import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collapsed, toggleCollapse, addLog }) {
+export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collapsed, toggleCollapse, addLog, moveGroup }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
@@ -18,7 +18,9 @@ export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collap
               title={grp.groupLabel || (grp.brand ? `${grp.brand} ${grp.model}`.trim() : null)}
               idx={gi} devCount={grp.devices.length}
               collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
-              onRemove={() => remGrp(setDoorGroups, grp.id)}>
+              onRemove={() => remGrp(setDoorGroups, grp.id)}
+              onMove={cat => moveGroup(grp, "door", cat)}
+              currentCategory="door">
               <ModelSelector db={ACCESS_DB} brand={grp.brand} model={grp.model}
                 onBrand={v => updGrp(setDoorGroups, grp.id, "brand", v)}
                 onModel={v => updGrp(setDoorGroups, grp.id, "model", v)}

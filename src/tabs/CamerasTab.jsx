@@ -6,7 +6,7 @@ import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, collapsed, toggleCollapse, addLog }) {
+export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, collapsed, toggleCollapse, addLog, moveGroup }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
@@ -19,7 +19,9 @@ export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, co
               <GroupCard key={grp.id} icon="📷"
                 title={grpTitle} idx={gi} devCount={grp.devices.length}
                 collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
-                onRemove={() => remGrp(setCameraGroups, grp.id)}>
+                onRemove={() => remGrp(setCameraGroups, grp.id)}
+                onMove={cat => moveGroup(grp, "camera", cat)}
+                currentCategory="camera">
                 <SectionLabel text="Model" />
                 <ModelSelector db={CAM_DB} brand={grp.brand} model={grp.model}
                   onBrand={v => updGrp(setCameraGroups, grp.id, "brand", v)}

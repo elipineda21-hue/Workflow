@@ -6,7 +6,7 @@ import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, collapsed, toggleCollapse, addLog }) {
+export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, collapsed, toggleCollapse, addLog, moveGroup }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
@@ -18,7 +18,9 @@ export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, co
               title={grp.groupLabel || (grp.brand ? `${grp.brand} ${grp.model}`.trim() : null)}
               idx={gi} devCount={grp.devices.length}
               collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
-              onRemove={() => remGrp(setSwitchGroups, grp.id)}>
+              onRemove={() => remGrp(setSwitchGroups, grp.id)}
+              onMove={cat => moveGroup(grp, "switch", cat)}
+              currentCategory="switch">
               <ModelSelector db={SWITCH_DB} brand={grp.brand} model={grp.model}
                 onBrand={v => updGrp(setSwitchGroups, grp.id, "brand", v)}
                 onModel={v => updGrp(setSwitchGroups, grp.id, "model", v)}

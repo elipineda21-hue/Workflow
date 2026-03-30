@@ -4,7 +4,7 @@ import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import GenerateBar from "../components/GenerateBar";
 
-export default function IntrusionTab({ zoneGroups, setZoneGroups, zoneCount, collapsed, toggleCollapse, addLog }) {
+export default function IntrusionTab({ zoneGroups, setZoneGroups, zoneCount, collapsed, toggleCollapse, addLog, moveGroup }) {
   return (
     <div>
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
@@ -16,7 +16,9 @@ export default function IntrusionTab({ zoneGroups, setZoneGroups, zoneCount, col
               title={grp.groupLabel || `${grp.zoneType} Zones`}
               idx={gi} devCount={grp.devices.length}
               collapsed={!!collapsed[grp.id]} onToggle={() => toggleCollapse(grp.id)}
-              onRemove={() => remGrp(setZoneGroups, grp.id)}>
+              onRemove={() => remGrp(setZoneGroups, grp.id)}
+              onMove={cat => moveGroup(grp, "zone", cat)}
+              currentCategory="zone">
               <SectionLabel text="Group Settings" />
               <G cols={4}>
                 <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setZoneGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. Perimeter PIRs" /></F>

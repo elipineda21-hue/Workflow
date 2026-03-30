@@ -13,7 +13,9 @@ export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collap
         <CardHead icon="🚪" title="Access Control Door Programming" count={doorCount} onAdd={() => { setDoorGroups(g => [...g, mkDoorGrp()]); addLog("group_added", "Access door group added"); }} addLabel="Add Door Group" color="#0B1F3A" />
         <div style={{ padding: 18 }}>
           {doorGroups.length === 0 && <Empty icon="🚪" msg="No door groups yet. Click + Add Door Group." />}
-          {doorGroups.map((grp, gi) => (
+          {doorGroups.map((grp, gi) => {
+            const hw = grp.noProgramming;
+            return (
             <GroupCard key={grp.id} icon="🚪"
               title={grp.groupLabel || (grp.brand ? `${grp.brand} ${grp.model}`.trim() : null)}
               idx={gi} devCount={grp.devices.length}
@@ -29,22 +31,31 @@ export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collap
                   readerType: obj.readerType || g.readerType,
                   credentialType: obj.credentialType || g.credentialType,
                 } : g))} />
-              <SectionLabel text="Shared Settings" />
+              {/* Hardware-only toggle — right after model selection */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: hw ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${hw ? "#FDE68A" : "#BBF7D0"}` }}>
+                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: hw ? "#92400E" : "#065F46" }}>{hw ? "Hardware only — no programming required" : "Programming required — devices need configuration"}</span>} val={hw} set={v => updGrp(setDoorGroups, grp.id, "noProgramming", v)} />
+              </div>
+              {/* Only show config fields when programming is required */}
+              {!hw && (
+                <>
+                  <SectionLabel text="Shared Settings" />
+                  <G cols={3}>
+                    <F label="Reader Type"><Sel value={grp.readerType} onChange={e => updGrp(setDoorGroups, grp.id, "readerType", e.target.value)}>{["Wiegand","OSDP","RS-485","Bluetooth","Biometric","Keypad","Multi-Tech"].map(o => <option key={o}>{o}</option>)}</Sel></F>
+                    <F label="Credential Type"><Sel value={grp.credentialType} onChange={e => updGrp(setDoorGroups, grp.id, "credentialType", e.target.value)}>{["Prox Card","Smart Card","Mobile","PIN","Biometric","Dual Auth"].map(o => <option key={o}>{o}</option>)}</Sel></F>
+                    <F label="Lock Type"><Sel value={grp.lockType} onChange={e => updGrp(setDoorGroups, grp.id, "lockType", e.target.value)}>{["Mag Lock","Electric Strike","Electronic Deadbolt","Other"].map(o => <option key={o}>{o}</option>)}</Sel></F>
+                    <F label="Card Format"><Inp value={grp.cardFormat} onChange={e => updGrp(setDoorGroups, grp.id, "cardFormat", e.target.value)} placeholder="e.g. 26-bit Wiegand" /></F>
+                    <F label="Facility Code"><Inp value={grp.facilityCode} onChange={e => updGrp(setDoorGroups, grp.id, "facilityCode", e.target.value)} /></F>
+                    <F label="Access Group"><Inp value={grp.accessGroup} onChange={e => updGrp(setDoorGroups, grp.id, "accessGroup", e.target.value)} /></F>
+                    <F label="Schedule"><Inp value={grp.schedule} onChange={e => updGrp(setDoorGroups, grp.id, "schedule", e.target.value)} placeholder="e.g. 24/7 or M-F 7a-6p" /></F>
+                  </G>
+                </>
+              )}
+              {/* Group label always visible */}
               <G cols={3}>
                 <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setDoorGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. Interior Doors" /></F>
-                <F label="Reader Type"><Sel value={grp.readerType} onChange={e => updGrp(setDoorGroups, grp.id, "readerType", e.target.value)}>{["Wiegand","OSDP","RS-485","Bluetooth","Biometric","Keypad","Multi-Tech"].map(o => <option key={o}>{o}</option>)}</Sel></F>
-                <F label="Credential Type"><Sel value={grp.credentialType} onChange={e => updGrp(setDoorGroups, grp.id, "credentialType", e.target.value)}>{["Prox Card","Smart Card","Mobile","PIN","Biometric","Dual Auth"].map(o => <option key={o}>{o}</option>)}</Sel></F>
-                <F label="Lock Type"><Sel value={grp.lockType} onChange={e => updGrp(setDoorGroups, grp.id, "lockType", e.target.value)}>{["Mag Lock","Electric Strike","Electronic Deadbolt","Other"].map(o => <option key={o}>{o}</option>)}</Sel></F>
-                <F label="Card Format"><Inp value={grp.cardFormat} onChange={e => updGrp(setDoorGroups, grp.id, "cardFormat", e.target.value)} placeholder="e.g. 26-bit Wiegand" /></F>
-                <F label="Facility Code"><Inp value={grp.facilityCode} onChange={e => updGrp(setDoorGroups, grp.id, "facilityCode", e.target.value)} /></F>
-                <F label="Access Group"><Inp value={grp.accessGroup} onChange={e => updGrp(setDoorGroups, grp.id, "accessGroup", e.target.value)} /></F>
-                <F label="Schedule"><Inp value={grp.schedule} onChange={e => updGrp(setDoorGroups, grp.id, "schedule", e.target.value)} placeholder="e.g. 24/7 or M-F 7a-6p" /></F>
               </G>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: grp.noProgramming ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${grp.noProgramming ? "#FDE68A" : "#BBF7D0"}` }}>
-                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: grp.noProgramming ? "#92400E" : "#065F46" }}>{grp.noProgramming ? "No programming required — customer-provided or physical-only hardware" : "Programming required — devices need configuration"}</span>} val={grp.noProgramming} set={v => updGrp(setDoorGroups, grp.id, "noProgramming", v)} />
-              </div>
               <GenerateBar group={grp} setter={setDoorGroups} genFn={genDoor} showIP={false} />
-              <DevTable gid={grp.id} setter={setDoorGroups} noProgramming={grp.noProgramming} devices={grp.devices} newDevFn={(i) => mkDoorDev(i || grp.devices.length)}
+              <DevTable gid={grp.id} setter={setDoorGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkDoorDev(i || grp.devices.length)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Access)`)}
                 onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Access)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Access)`); }}
                 cols={[
@@ -58,7 +69,8 @@ export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collap
                   { key: "notes", label: "Notes", ph: "" },
                 ]} />
             </GroupCard>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

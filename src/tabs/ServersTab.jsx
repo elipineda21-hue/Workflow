@@ -14,7 +14,9 @@ export default function ServersTab({ serverGroups, setServerGroups, srvCount, co
         <CardHead icon="🖥" title="Servers & Computing" count={srvCount} onAdd={() => { const ip = getNextIpStart("server", networkConfig, allGroupsTagged); setServerGroups(g => [...g, { ...mkSrvGrp(), ipStart: ip }]); addLog("group_added", "Server group added"); }} addLabel="Add Server Group" color="#0B1F3A" />
         <div style={{ padding: 18 }}>
           {serverGroups.length === 0 && <Empty icon="🖥" msg="No server groups yet. Click + Add Server Group." />}
-          {serverGroups.map((grp, gi) => (
+          {serverGroups.map((grp, gi) => {
+            const hw = grp.noProgramming;
+            return (
             <GroupCard key={grp.id} icon="🖥"
               title={grp.groupLabel || (grp.brand ? `${grp.brand} ${grp.model}`.trim() : null)}
               idx={gi} devCount={grp.devices.length}
@@ -26,35 +28,47 @@ export default function ServersTab({ serverGroups, setServerGroups, srvCount, co
                 onBrand={v => updGrp(setServerGroups, grp.id, "brand", v)}
                 onModel={v => updGrp(setServerGroups, grp.id, "model", v)}
                 onApply={obj => setServerGroups(gs => gs.map(g => g.id === grp.id ? { ...g, os: obj.os || g.os } : g))} />
-              <SectionLabel text="Group Settings" />
+              {/* Hardware-only toggle — right after model selection */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: hw ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${hw ? "#FDE68A" : "#BBF7D0"}` }}>
+                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: hw ? "#92400E" : "#065F46" }}>{hw ? "Hardware only — no programming required" : "Programming required — devices need configuration"}</span>} val={hw} set={v => updGrp(setServerGroups, grp.id, "noProgramming", v)} />
+              </div>
+              {/* Only show config fields when programming is required */}
+              {!hw && (
+                <>
+                  <SectionLabel text="Group Settings" />
+                  <G cols={3}>
+                    <F label="Role">
+                      <Sel value={grp.role} onChange={e => updGrp(setServerGroups, grp.id, "role", e.target.value)}>
+                        {SERVER_ROLES.map(r => <option key={r}>{r}</option>)}
+                      </Sel>
+                    </F>
+                    <F label="OS / Platform"><Inp value={grp.os} onChange={e => updGrp(setServerGroups, grp.id, "os", e.target.value)} placeholder="e.g. Windows Server 2022" /></F>
+                    <F label="Storage Config"><Inp value={grp.storage} onChange={e => updGrp(setServerGroups, grp.id, "storage", e.target.value)} placeholder="e.g. RAID 5 / 8TB" /></F>
+                  </G>
+                </>
+              )}
+              {/* Group label always visible */}
               <G cols={3}>
                 <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setServerGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. VMS Servers" /></F>
-                <F label="Role">
-                  <Sel value={grp.role} onChange={e => updGrp(setServerGroups, grp.id, "role", e.target.value)}>
-                    {SERVER_ROLES.map(r => <option key={r}>{r}</option>)}
-                  </Sel>
-                </F>
-                <F label="OS / Platform"><Inp value={grp.os} onChange={e => updGrp(setServerGroups, grp.id, "os", e.target.value)} placeholder="e.g. Windows Server 2022" /></F>
-                <F label="Storage Config"><Inp value={grp.storage} onChange={e => updGrp(setServerGroups, grp.id, "storage", e.target.value)} placeholder="e.g. RAID 5 / 8TB" /></F>
               </G>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: grp.noProgramming ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${grp.noProgramming ? "#FDE68A" : "#BBF7D0"}` }}>
-                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: grp.noProgramming ? "#92400E" : "#065F46" }}>{grp.noProgramming ? "No programming required — customer-provided or physical-only hardware" : "Programming required — devices need configuration"}</span>} val={grp.noProgramming} set={v => updGrp(setServerGroups, grp.id, "noProgramming", v)} />
-              </div>
-              <GenerateBar group={grp} setter={setServerGroups} genFn={genSrv} />
-              <DevTable gid={grp.id} setter={setServerGroups} noProgramming={grp.noProgramming} devices={grp.devices} newDevFn={(i) => mkSrvDev("", i || grp.devices.length)}
+              <GenerateBar group={grp} setter={setServerGroups} genFn={genSrv} showIP={!hw} />
+              <DevTable gid={grp.id} setter={setServerGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkSrvDev("", i || grp.devices.length)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Server)`)}
                 onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Server)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Server)`); }}
                 cols={[
                   { key: "name", label: "Server Name", ph: "e.g. VMS-01" },
                   { key: "location", label: "Location", ph: "e.g. Server Room" },
                   { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-201" },
-                  { key: "ip", label: "IP Address", ph: "192.168.x.x" },
-                  { key: "mac", label: "MAC", ph: "AA:BB:CC..." },
+                  ...(!hw ? [
+                    { key: "ip", label: "IP Address", ph: "192.168.x.x" },
+                    { key: "mac", label: "MAC", ph: "AA:BB:CC..." },
+                  ] : []),
                   { key: "serial", label: "Serial #", ph: "" },
                   { key: "notes", label: "Notes", ph: "" },
                 ]} />
             </GroupCard>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

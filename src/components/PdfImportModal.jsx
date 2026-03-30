@@ -30,10 +30,15 @@ export default function PdfImportModal({ open, onClose, onImport }) {
     setError("");
     setItems([]);
     try {
-      const lines = await extractPdfText(file);
-      const parsed = parsePdfParts(lines);
+      const textItems = await extractPdfText(file);
+      console.log("PDF raw text items:", textItems.length, textItems.slice(0, 100));
+      const parsed = parsePdfParts(textItems);
+      console.log("Parsed items:", parsed);
       if (!parsed.length) {
-        setError("No items found in this PDF. Make sure it's a procurement/parts list with section headers (e.g. 'Surveillance  8 Items') and line items with brand, model, and quantity.");
+        // Show raw text dump for debugging
+        const sample = textItems.slice(0, 200).map(t => `[${t.x},${t.y}] "${t.text}"`).join("\n");
+        console.log("Full text dump:\n", sample);
+        setError("No items found. Raw text (first 200 items) logged to console (F12). Check that the PDF has section headers and line items.");
         setLoading(false);
         return;
       }

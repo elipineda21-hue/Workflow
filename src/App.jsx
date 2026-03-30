@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { saveWorkOrder, listLibrary, getSpecSheetUrl, listProjectFiles } from "./supabase";
-import { C } from "./constants";
+import { C, SOP_VLANS, SOP_SSIDS } from "./constants";
+import NetworkTab from "./components/NetworkTab";
 import { uid } from "./models";
 import { fetchProjects, pushMondayUpdate } from "./api/monday";
 import { parseCSVLine, parseProposalCSV, buildGroupsFromRows } from "./api/portal";
@@ -99,6 +100,9 @@ export default function App() {
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libUploadForm,  setLibUploadForm]  = useState(null); // null | { category, brand, model, displayName, file, uploading, error }
   const [libShowAll,     setLibShowAll]     = useState(false); // false = show only project-matched entries
+  // network config
+  const emptyNetworkConfig = () => ({ useDefaults: true, sitePrefix: "", routerModel: "", apCount: "", isp: "", itContact: "", controllerType: "cloud", vlans: SOP_VLANS.map(v => ({ ...v })), ssids: SOP_SSIDS.map(s => ({ ...s })), checklist: {} });
+  const [networkConfig, setNetworkConfig] = useState(emptyNetworkConfig());
   const libUploadFileRef = useRef(null);
   // device counts
   const camCount  = cameraGroups.reduce((s, g) => s + g.devices.length, 0);
@@ -154,9 +158,9 @@ export default function App() {
   // Watch all state and auto-save when anything changes (only in build phase)
   useEffect(() => {
     if (phase !== "build" || !selectedProject) return;
-    const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog };
+    const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig };
     triggerSave(snap, selectedProject);
-  }, [info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog]); // eslint-disable-line
+  }, [info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig]); // eslint-disable-line
   // Flush save on tab close / refresh
   useEffect(() => {
     const handleUnload = () => { if (selectedProject) flushSave(selectedProject); };
@@ -205,7 +209,7 @@ export default function App() {
       .then(rows => { setProjectFiles(rows); setFilesLoading(false); })
       .catch(() => setFilesLoading(false));
   }, [tab, selectedProject]);
-  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls, changeLog });
+  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls, changeLog, networkConfig });
   const projectMeta  = () => ({ name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" });
   const handleCSV = () => {
     try { buildCSV(stateSnapshot(), projectMeta()); }
@@ -317,6 +321,8 @@ export default function App() {
     { id: "intrusion", label: "Intrusion",     icon: "🔔", count: zoneCount },
     { id: "servers",   label: "Server / NVR",  icon: "🖥", count: srvCount },
     { id: "switches",  label: "Switching",     icon: "🔀", count: swCount },
+    // ── Network ───────────────────────────────────────────────────────────────
+    { id: "network",   label: "Network",       icon: "🌐" },
     // ── Resources ─────────────────────────────────────────────────────────────
     { id: "files",     label: "Project Files", icon: "📁" },
     { id: "library",   label: "Device Library",icon: "📚" },
@@ -344,6 +350,7 @@ export default function App() {
         setZoneGroups={setZoneGroups} setSpeakerGroups={setSpeakerGroups}
         setLaborBudget={setLaborBudget} setLaborActual={setLaborActual}
         setSpecSheetUrls={setSpecSheetUrls} setChangeLog={setChangeLog}
+        setNetworkConfig={setNetworkConfig}
       />
     );
   }
@@ -368,7 +375,7 @@ export default function App() {
           setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
           setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
           setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
-          setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]);
+          setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]); setNetworkConfig(emptyNetworkConfig());
         }}
         onReports={() => setTab("export")}
       />
@@ -424,6 +431,13 @@ export default function App() {
             speakerGroups={speakerGroups} setSpeakerGroups={setSpeakerGroups}
             spkCount={spkCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
+          />
+        )}
+        {/* ─ NETWORK ─ */}
+        {tab === "network" && (
+          <NetworkTab
+            networkConfig={networkConfig} setNetworkConfig={setNetworkConfig}
+            sitePrefix={networkConfig.sitePrefix}
           />
         )}
         {/* ─ LABOR ─ */}

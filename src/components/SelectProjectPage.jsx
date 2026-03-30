@@ -14,7 +14,7 @@ export default function SelectProjectPage({
   setInfo, setNVR, setPanel,
   setCameraGroups, setSwitchGroups, setServerGroups,
   setDoorGroups, setZoneGroups, setSpeakerGroups,
-  setLaborBudget, setLaborActual, setSpecSheetUrls, setChangeLog,
+  setLaborBudget, setLaborActual, setSpecSheetUrls, setChangeLog, setNetworkConfig,
 }) {
   const inp2St = { width: "100%", padding: "10px 14px", borderRadius: 6, border: `1px solid rgba(255,255,255,0.15)`, background: "rgba(255,255,255,0.07)", color: C.white, fontSize: 13, outline: "none", boxSizing: "border-box" };
   const saveToken = () => {
@@ -53,6 +53,7 @@ export default function SelectProjectPage({
         if (s.laborActual)   setLaborActual(s.laborActual);
         if (s.specSheetUrls) setSpecSheetUrls(s.specSheetUrls);
         if (s.changeLog)     setChangeLog(s.changeLog);
+        if (s.networkConfig) setNetworkConfig(s.networkConfig);
       } else {
         setInfo(s => ({
           ...s,

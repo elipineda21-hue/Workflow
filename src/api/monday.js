@@ -20,6 +20,7 @@ export async function fetchProjects(token, colMap = {}) {
       projectId:         col("text_mm0vkgrq"),
       techLead:          col("multiple_person_mm01ew1v"),
       programmingStatus: col("status"),
+      projectStatus:     col("color_mm22v2tq"),
       schedule:          col("timerange_mm034yws"),
       customer:    colMap.customer    ? col(colMap.customer)    : "",
       siteAddress: colMap.siteAddress ? col(colMap.siteAddress) : "",

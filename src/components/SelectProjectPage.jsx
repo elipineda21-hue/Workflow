@@ -1,6 +1,27 @@
+import { useState } from "react";
 import { C } from "../constants";
 import { MONDAY_BOARD_ID, fetchProjects, fetchBoardColumns } from "../api/monday";
 import { loadWorkOrder } from "../supabase";
+
+const PROJECT_STATUSES = ["All", "Active", "Pending Start", "Paused/Stuck", "Closeout Req", "Complete"];
+
+const STATUS_COLORS = {
+  "Active":       { bg: "#D1FAE5", color: "#065F46" },
+  "Pending Start":{ bg: "#FEF3C7", color: "#92400E" },
+  "Paused/Stuck": { bg: "#FEE2E2", color: "#991B1B" },
+  "Closeout Req": { bg: "#DBEAFE", color: "#1E40AF" },
+  "Complete":     { bg: "#EDE9FE", color: "#5B21B6" },
+};
+
+const PROG_COLORS = {
+  "Scheduled":                 { bg: "#FEF3C7", color: "#92400E" },
+  "Programming In Progress":   { bg: "#E0F2FE", color: "#0369A1" },
+  "Customer Trainned":         { bg: "#D1FAE5", color: "#065F46" },
+  "Stuck":                     { bg: "#FEE2E2", color: "#991B1B" },
+  "Sub-Contract":              { bg: "#EDE9FE", color: "#5B21B6" },
+  "New":                       { bg: "#F1F5F9", color: "#64748B" },
+  "Not Required":              { bg: "#F1F5F9", color: "#64748B" },
+};
 
 export default function SelectProjectPage({
   mondayToken, setMondayToken, tokenDraft, setTokenDraft,
@@ -16,6 +37,7 @@ export default function SelectProjectPage({
   setDoorGroups, setZoneGroups, setSpeakerGroups,
   setLaborBudget, setLaborActual, setSpecSheetUrls, setChangeLog, setNetworkConfig,
 }) {
+  const [statusFilter, setStatusFilter] = useState("All");
   const inp2St = { width: "100%", padding: "10px 14px", borderRadius: 6, border: `1px solid rgba(255,255,255,0.15)`, background: "rgba(255,255,255,0.07)", color: C.white, fontSize: 13, outline: "none", boxSizing: "border-box" };
   const saveToken = () => {
     const t = tokenDraft.trim();
@@ -252,35 +274,51 @@ export default function SelectProjectPage({
             Error: {projectsError}. Check your API token and board ID.
           </div>
         ) : projects.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {projects.map(p => (
-              <div key={p.id} onClick={() => handleProjectClick(p)}
-                style={{ background: selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.05)", border: `1px solid ${selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.1)"}`, borderRadius: 8, padding: "14px 18px", cursor: "pointer", transition: "background .15s" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ color: C.white, fontWeight: 700, fontSize: 14 }}>{p.name}</div>
-                  {p.programmingStatus && (() => {
-                    const s = p.programmingStatus;
-                    const colors = {
-                      "Done": { bg: "#D1FAE5", color: "#065F46" }, "Complete": { bg: "#D1FAE5", color: "#065F46" }, "Completed": { bg: "#D1FAE5", color: "#065F46" },
-                      "Working on it": { bg: "#E0F2FE", color: "#0369A1" }, "In Progress": { bg: "#E0F2FE", color: "#0369A1" },
-                      "Stuck": { bg: "#FEE2E2", color: "#991B1B" },
-                      "Not Started": { bg: "#F1F5F9", color: "#64748B" },
-                    };
-                    const style = colors[s] || { bg: "#FEF3C7", color: "#92400E" };
-                    return (
-                      <span style={{ background: style.bg, color: style.color, borderRadius: 8, padding: "3px 10px", fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}>{s}</span>
-                    );
-                  })()}
-                </div>
-                <div style={{ color: C.muted, fontSize: 11, marginTop: 3 }}>ID: {p.projectId}  |  Lead: {p.techLead}</div>
-                {(p.customer || p.siteAddress || p.pm || p.schedule) && (
-                  <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 2 }}>
-                    {[p.customer, p.siteAddress, p.pm ? `PM: ${p.pm}` : "", p.schedule ? `Schedule: ${p.schedule}` : ""].filter(Boolean).join("  ·  ")}
+          <>
+            {/* Status filter */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+              {PROJECT_STATUSES.map(s => {
+                const count = s === "All" ? projects.length : projects.filter(p => (p.projectStatus || "") === s).length;
+                const active = statusFilter === s;
+                const sc = STATUS_COLORS[s] || { bg: "rgba(255,255,255,0.1)", color: C.white };
+                return (
+                  <button key={s} onClick={() => setStatusFilter(s)}
+                    style={{ background: active ? (sc.bg || "rgba(0,174,239,0.2)") : "rgba(255,255,255,0.06)", color: active ? (sc.color || C.accent) : "rgba(255,255,255,0.5)", border: active ? `1.5px solid ${sc.color || C.accent}` : "1.5px solid transparent", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    {s} {count > 0 && <span style={{ opacity: 0.7 }}>({count})</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Project list */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {projects.filter(p => statusFilter === "All" || (p.projectStatus || "") === statusFilter).map(p => {
+                const projSt = STATUS_COLORS[p.projectStatus] || null;
+                const progSt = PROG_COLORS[p.programmingStatus] || null;
+                return (
+                  <div key={p.id} onClick={() => handleProjectClick(p)}
+                    style={{ background: selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.05)", border: `1px solid ${selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.1)"}`, borderRadius: 8, padding: "14px 18px", cursor: "pointer", transition: "background .15s" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <div style={{ color: C.white, fontWeight: 700, fontSize: 14, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        {progSt && p.programmingStatus && (
+                          <span style={{ background: progSt.bg, color: progSt.color, borderRadius: 8, padding: "3px 10px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap" }}>{p.programmingStatus}</span>
+                        )}
+                        {projSt && p.projectStatus && (
+                          <span style={{ background: projSt.bg, color: projSt.color, borderRadius: 8, padding: "3px 10px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap" }}>{p.projectStatus}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ color: C.muted, fontSize: 11, marginTop: 3 }}>ID: {p.projectId}  |  Lead: {p.techLead}</div>
+                    {(p.customer || p.siteAddress || p.pm || p.schedule) && (
+                      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 2 }}>
+                        {[p.customer, p.siteAddress, p.pm ? `PM: ${p.pm}` : "", p.schedule ? `Schedule: ${p.schedule}` : ""].filter(Boolean).join("  ·  ")}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          </>
         ) : mondayToken ? (
           <div style={{ textAlign: "center", color: C.muted, padding: 24, fontSize: 13 }}>No projects found on board {MONDAY_BOARD_ID}.</div>
         ) : null}

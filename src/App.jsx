@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { saveWorkOrder, listLibrary, getSpecSheetUrl, listProjectFiles } from "./supabase";
+import { saveWorkOrder, listLibrary, getSpecSheetUrl, listProjectFiles, catalogDevices } from "./supabase";
 import { C, SOP_VLANS, SOP_SSIDS, SOP_FIREWALL } from "./constants";
 import NetworkTab from "./components/NetworkTab";
 import { uid, mkCamGroup, mkSwGrp, mkSrvGrp, mkDoorGrp, mkZoneGrp, mkSpkGrp, getNextIpStart } from "./models";
@@ -344,6 +344,7 @@ export default function App() {
     const importedCount = hardwareRows.filter((r, i) => (overrideCats[i] || r.category) !== "unknown").length;
     const recurringCount = rows.filter(r => r.recurring).length;
     addLog("import", `${isChangeOrder ? "Change Order" : "Proposal"} #${importPreview.proposalId} — ${importedCount} hardware groups imported${recurringCount ? `, ${recurringCount} MRR items skipped` : ""}`);
+    catalogDevices(hardwareRows.map(r => ({ category: overrideCats[r._idx] || r.category, brand: r.brand, model: r.model }))).catch(e => console.warn("Catalog update failed:", e));
   };
   // PDF parts import handler
   const handlePdfImport = (items) => {
@@ -358,6 +359,8 @@ export default function App() {
       setter(gs => [...gs, grp]);
     }
     addLog("import", `PDF import — ${items.length} groups added (${items.filter(i => i.hardware).length} hardware-only)`);
+    // Auto-catalog imported devices for the growing model library
+    catalogDevices(items).catch(e => console.warn("Catalog update failed:", e));
   };
   const TABS = [
     // ── Exec overview ─────────────────────────────────────────────────────────
@@ -534,7 +537,7 @@ export default function App() {
             speakerGroups={speakerGroups} setSpeakerGroups={setSpeakerGroups}
             mondaySyncEnabled={mondaySyncEnabled} setMondaySyncEnabled={setMondaySyncEnabled}
             mondaySyncColId={mondaySyncColId} setMondaySyncColId={setMondaySyncColId}
-            addLog={addLog}
+            addLog={addLog} selectedProject={selectedProject}
             moveGroup={moveGroup}
           />
         )}

@@ -142,3 +142,46 @@ export function getProjectFileUrl(filePath) {
   const { data } = supabase.storage.from(FILES_BUCKET).getPublicUrl(filePath);
   return data?.publicUrl || null;
 }
+
+// ── Device Catalog (auto-growing model list) ──────────────────────────────────
+
+// Upsert a brand/model into the catalog (increments seen_count if exists)
+export async function catalogDevice(category, brand, model) {
+  if (!brand || !model) return;
+  const { error } = await supabase.rpc('upsert_device_catalog', { p_category: category, p_brand: brand, p_model: model });
+  // Fallback if RPC doesn't exist: try insert, ignore conflict
+  if (error) {
+    await supabase.from("device_catalog").upsert({
+      category, brand, model,
+      display_name: model,
+      seen_count: 1,
+      last_seen_at: new Date().toISOString(),
+    }, { onConflict: "brand,model", ignoreDuplicates: false });
+  }
+}
+
+// Bulk upsert multiple devices into catalog
+export async function catalogDevices(items) {
+  if (!items.length) return;
+  const rows = items.filter(i => i.brand && i.model).map(i => ({
+    category: i.category || "unknown",
+    brand: i.brand,
+    model: i.model,
+    display_name: i.model,
+    seen_count: 1,
+    last_seen_at: new Date().toISOString(),
+  }));
+  if (!rows.length) return;
+  await supabase.from("device_catalog").upsert(rows, { onConflict: "brand,model" });
+}
+
+// Fetch all catalog entries (for model dropdowns)
+export async function listCatalog() {
+  const { data, error } = await supabase
+    .from("device_catalog")
+    .select("*")
+    .order("brand")
+    .order("model");
+  if (error) throw error;
+  return data || [];
+}

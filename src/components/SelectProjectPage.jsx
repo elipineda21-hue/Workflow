@@ -69,11 +69,51 @@ export default function SelectProjectPage({
   return (
     <div style={{ minHeight: "100vh", background: C.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
       <div style={{ maxWidth: 720, width: "100%" }}>
+        {/* Branding */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>⚡</div>
-          <div style={{ color: C.white, fontWeight: 800, fontSize: 22, letterSpacing: "0.02em" }}>PROGRAMMING & CONFIG WORK ORDER</div>
-          <div style={{ color: C.accent, fontSize: 13, marginTop: 4, letterSpacing: "0.06em" }}>Select an active project from monday.com</div>
+          <div style={{ fontSize: 44, marginBottom: 6 }}>⚡</div>
+          <div style={{ color: C.white, fontWeight: 800, fontSize: 28, letterSpacing: "0.02em" }}>ProjectPal</div>
+          <div style={{ color: C.accent, fontSize: 12, marginTop: 4, letterSpacing: "0.08em" }}>by your friends at Calidad</div>
         </div>
+
+        {/* Dashboard preview (when connected) */}
+        {mondayToken && projects.length > 0 && (
+          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, border: `1px solid rgba(0,174,239,0.15)`, padding: 18, marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>Dashboard</div>
+              <button onClick={() => setPhase("master")}
+                style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "6px 16px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                Open Full Dashboard
+              </button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+              {(() => {
+                const statusCounts = {};
+                projects.forEach(p => {
+                  const s = p.programmingStatus || "No Status";
+                  statusCounts[s] = (statusCounts[s] || 0) + 1;
+                });
+                const statusColors = {
+                  "Done": C.success, "Complete": C.success, "Completed": C.success,
+                  "Working on it": C.accent, "In Progress": C.accent,
+                  "Stuck": C.danger,
+                  "Not Started": C.muted, "No Status": C.muted,
+                };
+                return [
+                  { label: "Active Projects", value: projects.length, color: C.accent },
+                  ...Object.entries(statusCounts).map(([status, count]) => ({
+                    label: status, value: count, color: statusColors[status] || C.gold,
+                  })),
+                ].map(card => (
+                  <div key={card.label} style={{ background: "rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px", textAlign: "center" }}>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: card.color }}>{card.value}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)", marginTop: 2, whiteSpace: "nowrap" }}>{card.label}</div>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* Token setup */}
         {!mondayToken && (
@@ -98,11 +138,7 @@ export default function SelectProjectPage({
         {/* Refresh token + column mapper */}
         {mondayToken && (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, gap: 8, alignItems: "center" }}>
-              <button onClick={() => setPhase("master")}
-                style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "6px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                📊 Master Dashboard
-              </button>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8, gap: 8, alignItems: "center" }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span style={{ color: C.success, fontSize: 11, fontWeight: 600 }}>✓ Connected to monday.com</span>
                 <button onClick={() => setColMapperOpen(v => !v)}
@@ -220,11 +256,26 @@ export default function SelectProjectPage({
             {projects.map(p => (
               <div key={p.id} onClick={() => handleProjectClick(p)}
                 style={{ background: selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.05)", border: `1px solid ${selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.1)"}`, borderRadius: 8, padding: "14px 18px", cursor: "pointer", transition: "background .15s" }}>
-                <div style={{ color: C.white, fontWeight: 700, fontSize: 14 }}>{p.name}</div>
-                <div style={{ color: C.muted, fontSize: 11, marginTop: 3 }}>ID: {p.projectId}  |  Lead: {p.techLead}  |  Status: {p.programmingStatus}</div>
-                {(p.customer || p.siteAddress || p.pm) && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ color: C.white, fontWeight: 700, fontSize: 14 }}>{p.name}</div>
+                  {p.programmingStatus && (() => {
+                    const s = p.programmingStatus;
+                    const colors = {
+                      "Done": { bg: "#D1FAE5", color: "#065F46" }, "Complete": { bg: "#D1FAE5", color: "#065F46" }, "Completed": { bg: "#D1FAE5", color: "#065F46" },
+                      "Working on it": { bg: "#E0F2FE", color: "#0369A1" }, "In Progress": { bg: "#E0F2FE", color: "#0369A1" },
+                      "Stuck": { bg: "#FEE2E2", color: "#991B1B" },
+                      "Not Started": { bg: "#F1F5F9", color: "#64748B" },
+                    };
+                    const style = colors[s] || { bg: "#FEF3C7", color: "#92400E" };
+                    return (
+                      <span style={{ background: style.bg, color: style.color, borderRadius: 8, padding: "3px 10px", fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}>{s}</span>
+                    );
+                  })()}
+                </div>
+                <div style={{ color: C.muted, fontSize: 11, marginTop: 3 }}>ID: {p.projectId}  |  Lead: {p.techLead}</div>
+                {(p.customer || p.siteAddress || p.pm || p.schedule) && (
                   <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 2 }}>
-                    {[p.customer, p.siteAddress, p.pm ? `PM: ${p.pm}` : ""].filter(Boolean).join("  ·  ")}
+                    {[p.customer, p.siteAddress, p.pm ? `PM: ${p.pm}` : "", p.schedule ? `Schedule: ${p.schedule}` : ""].filter(Boolean).join("  ·  ")}
                   </div>
                 )}
               </div>

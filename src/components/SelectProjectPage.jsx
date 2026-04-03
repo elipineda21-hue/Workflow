@@ -95,7 +95,7 @@ export default function SelectProjectPage({
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ fontSize: 44, marginBottom: 6 }}>⚡</div>
           <div style={{ color: C.white, fontWeight: 800, fontSize: 28, letterSpacing: "0.02em" }}>ProjectPal</div>
-          <div style={{ color: C.accent, fontSize: 12, marginTop: 4, letterSpacing: "0.08em" }}>by your friends at Calidad</div>
+          <div style={{ color: C.accent, fontSize: 12, marginTop: 4, letterSpacing: "0.08em" }}>by Anonymous - Zero</div>
         </div>
 
         {/* Dashboard preview (when connected) */}

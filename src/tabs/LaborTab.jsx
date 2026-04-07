@@ -1,5 +1,3 @@
-import { C } from "../constants";
-
 export default function LaborTab({ laborBudget, setLaborBudget, laborActual, setLaborActual, LABOR_TYPES, emptyLabor }) {
   const parseCSV = (text) => {
     const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
@@ -61,7 +59,7 @@ export default function LaborTab({ laborBudget, setLaborBudget, laborActual, set
                 <input className="p-1.5 px-2.5 rounded-[5px] border-[1.5px] border-border text-[13px] w-[90px] text-right outline-none bg-white text-navy" type="number" min="0" value={laborActual[lt.key]} placeholder="0"
                   onChange={e => setLaborActual(s => ({ ...s, [lt.key]: e.target.value }))} />
               </div>
-              <div className="text-right font-bold text-[13px]" style={{ color: v > 0 ? C.danger : v < 0 ? C.success : C.muted }}>
+              <div className="text-right font-bold text-[13px]" style={{ color: v > 0 ? "#EF4444" : v < 0 ? "#10B981" : "#6B7E96" }}>
                 {b === 0 && a === 0 ? "—" : (v > 0 ? `+${v}h` : v < 0 ? `${v}h` : "0h")}
               </div>
             </div>

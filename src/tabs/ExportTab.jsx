@@ -1,4 +1,3 @@
-import { C } from "../constants";
 import { CardHead } from "../components/ui";
 import { getSpecSheetUrl } from "../supabase";
 
@@ -23,7 +22,7 @@ export default function ExportTab({
   return (
     <>
       <div className="bg-white rounded-xl border border-border overflow-hidden">
-        <CardHead icon="📊" title="Reports" color={C.navy} />
+        <CardHead icon="📊" title="Reports" color="#0B1F3A" />
         <div className="p-6">
           {/* Action buttons row */}
           <div className="flex gap-3 flex-wrap mb-6">

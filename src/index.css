@@ -1,15 +1,26 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@import "tailwindcss";
+
+/* ── ProjectPal Theme (mapped from C palette) ─────────────────────────────── */
+@theme {
+  --color-navy: #0B1F3A;
+  --color-steel: #1A3355;
+  --color-accent: #00AEEF;
+  --color-gold: #F4A300;
+  --color-bg: #EEF2F7;
+  --color-white: #FFFFFF;
+  --color-muted: #6B7E96;
+  --color-border: #CBD5E1;
+  --color-success: #10B981;
+  --color-warn: #F59E0B;
+  --color-danger: #EF4444;
+  --color-surface: #F8FAFD;
+  --color-dark: #07142A;
 }
 
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background-color: #EEF2F7;
-  color: #0B1F3A;
+  background-color: var(--color-bg);
+  color: var(--color-navy);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

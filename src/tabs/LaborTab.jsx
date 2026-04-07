@@ -23,17 +23,16 @@ export default function LaborTab({ laborBudget, setLaborBudget, laborActual, set
   const totalBudget = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborBudget[t.key]) || 0), 0);
   const totalActual = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborActual[t.key]) || 0), 0);
   const variance = totalActual - totalBudget;
-  const inp = { padding: "6px 10px", borderRadius: 5, border: `1.5px solid ${C.border}`, fontSize: 13, width: 90, textAlign: "right", outline: "none", background: C.white, color: C.navy };
 
   return (
-    <div style={{ maxWidth: 700 }}>
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+    <div className="max-w-[700px]">
+      <div className="bg-white rounded-xl border border-border overflow-hidden">
         {/* Header */}
-        <div style={{ background: C.navy, padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>⏱ Labor Hours</div>
-          <label style={{ background: C.accent, color: C.white, borderRadius: 6, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+        <div className="bg-navy py-3 px-5 flex justify-between items-center">
+          <div className="text-white font-extrabold text-[15px]">⏱ Labor Hours</div>
+          <label className="bg-accent text-white rounded-md py-1.5 px-3.5 text-xs font-bold cursor-pointer">
             📎 Import from CSV
-            <input type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={e => {
+            <input type="file" accept=".csv,.txt" className="hidden" onChange={e => {
               const f = e.target.files[0]; if (!f) return;
               const r = new FileReader(); r.onload = ev => parseCSV(ev.target.result); r.readAsText(f);
               e.target.value = "";
@@ -41,9 +40,9 @@ export default function LaborTab({ laborBudget, setLaborBudget, laborActual, set
           </label>
         </div>
         {/* Column headers */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 90px", gap: 0, padding: "8px 20px", background: C.surface, borderBottom: `1px solid ${C.border}` }}>
+        <div className="grid grid-cols-[1fr_100px_100px_90px] py-2 px-5 bg-surface border-b border-border">
           {["Labor Type", "Budget (hrs)", "Actual (hrs)", "Variance"].map(h => (
-            <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.steel, textAlign: h === "Labor Type" ? "left" : "right" }}>{h}</div>
+            <div key={h} className={`text-[11px] font-bold text-steel ${h === "Labor Type" ? "text-left" : "text-right"}`}>{h}</div>
           ))}
         </div>
         {/* Rows */}
@@ -52,33 +51,33 @@ export default function LaborTab({ laborBudget, setLaborBudget, laborActual, set
           const a = parseFloat(laborActual[lt.key]) || 0;
           const v = a - b;
           return (
-            <div key={lt.key} style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 90px", gap: 0, padding: "8px 20px", background: i % 2 === 0 ? C.white : C.surface, alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 13, color: C.navy, fontWeight: 600 }}>{lt.label}</div>
-              <div style={{ textAlign: "right" }}>
-                <input style={inp} type="number" min="0" value={laborBudget[lt.key]} placeholder="0"
+            <div key={lt.key} className={`grid grid-cols-[1fr_100px_100px_90px] py-2 px-5 items-center border-b border-border ${i % 2 === 0 ? "bg-white" : "bg-surface"}`}>
+              <div className="text-[13px] text-navy font-semibold">{lt.label}</div>
+              <div className="text-right">
+                <input className="p-1.5 px-2.5 rounded-[5px] border-[1.5px] border-border text-[13px] w-[90px] text-right outline-none bg-white text-navy" type="number" min="0" value={laborBudget[lt.key]} placeholder="0"
                   onChange={e => setLaborBudget(s => ({ ...s, [lt.key]: e.target.value }))} />
               </div>
-              <div style={{ textAlign: "right" }}>
-                <input style={inp} type="number" min="0" value={laborActual[lt.key]} placeholder="0"
+              <div className="text-right">
+                <input className="p-1.5 px-2.5 rounded-[5px] border-[1.5px] border-border text-[13px] w-[90px] text-right outline-none bg-white text-navy" type="number" min="0" value={laborActual[lt.key]} placeholder="0"
                   onChange={e => setLaborActual(s => ({ ...s, [lt.key]: e.target.value }))} />
               </div>
-              <div style={{ textAlign: "right", fontWeight: 700, fontSize: 13, color: v > 0 ? C.danger : v < 0 ? C.success : C.muted }}>
+              <div className="text-right font-bold text-[13px]" style={{ color: v > 0 ? C.danger : v < 0 ? C.success : C.muted }}>
                 {b === 0 && a === 0 ? "—" : (v > 0 ? `+${v}h` : v < 0 ? `${v}h` : "0h")}
               </div>
             </div>
           );
         })}
         {/* Totals */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 90px", gap: 0, padding: "12px 20px", background: C.navy, alignItems: "center" }}>
-          <div style={{ color: C.white, fontWeight: 800, fontSize: 13 }}>TOTAL</div>
-          <div style={{ textAlign: "right", color: C.white, fontWeight: 800, fontSize: 14 }}>{totalBudget}h</div>
-          <div style={{ textAlign: "right", color: C.white, fontWeight: 800, fontSize: 14 }}>{totalActual}h</div>
-          <div style={{ textAlign: "right", fontWeight: 800, fontSize: 14, color: variance > 0 ? "#FCA5A5" : variance < 0 ? "#6EE7B7" : "rgba(255,255,255,0.5)" }}>
+        <div className="grid grid-cols-[1fr_100px_100px_90px] py-3 px-5 bg-navy items-center">
+          <div className="text-white font-extrabold text-[13px]">TOTAL</div>
+          <div className="text-right text-white font-extrabold text-sm">{totalBudget}h</div>
+          <div className="text-right text-white font-extrabold text-sm">{totalActual}h</div>
+          <div className="text-right font-extrabold text-sm" style={{ color: variance > 0 ? "#FCA5A5" : variance < 0 ? "#6EE7B7" : "rgba(255,255,255,0.5)" }}>
             {variance === 0 ? "—" : (variance > 0 ? `+${variance}h` : `${variance}h`)}
           </div>
         </div>
       </div>
-      <div style={{ marginTop: 10, color: C.muted, fontSize: 11 }}>
+      <div className="mt-2.5 text-muted text-[11px]">
         CSV format: one row per labor type, e.g. <code>Labor,Installation - L1,49</code> — the app matches keywords automatically.
       </div>
     </div>

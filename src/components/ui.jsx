@@ -1,49 +1,48 @@
-import { C } from "../constants";
-
 export const F = ({ label, children, span = 1 }) => (
-  <div style={{ gridColumn: `span ${span}`, display: "flex", flexDirection: "column", gap: 3 }}>
-    <label style={{ fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: "0.07em", textTransform: "uppercase" }}>{label}</label>
+  <div style={{ gridColumn: `span ${span}` }} className="flex flex-col gap-[3px]">
+    <label className="text-[10px] font-bold text-muted tracking-[0.07em] uppercase">{label}</label>
     {children}
   </div>
 );
 
 export const Inp = (props) => (
-  <input {...props} style={{ padding: "7px 9px", borderRadius: 5, border: `1.5px solid ${C.border}`, fontSize: 12, background: C.white, color: C.navy, outline: "none", width: "100%", boxSizing: "border-box", ...props.style }}
-    onFocus={e => e.target.style.borderColor = C.accent}
-    onBlur={e => e.target.style.borderColor = C.border}
+  <input {...props} className="py-[7px] px-[9px] rounded-[5px] border-[1.5px] border-border text-xs bg-white text-navy outline-none w-full box-border"
+    style={props.style}
+    onFocus={e => { e.target.style.borderColor = '#00AEEF'; props.onFocus?.(e); }}
+    onBlur={e => { e.target.style.borderColor = '#CBD5E1'; props.onBlur?.(e); }}
   />
 );
 
 export const Sel = ({ children, ...props }) => (
-  <select {...props} style={{ padding: "7px 9px", borderRadius: 5, border: `1.5px solid ${C.border}`, fontSize: 12, background: C.white, color: C.navy, outline: "none", width: "100%", ...props.style }}>{children}</select>
+  <select {...props} className="py-[7px] px-[9px] rounded-[5px] border-[1.5px] border-border text-xs bg-white text-navy outline-none w-full" style={props.style}>{children}</select>
 );
 
 export const TA = (props) => (
-  <textarea {...props} rows={2} style={{ padding: "7px 9px", borderRadius: 5, border: `1.5px solid ${C.border}`, fontSize: 12, background: C.white, color: C.navy, outline: "none", resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} />
+  <textarea {...props} rows={2} className="py-[7px] px-[9px] rounded-[5px] border-[1.5px] border-border text-xs bg-white text-navy outline-none resize-y font-[inherit] w-full box-border" />
 );
 
 export const Tog = ({ label, val, set }) => (
-  <label style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 12, color: C.navy, userSelect: "none" }}>
-    <div onClick={() => set(!val)} style={{ width: 34, height: 18, borderRadius: 9, background: val ? C.accent : C.border, position: "relative", cursor: "pointer", transition: "background .2s", flexShrink: 0 }}>
-      <div style={{ position: "absolute", top: 2, left: val ? 16 : 2, width: 14, height: 14, borderRadius: "50%", background: C.white, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+  <label className="flex items-center gap-[7px] cursor-pointer text-xs text-navy select-none">
+    <div onClick={() => set(!val)} className="w-[34px] h-[18px] rounded-[9px] relative cursor-pointer transition-colors duration-200 shrink-0" style={{ background: val ? '#00AEEF' : '#CBD5E1' }}>
+      <div className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.2)]" style={{ left: val ? 16 : 2 }} />
     </div>
     {label}
   </label>
 );
 
 export const G = ({ children, cols = 3 }) => (
-  <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},1fr)`, gap: 12 }}>{children}</div>
+  <div style={{ gridTemplateColumns: `repeat(${cols},1fr)` }} className="grid gap-3">{children}</div>
 );
 
-export const CardHead = ({ icon, title, count, onAdd, addLabel, color = C.navy }) => (
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: color, borderRadius: "8px 8px 0 0", padding: "10px 16px" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <span style={{ fontSize: 18 }}>{icon}</span>
-      <span style={{ color: C.white, fontWeight: 700, fontSize: 13 }}>{title}</span>
-      {count !== undefined && <span style={{ background: C.accent, color: C.white, borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{count}</span>}
+export const CardHead = ({ icon, title, count, onAdd, addLabel, color }) => (
+  <div className="flex items-center justify-between rounded-t-lg px-4 py-2.5" style={{ background: color || '#0B1F3A' }}>
+    <div className="flex items-center gap-2.5">
+      <span className="text-[18px]">{icon}</span>
+      <span className="text-white font-bold text-[13px]">{title}</span>
+      {count !== undefined && <span className="bg-accent text-white rounded-xl px-2 py-[1px] text-[11px] font-bold">{count}</span>}
     </div>
     {onAdd && (
-      <button onClick={onAdd} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 5, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+      <button onClick={onAdd} className="bg-accent text-white border-none rounded-[5px] px-3 py-[5px] text-[11px] font-bold cursor-pointer">
         + {addLabel}
       </button>
     )}
@@ -51,12 +50,12 @@ export const CardHead = ({ icon, title, count, onAdd, addLabel, color = C.navy }
 );
 
 export const Empty = ({ icon, msg }) => (
-  <div style={{ textAlign: "center", padding: 32, color: C.muted }}>
-    <div style={{ fontSize: 36, marginBottom: 6 }}>{icon}</div>
-    <div style={{ fontWeight: 600, fontSize: 13 }}>{msg}</div>
+  <div className="text-center p-8 text-muted">
+    <div className="text-[36px] mb-1.5">{icon}</div>
+    <div className="font-semibold text-[13px]">{msg}</div>
   </div>
 );
 
 export const SectionLabel = ({ text }) => (
-  <div style={{ fontSize: 10, fontWeight: 800, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: `1px solid ${C.border}`, paddingBottom: 4, marginBottom: 10, marginTop: 14 }}>{text}</div>
+  <div className="text-[10px] font-extrabold text-muted tracking-[0.1em] uppercase border-b border-border pb-1 mb-2.5 mt-3.5">{text}</div>
 );

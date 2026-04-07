@@ -1,5 +1,3 @@
-import { C } from "../constants";
-
 export default function TopBar({
   selectedProject, saveStatus, totalDevices,
   importFileRef, handleProposalFileChange,
@@ -7,41 +5,41 @@ export default function TopBar({
   onBack, onReports, onPdfImport,
 }) {
   return (
-    <div style={{ background: C.navy, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(0,0,0,.35)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 18px", height: 48 }}>
-        <button onClick={onBack} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>← Back</button>
-        <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)" }} />
+    <div className="bg-navy sticky top-0 z-[100] shadow-[0_2px_12px_rgba(0,0,0,.35)]">
+      <div className="flex items-center gap-3 px-[18px] h-12">
+        <button onClick={onBack} className="bg-white/10 text-white border-none rounded-[5px] p-1 px-2.5 text-[11px] cursor-pointer">← Back</button>
+        <div className="w-px h-6 bg-white/15" />
         <div>
-          <div style={{ color: C.white, fontWeight: 800, fontSize: 13 }}>{selectedProject?.name || "Project"}</div>
-          <div style={{ color: C.accent, fontSize: 10 }}>ID: {selectedProject?.projectId || "—"}</div>
+          <div className="text-white font-extrabold text-[13px]">{selectedProject?.name || "Project"}</div>
+          <div className="text-accent text-[10px]">ID: {selectedProject?.projectId || "—"}</div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
-          {saveStatus === "saving" && <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>⏳ Saving…</span>}
-          {saveStatus === "saved"  && <span style={{ color: C.success, fontSize: 11, fontWeight: 700 }}>✓ Saved</span>}
-          {saveStatus === "error"  && <span style={{ color: C.danger,  fontSize: 11, fontWeight: 700 }}>⚠ Save failed</span>}
+        <div className="ml-auto flex gap-2.5 items-center">
+          {saveStatus === "saving" && <span className="text-white/45 text-[11px]">⏳ Saving…</span>}
+          {saveStatus === "saved"  && <span className="text-success text-[11px] font-bold">✓ Saved</span>}
+          {saveStatus === "error"  && <span className="text-danger text-[11px] font-bold">⚠ Save failed</span>}
           {totalDevices > 0 && (
-            <span style={{ background: C.accent, color: C.white, borderRadius: 10, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>
+            <span className="bg-accent text-white rounded-xl px-2.5 py-0.5 text-[11px] font-bold">
               {totalDevices} devices
             </span>
           )}
-          <input ref={importFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleProposalFileChange} />
+          <input ref={importFileRef} type="file" accept=".csv" className="hidden" onChange={handleProposalFileChange} />
           <button onClick={onPdfImport}
-            style={{ background: C.steel, color: C.white, border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 6, padding: "7px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+            className="bg-steel text-white border border-white/15 rounded-md px-3.5 py-[7px] text-[11px] font-bold cursor-pointer">
             📄 Import PDF
           </button>
           <button onClick={onReports}
-            style={{ background: C.gold, color: C.navy, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+            className="bg-gold text-navy border-none rounded-md px-4 py-[7px] text-xs font-extrabold cursor-pointer">
             📊 Reports
           </button>
         </div>
       </div>
       {/* Tabs */}
-      <div style={{ display: "flex", overflowX: "auto" }}>
+      <div className="flex overflow-x-auto">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ background: tab === t.id ? C.accent : "transparent", color: tab === t.id ? C.white : "rgba(255,255,255,.55)", border: "none", borderBottom: tab === t.id ? `3px solid ${C.white}` : "3px solid transparent", padding: "8px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5, borderRadius: "3px 3px 0 0" }}>
+            className={`${tab === t.id ? 'bg-accent text-white border-b-[3px] border-b-white' : 'bg-transparent text-white/55 border-b-[3px] border-b-transparent'} border-none px-3.5 py-2 text-[11px] font-bold cursor-pointer whitespace-nowrap flex items-center gap-[5px] rounded-t-[3px]`}>
             {t.icon} {t.label}
-            {t.count > 0 && <span style={{ background: C.gold, color: C.navy, borderRadius: 8, padding: "0 5px", fontSize: 10, fontWeight: 800 }}>{t.count}</span>}
+            {t.count > 0 && <span className="bg-gold text-navy rounded-lg px-[5px] text-[10px] font-extrabold">{t.count}</span>}
           </button>
         ))}
       </div>

@@ -22,8 +22,8 @@ export default function MasterDashboard({ onBack, laborTypes }) {
   const pct = (n, d) => d ? Math.round((n / d) * 100) : 0;
 
   const Bar = ({ val, color }) => (
-    <div style={{ background: "#E5E7EB", borderRadius: 999, height: 6, width: "100%", overflow: "hidden", marginTop: 2 }}>
-      <div style={{ height: "100%", width: `${val}%`, background: color, borderRadius: 999, transition: "width .4s" }} />
+    <div className="bg-[#E5E7EB] rounded-full h-1.5 w-full overflow-hidden mt-0.5">
+      <div className="h-full rounded-full transition-[width] duration-400" style={{ width: `${val}%`, background: color }} />
     </div>
   );
 
@@ -52,18 +52,18 @@ export default function MasterDashboard({ onBack, laborTypes }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
-      <div style={{ background: C.navy, padding: "12px 24px", display: "flex", alignItems: "center", gap: 16 }}>
-        <button onClick={onBack} style={{ background: "rgba(255,255,255,0.1)", color: C.white, border: "none", borderRadius: 5, padding: "4px 12px", fontSize: 12, cursor: "pointer" }}>← Back</button>
-        <div style={{ color: C.white, fontWeight: 800, fontSize: 16 }}>📊 Master Project Dashboard</div>
-        <div style={{ marginLeft: "auto", color: C.accent, fontSize: 12, fontWeight: 600 }}>{rows.length} projects loaded</div>
+    <div className="min-h-screen bg-bg font-['Segoe_UI',system-ui,sans-serif]">
+      <div className="bg-navy px-6 py-3 flex items-center gap-4">
+        <button onClick={onBack} className="bg-white/10 text-white border-none rounded-[5px] px-3 py-1 text-xs cursor-pointer">← Back</button>
+        <div className="text-white font-extrabold text-[16px]">📊 Master Project Dashboard</div>
+        <div className="ml-auto text-accent text-xs font-semibold">{rows.length} projects loaded</div>
       </div>
-      <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
-        {loading && <div style={{ textAlign: "center", padding: 60, color: C.muted }}>Loading all projects…</div>}
-        {error   && <div style={{ background: "#FEE2E2", borderRadius: 8, padding: 16, color: C.danger, marginBottom: 16 }}>Error: {error}</div>}
+      <div className="p-6 max-w-[1200px] mx-auto">
+        {loading && <div className="text-center p-[60px] text-muted">Loading all projects…</div>}
+        {error   && <div className="bg-[#FEE2E2] rounded-lg p-4 text-danger mb-4">Error: {error}</div>}
         {!loading && !error && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 mb-6">
               {[
                 { label: "Projects",      value: rows.length,                    color: C.navy },
                 { label: "Total Devices", value: totDevices,                     color: C.navy },
@@ -72,18 +72,18 @@ export default function MasterDashboard({ onBack, laborTypes }) {
                 { label: "Budget Hrs",    value: `${totBud}h`,                   color: C.navy },
                 { label: "Actual Hrs",    value: `${totAct}h`,                   color: totAct > totBud && totBud > 0 ? C.danger : C.success },
               ].map(card => (
-                <div key={card.label} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 16 }}>
-                  <div style={{ color: C.muted, fontSize: 11, fontWeight: 700 }}>{card.label}</div>
-                  <div style={{ fontWeight: 800, fontSize: 22, color: card.color, marginTop: 4 }}>{card.value}</div>
+                <div key={card.label} className="bg-white rounded-xl border border-border p-4">
+                  <div className="text-muted text-[11px] font-bold">{card.label}</div>
+                  <div className="font-extrabold text-[22px] mt-1" style={{ color: card.color }}>{card.value}</div>
                 </div>
               ))}
             </div>
-            <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div className="bg-white rounded-xl border border-border overflow-hidden">
+              <table className="w-full border-collapse text-[13px]">
                 <thead>
-                  <tr style={{ background: C.navy }}>
+                  <tr className="bg-navy">
                     {["Project","Status","Devices","Install %","Program %","Budget Hrs","Actual Hrs","Variance","Last Updated"].map(h => (
-                      <th key={h} style={{ padding: "10px 14px", color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: 700, textAlign: h === "Project" || h === "Status" ? "left" : "center", whiteSpace: "nowrap" }}>{h}</th>
+                      <th key={h} className={`px-3.5 py-2.5 text-white/80 text-[11px] font-bold whitespace-nowrap ${h === "Project" || h === "Status" ? 'text-left' : 'text-center'}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -94,33 +94,33 @@ export default function MasterDashboard({ onBack, laborTypes }) {
                     const pp   = pct(r.pgmd, r.total);
                     const varr = r.act - r.bud;
                     return (
-                      <tr key={r.id} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
-                        <td style={{ padding: "10px 14px", fontWeight: 700, color: C.navy, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name || "—"}</td>
-                        <td style={{ padding: "10px 14px" }}>
-                          <span style={{ background: st.color + "22", color: st.color, borderRadius: 6, padding: "2px 10px", fontWeight: 700, fontSize: 11 }}>{st.label}</span>
+                      <tr key={r.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-surface'} border-b border-border`}>
+                        <td className="px-3.5 py-2.5 font-bold text-navy max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{r.name || "—"}</td>
+                        <td className="px-3.5 py-2.5">
+                          <span style={{ background: st.color + "22", color: st.color }} className="rounded-md px-2.5 py-0.5 font-bold text-[11px]">{st.label}</span>
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: C.navy, fontWeight: 700 }}>{r.total}</td>
-                        <td style={{ padding: "10px 14px", minWidth: 100 }}>
-                          <div style={{ textAlign: "center", fontWeight: 700, color: ip === 100 ? C.success : C.warn, fontSize: 12 }}>{ip}%</div>
+                        <td className="px-3.5 py-2.5 text-center text-navy font-bold">{r.total}</td>
+                        <td className="px-3.5 py-2.5 min-w-[100px]">
+                          <div className="text-center font-bold text-xs" style={{ color: ip === 100 ? C.success : C.warn }}>{ip}%</div>
                           <Bar val={ip} color={ip === 100 ? C.success : C.warn} />
                         </td>
-                        <td style={{ padding: "10px 14px", minWidth: 100 }}>
-                          <div style={{ textAlign: "center", fontWeight: 700, color: pp === 100 ? C.success : C.accent, fontSize: 12 }}>{pp}%</div>
+                        <td className="px-3.5 py-2.5 min-w-[100px]">
+                          <div className="text-center font-bold text-xs" style={{ color: pp === 100 ? C.success : C.accent }}>{pp}%</div>
                           <Bar val={pp} color={pp === 100 ? C.success : C.accent} />
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: C.navy }}>{r.bud ? `${r.bud}h` : "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: C.navy }}>{r.act ? `${r.act}h` : "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700, color: varr > 0 ? C.danger : varr < 0 ? C.success : C.muted }}>
+                        <td className="px-3.5 py-2.5 text-center text-navy">{r.bud ? `${r.bud}h` : "—"}</td>
+                        <td className="px-3.5 py-2.5 text-center text-navy">{r.act ? `${r.act}h` : "—"}</td>
+                        <td className="px-3.5 py-2.5 text-center font-bold" style={{ color: varr > 0 ? C.danger : varr < 0 ? C.success : C.muted }}>
                           {r.bud === 0 ? "—" : varr === 0 ? "0h" : `${varr > 0 ? "+" : ""}${varr}h`}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: C.muted, fontSize: 11 }}>
+                        <td className="px-3.5 py-2.5 text-center text-muted text-[11px]">
                           {r.updated ? new Date(r.updated).toLocaleDateString() : "—"}
                         </td>
                       </tr>
                     );
                   })}
                   {summary.length === 0 && (
-                    <tr><td colSpan={9} style={{ padding: 40, textAlign: "center", color: C.muted }}>No saved projects yet. Open a project and make changes to save it.</td></tr>
+                    <tr><td colSpan={9} className="p-10 text-center text-muted">No saved projects yet. Open a project and make changes to save it.</td></tr>
                   )}
                 </tbody>
               </table>

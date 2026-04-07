@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { C } from "../constants";
 import { extractPdfText, parsePdfParts } from "../utils/parsePdfParts";
 
 const CAT_OPTIONS = [
@@ -59,33 +58,33 @@ export default function PdfImportModal({ open, onClose, onImport }) {
   const catIcon = (cat) => CAT_OPTIONS.find(c => c.value === cat)?.icon || "?";
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(7,20,42,0.82)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: C.white, borderRadius: 12, maxWidth: 900, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 48px rgba(0,0,0,.45)" }}>
+    <div className="fixed inset-0 bg-dark/[0.82] z-[500] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-[900px] w-full max-h-[90vh] flex flex-col shadow-[0_8px_48px_rgba(0,0,0,.45)]">
         {/* Header */}
-        <div style={{ background: C.navy, borderRadius: "12px 12px 0 0", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>📄 Import Parts from PDF</div>
-            <div style={{ color: C.accent, fontSize: 12, marginTop: 2 }}>
+        <div className="bg-navy rounded-t-xl px-5 py-4 flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-white font-extrabold text-[15px]">📄 Import Parts from PDF</div>
+            <div className="text-accent text-xs mt-0.5">
               Upload a procurement/proposal PDF with parts lists
-              {fileName && <span style={{ color: C.gold, marginLeft: 8 }}>— {fileName}</span>}
+              {fileName && <span className="text-gold ml-2">— {fileName}</span>}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.12)", color: C.white, border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 13, cursor: "pointer" }}>✕</button>
+          <button onClick={onClose} className="bg-white/[0.12] text-white border-none rounded-md p-1 px-2.5 text-[13px] cursor-pointer">✕</button>
         </div>
 
         {/* Upload area */}
         {items.length === 0 && !loading && (
-          <div style={{ padding: 32, textAlign: "center" }}>
-            <input ref={fileRef} type="file" accept=".pdf" style={{ display: "none" }} onChange={handleFile} />
+          <div className="p-8 text-center">
+            <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={handleFile} />
             <button onClick={() => fileRef.current?.click()}
-              style={{ background: C.accent, color: C.white, border: "none", borderRadius: 8, padding: "14px 32px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+              className="bg-accent text-white border-none rounded-lg px-8 py-3.5 text-sm font-extrabold cursor-pointer">
               📄 Choose PDF File
             </button>
-            <div style={{ color: C.muted, fontSize: 12, marginTop: 12 }}>
+            <div className="text-muted text-xs mt-3">
               Works with Portal.io procurement sheets, proposal PDFs, and parts lists with section headers.
             </div>
             {error && (
-              <div style={{ background: "#FEE2E2", borderRadius: 8, padding: 14, color: "#991B1B", fontSize: 12, marginTop: 16, textAlign: "left" }}>
+              <div className="bg-[#FEE2E2] rounded-lg p-3.5 text-[#991B1B] text-xs mt-4 text-left">
                 {error}
               </div>
             )}
@@ -93,8 +92,8 @@ export default function PdfImportModal({ open, onClose, onImport }) {
         )}
 
         {loading && (
-          <div style={{ padding: 40, textAlign: "center", color: C.muted }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
+          <div className="p-10 text-center text-muted">
+            <div className="text-[32px] mb-2">⏳</div>
             Reading PDF...
           </div>
         )}
@@ -102,43 +101,43 @@ export default function PdfImportModal({ open, onClose, onImport }) {
         {/* Items table */}
         {items.length > 0 && (
           <>
-            <div style={{ overflowY: "auto", flex: 1 }}>
+            <div className="overflow-y-auto flex-1">
               {error && (
-                <div style={{ background: "#FEE2E2", padding: "10px 20px", fontSize: 12, color: "#991B1B" }}>{error}</div>
+                <div className="bg-[#FEE2E2] px-5 py-2.5 text-xs text-[#991B1B]">{error}</div>
               )}
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table className="w-full border-collapse text-xs">
                 <thead>
-                  <tr style={{ background: C.surface, position: "sticky", top: 0 }}>
-                    <th style={{ padding: "8px 6px", width: 30 }}></th>
+                  <tr className="bg-surface sticky top-0">
+                    <th className="px-1.5 py-2 w-[30px]"></th>
                     {["#", "Brand", "Model", "Qty", "Category", "Hardware Only"].map(h => (
-                      <th key={h} style={{ padding: "8px 8px", textAlign: "left", color: C.muted, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{h}</th>
+                      <th key={h} className="px-2 py-2 text-left text-muted font-bold text-[10px] uppercase tracking-[0.06em] border-b border-border whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item, i) => (
-                    <tr key={i} style={{ background: !item._include ? "#F9FAFB" : item.hardware ? "#FFFBEB" : i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}`, opacity: item._include ? 1 : 0.4 }}>
-                      <td style={{ padding: "6px 6px", textAlign: "center" }}>
+                    <tr key={i} className={`border-b border-border ${!item._include ? 'bg-[#F9FAFB] opacity-40' : item.hardware ? 'bg-[#FFFBEB]' : i % 2 === 0 ? 'bg-white' : 'bg-surface'} ${item._include ? 'opacity-100' : 'opacity-40'}`}>
+                      <td className="px-1.5 py-1.5 text-center">
                         <input type="checkbox" checked={item._include} onChange={() => toggleItem(i)}
-                          style={{ accentColor: C.accent, width: 14, height: 14 }} />
+                          className="w-3.5 h-3.5 accent-accent" />
                       </td>
-                      <td style={{ padding: "6px 8px", color: C.muted, fontSize: 10 }}>{item.lineNum}</td>
-                      <td style={{ padding: "6px 8px", color: C.navy, fontWeight: 600 }}>{item.brand}</td>
-                      <td style={{ padding: "6px 8px", color: C.navy, fontFamily: "monospace", fontSize: 11 }}>{item.model}</td>
-                      <td style={{ padding: "6px 8px", width: 60 }}>
+                      <td className="px-2 py-1.5 text-muted text-[10px]">{item.lineNum}</td>
+                      <td className="px-2 py-1.5 text-navy font-semibold">{item.brand}</td>
+                      <td className="px-2 py-1.5 text-navy font-mono text-[11px]">{item.model}</td>
+                      <td className="px-2 py-1.5 w-[60px]">
                         <input type="number" min="1" value={item.qty}
                           onChange={e => setQty(i, e.target.value)}
-                          style={{ width: 50, padding: "3px 6px", borderRadius: 4, border: `1px solid ${C.border}`, fontSize: 12, textAlign: "center", color: C.navy }} />
+                          className="w-[50px] px-1.5 py-[3px] rounded border border-border text-xs text-center text-navy" />
                       </td>
-                      <td style={{ padding: "6px 8px" }}>
+                      <td className="px-2 py-1.5">
                         <select value={item.category} onChange={e => setCat(i, e.target.value)}
-                          style={{ padding: "3px 6px", borderRadius: 5, border: `1px solid ${item.category === "unknown" ? C.warn : C.border}`, background: item.category === "unknown" ? "#FEF3C7" : C.white, color: item.category === "unknown" ? "#92400E" : C.navy, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          className={`px-1.5 py-[3px] rounded-[5px] text-[11px] font-bold cursor-pointer ${item.category === "unknown" ? 'border border-warn bg-[#FEF3C7] text-[#92400E]' : 'border border-border bg-white text-navy'}`}>
                           {CAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.icon} {o.label}</option>)}
                         </select>
                       </td>
-                      <td style={{ padding: "6px 8px", textAlign: "center" }}>
+                      <td className="px-2 py-1.5 text-center">
                         <input type="checkbox" checked={!!item.hardware} onChange={() => setHw(i, !item.hardware)}
-                          style={{ accentColor: C.gold, width: 14, height: 14 }} />
+                          className="w-3.5 h-3.5 accent-gold" />
                       </td>
                     </tr>
                   ))}
@@ -147,28 +146,29 @@ export default function PdfImportModal({ open, onClose, onImport }) {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "14px 20px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 12, background: C.surface, borderRadius: "0 0 12px 12px" }}>
-              <div style={{ flex: 1, fontSize: 12, color: C.muted }}>
+            <div className="px-5 py-3.5 border-t border-border flex items-center gap-3 bg-surface rounded-b-xl">
+              <div className="flex-1 text-xs text-muted">
                 <strong>{included.length}</strong> items will be imported as device groups.
                 {items.filter(it => it.hardware && it._include).length > 0 && (
-                  <span style={{ color: C.gold, marginLeft: 6 }}>
+                  <span className="text-gold ml-1.5">
                     ({items.filter(it => it.hardware && it._include).length} hardware-only)
                   </span>
                 )}
               </div>
               <button onClick={() => { fileRef.current?.click(); }}
-                style={{ background: C.bg, color: C.steel, border: `1px solid ${C.border}`, borderRadius: 7, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}>
+                className="bg-bg text-steel border border-border rounded-[7px] px-3.5 py-2 text-xs cursor-pointer">
                 ↻ Different PDF
               </button>
-              <input ref={fileRef} type="file" accept=".pdf" style={{ display: "none" }} onChange={handleFile} />
+              <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={handleFile} />
               <button onClick={onClose}
-                style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" }}>
+                className="bg-transparent text-muted border border-border rounded-[7px] px-[18px] py-2 text-[13px] cursor-pointer">
                 Cancel
               </button>
               <button
                 disabled={included.length === 0}
                 onClick={() => { onImport(included); onClose(); }}
-                style={{ background: C.accent, color: C.white, border: "none", borderRadius: 7, padding: "8px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer", opacity: included.length === 0 ? 0.5 : 1 }}>
+                style={{ opacity: included.length === 0 ? 0.5 : 1 }}
+                className="bg-accent text-white border-none rounded-[7px] px-[22px] py-2 text-[13px] font-extrabold cursor-pointer">
                 ⬆ Import {included.length} Items
               </button>
             </div>

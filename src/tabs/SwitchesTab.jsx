@@ -9,9 +9,9 @@ import GenerateBar from "../components/GenerateBar";
 export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
   return (
     <div>
-      <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
+      <div className="bg-white rounded-xl border border-border overflow-hidden">
         <CardHead icon="🔀" title="Network Switching" count={swCount} onAdd={() => { const ip = getNextIpStart("switch", networkConfig, allGroupsTagged); setSwitchGroups(g => [...g, { ...mkSwGrp(), ipStart: ip }]); addLog("group_added", "Switch group added"); }} addLabel="Add Switch Group" color="#0B1F3A" />
-        <div style={{ padding: 18 }}>
+        <div className="p-4">
           {switchGroups.length === 0 && <Empty icon="🔀" msg="No switch groups yet. Click + Add Switch Group." />}
           {switchGroups.map((grp, gi) => {
             const hw = grp.noProgramming;
@@ -28,8 +28,8 @@ export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, co
                 onModel={v => updGrp(setSwitchGroups, grp.id, "model", v)}
                 onApply={() => {}} />
               {/* Hardware-only toggle — right after model selection */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: hw ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${hw ? "#FDE68A" : "#BBF7D0"}` }}>
-                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: hw ? "#92400E" : "#065F46" }}>{hw ? "Hardware only — no programming required" : "Programming required — devices need configuration"}</span>} val={hw} set={v => updGrp(setSwitchGroups, grp.id, "noProgramming", v)} />
+              <div className={`flex items-center gap-2.5 mt-2.5 p-2 px-3 rounded-[7px] border ${hw ? "bg-[#FEF3C7] border-[#FDE68A]" : "bg-[#F0FDF4] border-[#BBF7D0]"}`}>
+                <Tog label={<span className={`text-xs font-semibold ${hw ? "text-[#92400E]" : "text-[#065F46]"}`}>{hw ? "Hardware only — no programming required" : "Programming required — devices need configuration"}</span>} val={hw} set={v => updGrp(setSwitchGroups, grp.id, "noProgramming", v)} />
               </div>
               {/* Only show config fields when programming is required */}
               {!hw && (

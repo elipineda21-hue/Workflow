@@ -9,9 +9,9 @@ import GenerateBar from "../components/GenerateBar";
 export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
   return (
     <div>
-      <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
+      <div className="bg-white rounded-xl border border-border overflow-hidden">
         <CardHead icon="📷" title="CCTV Camera Programming" count={camCount} onAdd={() => { const ip = getNextIpStart("camera", networkConfig, allGroupsTagged); setCameraGroups(g => [...g, { ...mkCamGroup(), ipStart: ip }]); addLog("group_added", "Camera group added"); }} addLabel="Add Camera Group" color="#0B1F3A" />
-        <div style={{ padding: 18 }}>
+        <div className="p-4">
           {cameraGroups.length === 0 && <Empty icon="📷" msg="No camera groups yet. Click + Add Camera Group to get started." />}
           {cameraGroups.map((grp, gi) => {
             const grpTitle = grp.groupLabel || (grp.brand ? `${grp.brand}${grp.model ? " — " + grp.model : ""}` : null);
@@ -41,8 +41,8 @@ export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, co
                   } : g))}
                 />
                 {/* Hardware-only toggle — right after model selection */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: hw ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${hw ? "#FDE68A" : "#BBF7D0"}` }}>
-                  <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: hw ? "#92400E" : "#065F46" }}>{hw ? "Hardware only — no programming required" : "Programming required — devices need configuration"}</span>} val={hw} set={v => updGrp(setCameraGroups, grp.id, "noProgramming", v)} />
+                <div className={`flex items-center gap-2.5 mt-2.5 p-2 px-3 rounded-[7px] border ${hw ? "bg-[#FEF3C7] border-[#FDE68A]" : "bg-[#F0FDF4] border-[#BBF7D0]"}`}>
+                  <Tog label={<span className={`text-xs font-semibold ${hw ? "text-[#92400E]" : "text-[#065F46]"}`}>{hw ? "Hardware only — no programming required" : "Programming required — devices need configuration"}</span>} val={hw} set={v => updGrp(setCameraGroups, grp.id, "noProgramming", v)} />
                 </div>
                 {/* Only show config fields when programming is required */}
                 {!hw && (
@@ -60,7 +60,7 @@ export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, co
                       <F label="Username"><Inp value={grp.username} onChange={e => updGrp(setCameraGroups, grp.id, "username", e.target.value)} /></F>
                       <F label="Password"><Inp value={grp.password} onChange={e => updGrp(setCameraGroups, grp.id, "password", e.target.value)} /></F>
                       <F label="Storage Group"><Inp value={grp.storageGroup} onChange={e => updGrp(setCameraGroups, grp.id, "storageGroup", e.target.value)} /></F>
-                      <F label="PTZ"><div style={{ paddingTop: 6 }}><Tog label="PTZ Enabled" val={grp.ptz} set={v => updGrp(setCameraGroups, grp.id, "ptz", v)} /></div></F>
+                      <F label="PTZ"><div className="pt-1.5"><Tog label="PTZ Enabled" val={grp.ptz} set={v => updGrp(setCameraGroups, grp.id, "ptz", v)} /></div></F>
                     </G>
                   </>
                 )}

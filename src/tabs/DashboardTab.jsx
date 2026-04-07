@@ -38,90 +38,90 @@ export default function DashboardTab({
   return (
     <div>
       {/* Summary cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 mb-4">
         {[
           { label: "Install %",  value: `${instPct}%`, sub: `${installedCount} / ${allDevs.length} devices`, color: instPct === 100 ? C.success : C.warn },
           { label: "Program %",  value: `${pct}%`,     sub: `${programmedCount} / ${allDevs.length} devices`, color: pct === 100 ? C.success : C.accent },
           { label: "Budget Hrs", value: `${totalBudget}h`, sub: "from proposal", color: C.navy },
           { label: "Actual Hrs", value: `${totalActual}h`, sub: totalBudget ? `${totalActual - totalBudget > 0 ? "+" : ""}${totalActual - totalBudget}h variance` : "enter in Labor tab", color: totalActual > totalBudget ? C.danger : C.success },
         ].map(card => (
-          <div key={card.label} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 16 }}>
-            <div style={{ color: C.muted, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{card.label}</div>
-            <div style={{ fontWeight: 800, fontSize: 24, color: card.color }}>{card.value}</div>
-            <div style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{card.sub}</div>
+          <div key={card.label} className="bg-white rounded-xl border border-border p-4">
+            <div className="text-muted text-[11px] font-bold mb-1">{card.label}</div>
+            <div className="font-extrabold text-[24px]" style={{ color: card.color }}>{card.value}</div>
+            <div className="text-muted text-[11px] mt-0.5">{card.sub}</div>
           </div>
         ))}
       </div>
 
       {/* Progress bars */}
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 20, marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>Installation</div>
-          <div style={{ fontWeight: 800, color: instPct === 100 ? C.success : C.warn }}>{instPct}%</div>
+      <div className="bg-white rounded-xl border border-border p-5 mb-4">
+        <div className="flex justify-between mb-2">
+          <div className="font-bold text-[13px] text-navy">Installation</div>
+          <div className="font-extrabold" style={{ color: instPct === 100 ? C.success : C.warn }}>{instPct}%</div>
         </div>
-        <div style={{ background: C.bg, borderRadius: 999, height: 10, overflow: "hidden", marginBottom: 4 }}>
-          <div style={{ height: "100%", width: `${instPct}%`, background: instPct === 100 ? C.success : C.warn, borderRadius: 999, transition: "width .4s" }} />
+        <div className="bg-bg rounded-full h-2.5 overflow-hidden mb-1">
+          <div className="h-full rounded-full transition-[width] duration-400" style={{ width: `${instPct}%`, background: instPct === 100 ? C.success : C.warn }} />
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>Programming</div>
-          <div style={{ fontWeight: 800, color: pct === 100 ? C.success : C.accent }}>{pct}%</div>
+        <div className="flex justify-between mt-3">
+          <div className="font-bold text-[13px] text-navy">Programming</div>
+          <div className="font-extrabold" style={{ color: pct === 100 ? C.success : C.accent }}>{pct}%</div>
         </div>
-        <div style={{ background: C.bg, borderRadius: 999, height: 10, overflow: "hidden", marginTop: 4 }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? C.success : C.accent, borderRadius: 999, transition: "width .4s" }} />
+        <div className="bg-bg rounded-full h-2.5 overflow-hidden mt-1">
+          <div className="h-full rounded-full transition-[width] duration-400" style={{ width: `${pct}%`, background: pct === 100 ? C.success : C.accent }} />
         </div>
       </div>
 
       {/* Collapsible category device sections */}
       {allDevs.length === 0 ? (
-        <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 40, textAlign: "center", color: C.muted, marginBottom: 16 }}>
+        <div className="bg-white rounded-xl border border-border p-10 text-center text-muted mb-4">
           No devices added yet. Go to any category tab and add device groups.
         </div>
       ) : (
-        <div style={{ marginBottom: 16 }}>
+        <div className="mb-4">
           {catSections.map(cat => {
             const done = cat.devs.filter(d => d.programmed || d._noProg).length;
             const cp = cat.devs.length ? Math.round((done / cat.devs.length) * 100) : 0;
             const isCollapsed = dashCollapsed[cat.id];
             return (
-              <div key={cat.id} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 8 }}>
+              <div key={cat.id} className="bg-white rounded-xl border border-border overflow-hidden mb-2">
                 <div
                   onClick={() => setDashCollapsed(s => ({ ...s, [cat.id]: !s[cat.id] }))}
-                  style={{ background: C.navy, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none" }}
+                  className="bg-navy py-2.5 px-4 flex justify-between items-center cursor-pointer select-none"
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ color: C.white, fontWeight: 700, fontSize: 13 }}>{cat.icon} {cat.label}</span>
-                    <span style={{ background: "rgba(255,255,255,0.15)", color: C.white, borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{cat.devs.length}</span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-white font-bold text-[13px]">{cat.icon} {cat.label}</span>
+                    <span className="bg-white/15 text-white rounded-xl px-2 py-px text-[11px] font-bold">{cat.devs.length}</span>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ color: cp === 100 ? C.success : "#FCD34D", fontWeight: 700, fontSize: 12 }}>{done}/{cat.devs.length} programmed</span>
-                    <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>{isCollapsed ? "▶" : "▼"}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-xs" style={{ color: cp === 100 ? C.success : "#FCD34D" }}>{done}/{cat.devs.length} programmed</span>
+                    <span className="text-white/60 text-sm">{isCollapsed ? "▶" : "▼"}</span>
                   </div>
                 </div>
-                <div style={{ height: 3, background: C.bg }}>
-                  <div style={{ height: "100%", width: `${cp}%`, background: cp === 100 ? C.success : C.accent, transition: "width .4s" }} />
+                <div className="h-[3px] bg-bg">
+                  <div className="h-full transition-[width] duration-400" style={{ width: `${cp}%`, background: cp === 100 ? C.success : C.accent }} />
                 </div>
                 {!isCollapsed && (
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <table className="w-full border-collapse text-xs">
                     <thead>
-                      <tr style={{ background: C.surface }}>
-                        <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}`, width: 90 }}>Status</th>
-                        <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>Device Name</th>
-                        <th style={{ padding: "7px 12px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, borderBottom: `1px solid ${C.border}`, width: 140 }}>Blueprint ID</th>
+                      <tr className="bg-surface">
+                        <th className="py-[7px] px-3 text-left text-muted text-[11px] font-bold border-b border-border w-[90px]">Status</th>
+                        <th className="py-[7px] px-3 text-left text-muted text-[11px] font-bold border-b border-border">Device Name</th>
+                        <th className="py-[7px] px-3 text-left text-muted text-[11px] font-bold border-b border-border w-[140px]">Blueprint ID</th>
                       </tr>
                     </thead>
                     <tbody>
                       {cat.devs.map((dev, i) => (
                         <tr key={dev.id} style={{ background: (dev.programmed || dev._noProg) ? "#F0FDF4" : (i % 2 === 0 ? C.white : C.surface) }}>
-                          <td style={{ padding: "6px 12px" }}>
-                            <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: dev._noProg ? "#E0F2FE" : dev.programmed ? "#D1FAE5" : "#FEF3C7", color: dev._noProg ? C.accent : dev.programmed ? C.success : C.warn }}>
+                          <td className="py-1.5 px-3">
+                            <span className="inline-block py-0.5 px-2 rounded-xl text-[10px] font-bold" style={{ background: dev._noProg ? "#E0F2FE" : dev.programmed ? "#D1FAE5" : "#FEF3C7", color: dev._noProg ? C.accent : dev.programmed ? C.success : C.warn }}>
                               {dev._noProg ? "N/A" : dev.programmed ? "✓ Done" : "Pending"}
                             </span>
                           </td>
-                          <td style={{ padding: "6px 12px", fontWeight: 600, color: C.navy }}>
+                          <td className="py-1.5 px-3 font-semibold text-navy">
                             {dev.name}
-                            {dev._grp && <span style={{ fontWeight: 400, color: C.muted, fontSize: 11, marginLeft: 6 }}>({dev._grp})</span>}
+                            {dev._grp && <span className="font-normal text-muted text-[11px] ml-1.5">({dev._grp})</span>}
                           </td>
-                          <td style={{ padding: "6px 12px", fontFamily: "monospace", color: C.steel, fontSize: 11 }}>{dev.cableId || <span style={{ color: C.border }}>—</span>}</td>
+                          <td className="py-1.5 px-3 font-mono text-steel text-[11px]">{dev.cableId || <span className="text-border">—</span>}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -134,34 +134,34 @@ export default function DashboardTab({
       )}
 
       {/* Change Log */}
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 16 }}>
+      <div className="bg-white rounded-xl border border-border overflow-hidden mb-4">
         <div
           onClick={() => setDashCollapsed(s => ({ ...s, _changelog: !s._changelog }))}
-          style={{ background: C.surface, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none", borderBottom: `1px solid ${C.border}` }}
+          className="bg-surface py-2.5 px-4 flex justify-between items-center cursor-pointer select-none border-b border-border"
         >
-          <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>📋 Change Log <span style={{ fontWeight: 400, color: C.muted, fontSize: 11 }}>({changeLog.length} entries)</span></span>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <span className="font-bold text-[13px] text-navy">📋 Change Log <span className="font-normal text-muted text-[11px]">({changeLog.length} entries)</span></span>
+          <div className="flex gap-2.5 items-center">
             {changeLog.length > 0 && (
               <button
                 onClick={e => { e.stopPropagation(); setChangeLog([]); }}
-                style={{ fontSize: 11, padding: "2px 10px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.white, color: C.danger, cursor: "pointer", fontWeight: 600 }}
+                className="text-[11px] py-0.5 px-2.5 rounded-md border border-border bg-white text-danger cursor-pointer font-semibold"
               >Clear</button>
             )}
-            <span style={{ color: C.muted, fontSize: 14 }}>{dashCollapsed._changelog ? "▶" : "▼"}</span>
+            <span className="text-muted text-sm">{dashCollapsed._changelog ? "▶" : "▼"}</span>
           </div>
         </div>
         {!dashCollapsed._changelog && (
           changeLog.length === 0 ? (
-            <div style={{ padding: 20, textAlign: "center", color: C.muted, fontSize: 12 }}>No activity yet. Mark devices as programmed/installed to log changes.</div>
+            <div className="p-5 text-center text-muted text-xs">No activity yet. Mark devices as programmed/installed to log changes.</div>
           ) : (
-            <div style={{ maxHeight: 280, overflowY: "auto" }}>
+            <div className="max-h-[280px] overflow-y-auto">
               {changeLog.map(entry => {
                 const meta = logTypeMeta[entry.type] || { label: entry.type, bg: C.surface, color: C.muted };
                 return (
-                  <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", borderBottom: `1px solid ${C.border}`, fontSize: 12 }}>
-                    <span style={{ color: C.muted, fontSize: 11, minWidth: 70, flexShrink: 0 }}>{new Date(entry.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                    <span style={{ background: meta.bg, color: meta.color, borderRadius: 8, padding: "1px 8px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{meta.label}</span>
-                    <span style={{ color: C.navy }}>{entry.desc}</span>
+                  <div key={entry.id} className="flex items-center gap-2.5 py-[7px] px-3.5 border-b border-border text-xs">
+                    <span className="text-muted text-[11px] min-w-[70px] shrink-0">{new Date(entry.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    <span className="rounded-lg py-px px-2 text-[10px] font-bold shrink-0" style={{ background: meta.bg, color: meta.color }}>{meta.label}</span>
+                    <span className="text-navy">{entry.desc}</span>
                   </div>
                 );
               })}
@@ -171,26 +171,26 @@ export default function DashboardTab({
       </div>
 
       {/* Send Update to AI Agent */}
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+      <div className="bg-white rounded-xl border border-border overflow-hidden">
         <div
           onClick={() => setDashCollapsed(s => ({ ...s, _ai: !s._ai }))}
-          style={{ background: C.surface, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none", borderBottom: `1px solid ${C.border}` }}
+          className="bg-surface py-2.5 px-4 flex justify-between items-center cursor-pointer select-none border-b border-border"
         >
-          <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>🤖 Send Update to AI Agent</span>
-          <span style={{ color: C.muted, fontSize: 14 }}>{dashCollapsed._ai ? "▶" : "▼"}</span>
+          <span className="font-bold text-[13px] text-navy">🤖 Send Update to AI Agent</span>
+          <span className="text-muted text-sm">{dashCollapsed._ai ? "▶" : "▼"}</span>
         </div>
         {!dashCollapsed._ai && (
-          <div style={{ padding: 16 }}>
-            <div style={{ color: C.muted, fontSize: 11, marginBottom: 10 }}>
+          <div className="p-4">
+            <div className="text-muted text-[11px] mb-2.5">
               Posts the change log + device status counts to your AI agent's webhook. The agent handles Monday.com updates from there.
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <div className="flex gap-2 mb-3">
               <input
                 type="url"
                 placeholder="Webhook URL (https://...)"
                 value={webhookUrl}
                 onChange={e => { setWebhookUrl(e.target.value); localStorage.setItem("agentWebhookUrl", e.target.value); }}
-                style={{ flex: 1, padding: "8px 10px", borderRadius: 7, border: `1px solid ${C.border}`, fontSize: 12, fontFamily: "monospace" }}
+                className="flex-1 p-2 px-2.5 rounded-[7px] border border-border text-xs font-mono"
               />
               <button
                 onClick={async () => {
@@ -240,11 +240,11 @@ export default function DashboardTab({
                   setAiLoading(false);
                 }}
                 disabled={aiLoading}
-                style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: aiLoading ? C.muted : C.accent, color: C.white, fontWeight: 700, fontSize: 12, cursor: aiLoading ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                className={`py-2 px-4 rounded-[7px] border-none text-white font-bold text-xs whitespace-nowrap ${aiLoading ? "bg-muted cursor-not-allowed" : "bg-accent cursor-pointer"}`}
               >{aiLoading ? "Sending…" : "Send Update"}</button>
             </div>
-            <div style={{ background: C.surface, borderRadius: 7, border: `1px solid ${C.border}`, padding: "8px 12px", fontSize: 11, color: C.muted }}>
-              <strong style={{ color: C.navy }}>Payload includes:</strong> project ID &amp; name · device counts per category (total / programmed / installed / pending) · labor hours &amp; variance · last 100 change log entries
+            <div className="bg-surface rounded-[7px] border border-border py-2 px-3 text-[11px] text-muted">
+              <strong className="text-navy">Payload includes:</strong> project ID &amp; name · device counts per category (total / programmed / installed / pending) · labor hours &amp; variance · last 100 change log entries
             </div>
           </div>
         )}

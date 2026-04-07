@@ -16,7 +16,7 @@ export default function ModelSelector({ db, brand, model, onBrand, onModel, onAp
     }
   };
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
+    <div className="grid gap-2.5" style={{ gridTemplateColumns: "1fr 2fr" }}>
       <F label="Brand">
         <Sel value={brand} onChange={e => handleBrand(e.target.value)}>
           <option value="">-- Select Brand --</option>

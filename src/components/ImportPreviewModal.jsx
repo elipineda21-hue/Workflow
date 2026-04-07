@@ -1,5 +1,3 @@
-import { C } from "../constants";
-
 export default function ImportPreviewModal({
   importPreview, setImportPreview, handleProposalImport,
   selectedProject, cameraGroups, switchGroups, serverGroups,
@@ -18,48 +16,48 @@ export default function ImportPreviewModal({
   ];
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(7,20,42,0.82)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: C.white, borderRadius: 12, maxWidth: 780, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 48px rgba(0,0,0,.45)" }}>
+    <div className="fixed inset-0 bg-dark/[0.82] z-[500] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-[780px] w-full max-h-[90vh] flex flex-col shadow-[0_8px_48px_rgba(0,0,0,.45)]">
         {/* Modal header */}
-        <div style={{ background: C.navy, borderRadius: "12px 12px 0 0", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>
+        <div className="bg-navy rounded-t-xl px-5 py-4 flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-white font-extrabold text-[15px]">
               {importPreview.isChangeOrder ? "Import Change Order Hardware" : "Import Proposal Hardware"}
-              {importPreview.isChangeOrder && <span style={{ background: C.gold, color: C.navy, fontSize: 10, fontWeight: 800, borderRadius: 8, padding: "2px 8px", marginLeft: 8 }}>CHANGE ORDER</span>}
+              {importPreview.isChangeOrder && <span className="bg-gold text-navy text-[10px] font-extrabold rounded-lg px-2 py-0.5 ml-2">CHANGE ORDER</span>}
             </div>
-            <div style={{ color: C.accent, fontSize: 12, marginTop: 2 }}>
+            <div className="text-accent text-xs mt-0.5">
               Proposal #{importPreview.proposalId}
               {selectedProject?.projectId && importPreview.proposalId !== selectedProject.projectId && (
-                <span style={{ color: C.warn, marginLeft: 8 }}>⚠ Proposal ID doesn't match project ID ({selectedProject.projectId})</span>
+                <span className="text-warn ml-2">⚠ Proposal ID doesn't match project ID ({selectedProject.projectId})</span>
               )}
               {importPreview.rows.some(r => r.recurring) && (
-                <span style={{ color: C.gold, marginLeft: 8 }}>· {importPreview.rows.filter(r => r.recurring).length} recurring MRR item{importPreview.rows.filter(r => r.recurring).length !== 1 ? "s" : ""} (shown separately)</span>
+                <span className="text-gold ml-2">· {importPreview.rows.filter(r => r.recurring).length} recurring MRR item{importPreview.rows.filter(r => r.recurring).length !== 1 ? "s" : ""} (shown separately)</span>
               )}
             </div>
           </div>
-          <button onClick={() => setImportPreview(null)} style={{ background: "rgba(255,255,255,0.12)", color: C.white, border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 13, cursor: "pointer" }}>✕</button>
+          <button onClick={() => setImportPreview(null)} className="bg-white/[0.12] text-white border-none rounded-md p-1 px-2.5 text-[13px] cursor-pointer">✕</button>
         </div>
         {/* Existing data warning */}
         {(cameraGroups.length + switchGroups.length + serverGroups.length + doorGroups.length + zoneGroups.length + speakerGroups.length) > 0 && (
-          <div style={{ background: "#FEF3C7", borderBottom: `1px solid #FDE68A`, padding: "10px 20px", fontSize: 12, color: "#92400E" }}>
+          <div className="bg-[#FEF3C7] border-b border-[#FDE68A] px-5 py-2.5 text-xs text-[#92400E]">
             ⚠ This project already has hardware groups. Imported items will be <strong>added</strong> to the existing groups — nothing will be replaced.
           </div>
         )}
         {/* Parts table */}
-        <div style={{ overflowY: "auto", flex: 1, padding: "0 0 4px" }}>
+        <div className="overflow-y-auto flex-1 pb-1">
           {/* One-time hardware */}
           {importPreview.rows.some(r => !r.recurring) && (
             <>
               {importPreview.rows.some(r => r.recurring) && (
-                <div style={{ background: C.navy, padding: "6px 12px" }}>
-                  <span style={{ color: C.accent, fontWeight: 700, fontSize: 11 }}>ONE-TIME HARDWARE</span>
+                <div className="bg-navy px-3 py-1.5">
+                  <span className="text-accent font-bold text-[11px]">ONE-TIME HARDWARE</span>
                 </div>
               )}
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table className="w-full border-collapse text-xs">
                 <thead>
-                  <tr style={{ background: C.surface, position: "sticky", top: 0 }}>
+                  <tr className="bg-surface sticky top-0">
                     {["Brand","Model","Description","Qty","Area","Category"].map(h => (
-                      <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: C.muted, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                      <th key={h} className="px-3 py-2 text-left text-muted font-bold text-[11px] uppercase tracking-[0.06em] border-b border-border">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -69,15 +67,15 @@ export default function ImportPreviewModal({
                     const cat = importPreview.overrideCats[i] || row.category;
                     const isUnknown = cat === "unknown";
                     return (
-                      <tr key={i} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
-                        <td style={{ padding: "7px 12px", color: C.navy }}>{row.brand || <span style={{ color: C.muted }}>—</span>}</td>
-                        <td style={{ padding: "7px 12px", color: C.navy, fontFamily: "monospace", fontSize: 11 }}>{row.model || <span style={{ color: C.muted }}>—</span>}</td>
-                        <td style={{ padding: "7px 12px", color: C.muted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.label || "—"}</td>
-                        <td style={{ padding: "7px 12px", color: C.navy, fontWeight: 700, textAlign: "center" }}>{row.qty}</td>
-                        <td style={{ padding: "7px 12px", color: C.muted, fontSize: 11, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.area || "—"}</td>
-                        <td style={{ padding: "7px 12px" }}>
+                      <tr key={i} className={`${i % 2 === 0 ? 'bg-white' : 'bg-surface'} border-b border-border`}>
+                        <td className="px-3 py-[7px] text-navy">{row.brand || <span className="text-muted">—</span>}</td>
+                        <td className="px-3 py-[7px] text-navy font-mono text-[11px]">{row.model || <span className="text-muted">—</span>}</td>
+                        <td className="px-3 py-[7px] text-muted max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap">{row.label || "—"}</td>
+                        <td className="px-3 py-[7px] text-navy font-bold text-center">{row.qty}</td>
+                        <td className="px-3 py-[7px] text-muted text-[11px] max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">{row.area || "—"}</td>
+                        <td className="px-3 py-[7px]">
                           <select value={cat} onChange={e => setImportPreview(s => ({ ...s, overrideCats: { ...s.overrideCats, [i]: e.target.value } }))}
-                            style={{ padding: "3px 8px", borderRadius: 5, border: `1px solid ${isUnknown ? C.warn : C.border}`, background: isUnknown ? "#FEF3C7" : C.white, color: isUnknown ? "#92400E" : C.navy, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                            className={`px-2 py-[3px] rounded-[5px] text-[11px] font-bold cursor-pointer ${isUnknown ? 'border border-warn bg-[#FEF3C7] text-[#92400E]' : 'border border-border bg-white text-navy'}`}>
                             {CAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                           </select>
                         </td>
@@ -91,15 +89,15 @@ export default function ImportPreviewModal({
           {/* Recurring / MRR items (read-only, not imported) */}
           {importPreview.rows.some(r => r.recurring) && (
             <>
-              <div style={{ background: "#78350F", padding: "6px 12px", display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: C.gold, fontWeight: 700, fontSize: 11 }}>RECURRING / MRR ITEMS</span>
-                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>— not imported as hardware, for reference only</span>
+              <div className="bg-[#78350F] px-3 py-1.5 flex items-center gap-2">
+                <span className="text-gold font-bold text-[11px]">RECURRING / MRR ITEMS</span>
+                <span className="text-white/50 text-[10px]">— not imported as hardware, for reference only</span>
               </div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table className="w-full border-collapse text-xs">
                 <thead>
-                  <tr style={{ background: "#FEF3C7" }}>
+                  <tr className="bg-[#FEF3C7]">
                     {["Brand","Model","Description","Qty","Area"].map(h => (
-                      <th key={h} style={{ padding: "7px 12px", textAlign: "left", color: "#92400E", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid #FDE68A` }}>{h}</th>
+                      <th key={h} className="px-3 py-[7px] text-left text-[#92400E] font-bold text-[10px] uppercase tracking-[0.06em] border-b border-[#FDE68A]">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -107,12 +105,12 @@ export default function ImportPreviewModal({
                   {importPreview.rows.map((row, i) => {
                     if (!row.recurring) return null;
                     return (
-                      <tr key={i} style={{ background: i % 2 === 0 ? "#FFFBEB" : "#FEF9E7", borderBottom: `1px solid #FDE68A` }}>
-                        <td style={{ padding: "6px 12px", color: "#92400E" }}>{row.brand || "—"}</td>
-                        <td style={{ padding: "6px 12px", color: "#92400E", fontFamily: "monospace", fontSize: 11 }}>{row.model || "—"}</td>
-                        <td style={{ padding: "6px 12px", color: "#B45309", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.label || "—"}</td>
-                        <td style={{ padding: "6px 12px", color: "#92400E", fontWeight: 700, textAlign: "center" }}>{row.qty}</td>
-                        <td style={{ padding: "6px 12px", color: "#B45309", fontSize: 11 }}>{row.area || "—"}</td>
+                      <tr key={i} style={{ background: i % 2 === 0 ? "#FFFBEB" : "#FEF9E7" }} className="border-b border-[#FDE68A]">
+                        <td className="px-3 py-1.5 text-[#92400E]">{row.brand || "—"}</td>
+                        <td className="px-3 py-1.5 text-[#92400E] font-mono text-[11px]">{row.model || "—"}</td>
+                        <td className="px-3 py-1.5 text-[#B45309] max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{row.label || "—"}</td>
+                        <td className="px-3 py-1.5 text-[#92400E] font-bold text-center">{row.qty}</td>
+                        <td className="px-3 py-1.5 text-[#B45309] text-[11px]">{row.area || "—"}</td>
                       </tr>
                     );
                   })}
@@ -122,14 +120,14 @@ export default function ImportPreviewModal({
           )}
         </div>
         {/* Footer */}
-        <div style={{ padding: "14px 20px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 12, background: C.surface, borderRadius: "0 0 12px 12px" }}>
-          <div style={{ flex: 1, fontSize: 12, color: C.muted }}>
+        <div className="px-5 py-3.5 border-t border-border flex items-center gap-3 bg-surface rounded-b-xl">
+          <div className="flex-1 text-xs text-muted">
             {importPreview.rows.filter((r, i) => !r.recurring && (importPreview.overrideCats[i] || r.category) !== "unknown").length} hardware items will be imported as device groups.
             {importPreview.rows.some(r => r.recurring) && ` · ${importPreview.rows.filter(r => r.recurring).length} recurring MRR items skipped.`}
             {" "}Devices not generated yet — set IP start + hit Generate in each group.
           </div>
-          <button onClick={() => setImportPreview(null)} style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
-          <button onClick={handleProposalImport} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 7, padding: "8px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+          <button onClick={() => setImportPreview(null)} className="bg-transparent text-muted border border-border rounded-[7px] px-[18px] py-2 text-[13px] cursor-pointer">Cancel</button>
+          <button onClick={handleProposalImport} className="bg-accent text-white border-none rounded-[7px] px-[22px] py-2 text-[13px] font-extrabold cursor-pointer">
             ⬆ Import Hardware
           </button>
         </div>

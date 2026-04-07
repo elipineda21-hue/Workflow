@@ -38,7 +38,6 @@ export default function SelectProjectPage({
   setLaborBudget, setLaborActual, setSpecSheetUrls, setChangeLog, setNetworkConfig,
 }) {
   const [statusFilter, setStatusFilter] = useState("All");
-  const inp2St = { width: "100%", padding: "10px 14px", borderRadius: 6, border: `1px solid rgba(255,255,255,0.15)`, background: "rgba(255,255,255,0.07)", color: C.white, fontSize: 13, outline: "none", boxSizing: "border-box" };
   const saveToken = () => {
     const t = tokenDraft.trim();
     if (!t) return;
@@ -89,26 +88,26 @@ export default function SelectProjectPage({
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 720, width: "100%" }}>
+    <div className="min-h-screen bg-navy flex flex-col items-center justify-center p-6 font-['Segoe_UI',system-ui,sans-serif]">
+      <div className="max-w-[720px] w-full">
         {/* Branding */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 44, marginBottom: 6 }}>⚡</div>
-          <div style={{ color: C.white, fontWeight: 800, fontSize: 28, letterSpacing: "0.02em" }}>ProjectPal</div>
-          <div style={{ color: C.accent, fontSize: 12, marginTop: 4, letterSpacing: "0.08em" }}>by Anonymous - Zero</div>
+        <div className="text-center mb-8">
+          <div className="text-[44px] mb-1.5">⚡</div>
+          <div className="text-white font-extrabold text-[28px] tracking-[0.02em]">ProjectPal</div>
+          <div className="text-accent text-xs mt-1 tracking-[0.08em]">by Anonymous - Zero</div>
         </div>
 
         {/* Dashboard preview (when connected) */}
         {mondayToken && projects.length > 0 && (
-          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, border: `1px solid rgba(0,174,239,0.15)`, padding: 18, marginBottom: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ color: C.white, fontWeight: 800, fontSize: 15 }}>Dashboard</div>
+          <div className="bg-white/[0.04] rounded-xl border border-accent/15 p-[18px] mb-5">
+            <div className="flex items-center justify-between mb-3.5">
+              <div className="text-white font-extrabold text-[15px]">Dashboard</div>
               <button onClick={() => setPhase("master")}
-                style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "6px 16px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                className="bg-accent text-white border-none rounded-md px-4 py-1.5 text-[11px] font-bold cursor-pointer">
                 Open Full Dashboard
               </button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2.5">
               {(() => {
                 const statusCounts = {};
                 projects.forEach(p => {
@@ -127,9 +126,9 @@ export default function SelectProjectPage({
                     label: status, value: count, color: statusColors[status] || C.gold,
                   })),
                 ].map(card => (
-                  <div key={card.label} style={{ background: "rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px", textAlign: "center" }}>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: card.color }}>{card.value}</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)", marginTop: 2, whiteSpace: "nowrap" }}>{card.label}</div>
+                  <div key={card.label} className="bg-white/[0.06] rounded-lg px-3.5 py-3 text-center">
+                    <div className="text-2xl font-extrabold" style={{ color: card.color }}>{card.value}</div>
+                    <div className="text-[10px] font-bold text-white/50 mt-0.5 whitespace-nowrap">{card.label}</div>
                   </div>
                 ));
               })()}
@@ -139,18 +138,18 @@ export default function SelectProjectPage({
 
         {/* Token setup */}
         {!mondayToken && (
-          <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 20, marginBottom: 20 }}>
-            <div style={{ color: C.gold, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Connect to monday.com</div>
-            <div style={{ color: C.muted, fontSize: 12, marginBottom: 12 }}>
+          <div className="bg-white/5 rounded-xl p-5 mb-5">
+            <div className="text-gold font-bold text-[13px] mb-2">Connect to monday.com</div>
+            <div className="text-muted text-xs mb-3">
               Enter your monday.com API token to load active projects automatically.<br />
-              Find it at: <span style={{ color: C.accent }}>monday.com → Avatar → Developers → API v2 Token</span>
+              Find it at: <span className="text-accent">monday.com → Avatar → Developers → API v2 Token</span>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex gap-2">
               <input value={tokenDraft} onChange={e => setTokenDraft(e.target.value)}
                 placeholder="eyJhbGc..." type="password"
                 onKeyDown={e => e.key === "Enter" && saveToken()}
-                style={{ ...inp2St, flex: 1 }} />
-              <button onClick={saveToken} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}>
+                className="flex-1 w-full p-2.5 px-3.5 rounded-md border border-white/15 bg-white/[0.07] text-white text-[13px] outline-none box-border" />
+              <button onClick={saveToken} className="bg-accent text-white border-none rounded-md px-[18px] py-2.5 font-bold text-[13px] cursor-pointer whitespace-nowrap">
                 Connect
               </button>
             </div>
@@ -160,15 +159,15 @@ export default function SelectProjectPage({
         {/* Refresh token + column mapper */}
         {mondayToken && (
           <>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8, gap: 8, alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ color: C.success, fontSize: 11, fontWeight: 600 }}>✓ Connected to monday.com</span>
+            <div className="flex justify-end mb-2 gap-2 items-center">
+              <div className="flex gap-2 items-center">
+                <span className="text-success text-[11px] font-semibold">✓ Connected to monday.com</span>
                 <button onClick={() => setColMapperOpen(v => !v)}
-                  style={{ background: "rgba(255,255,255,0.07)", color: C.accent, border: `1px solid rgba(0,174,239,0.3)`, borderRadius: 5, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
+                  className="bg-white/[0.07] text-accent border border-accent/30 rounded-[5px] px-2.5 py-[3px] text-[11px] cursor-pointer">
                   ⚙ Column Map
                 </button>
                 <button onClick={() => { localStorage.removeItem("mondayToken"); setMondayToken(""); setProjects([]); }}
-                  style={{ background: "rgba(255,255,255,0.07)", color: C.muted, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 5, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
+                  className="bg-white/[0.07] text-muted border border-white/10 rounded-[5px] px-2.5 py-[3px] text-[11px] cursor-pointer">
                   Change Token
                 </button>
               </div>
@@ -176,11 +175,11 @@ export default function SelectProjectPage({
 
             {/* Column Mapper Panel */}
             {colMapperOpen && (
-              <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, border: `1px solid rgba(0,174,239,0.2)`, padding: 16, marginBottom: 16 }}>
-                <div style={{ color: C.white, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>⚙ Monday.com Column Mapping</div>
-                <div style={{ color: C.muted, fontSize: 11, marginBottom: 12 }}>
+              <div className="bg-white/[0.06] rounded-xl border border-accent/20 p-4 mb-4">
+                <div className="text-white font-bold text-[13px] mb-1">⚙ Monday.com Column Mapping</div>
+                <div className="text-muted text-[11px] mb-3">
                   Map your board columns to app fields so project info auto-fills when you select a project.
-                  Click <strong style={{ color: C.accent }}>Load Columns</strong> to see all column IDs from your board.
+                  Click <strong className="text-accent">Load Columns</strong> to see all column IDs from your board.
                 </div>
                 <button
                   onClick={async () => {
@@ -192,28 +191,28 @@ export default function SelectProjectPage({
                     } catch(e) { alert("Error: " + e.message); }
                     setColMapperLoading(false);
                   }}
-                  style={{ background: C.accent, color: C.white, border: "none", borderRadius: 5, padding: "5px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", marginBottom: 12 }}>
+                  className="bg-accent text-white border-none rounded-[5px] px-3.5 py-[5px] text-[11px] font-bold cursor-pointer mb-3">
                   {colMapperLoading ? "Loading…" : "Load Columns from Board"}
                 </button>
                 {colMapperCols.length > 0 && (
                   <>
-                    <div style={{ overflowX: "auto", marginBottom: 12 }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                    <div className="overflow-x-auto mb-3">
+                      <table className="w-full border-collapse text-[11px]">
                         <thead>
-                          <tr style={{ borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
-                            <th style={{ padding: "5px 8px", textAlign: "left", color: C.muted }}>Column Title</th>
-                            <th style={{ padding: "5px 8px", textAlign: "left", color: C.muted }}>Column ID</th>
-                            <th style={{ padding: "5px 8px", textAlign: "left", color: C.muted }}>Sample Value</th>
-                            <th style={{ padding: "5px 8px", textAlign: "left", color: C.muted }}>Map to App Field</th>
+                          <tr className="border-b border-white/10">
+                            <th className="py-[5px] px-2 text-left text-muted">Column Title</th>
+                            <th className="py-[5px] px-2 text-left text-muted">Column ID</th>
+                            <th className="py-[5px] px-2 text-left text-muted">Sample Value</th>
+                            <th className="py-[5px] px-2 text-left text-muted">Map to App Field</th>
                           </tr>
                         </thead>
                         <tbody>
                           {colMapperCols.map(col => (
-                            <tr key={col.id} style={{ borderBottom: `1px solid rgba(255,255,255,0.05)` }}>
-                              <td style={{ padding: "5px 8px", color: C.white, fontWeight: 600 }}>{col.title}</td>
-                              <td style={{ padding: "5px 8px", color: C.accent, fontFamily: "monospace", fontSize: 10 }}>{col.id}</td>
-                              <td style={{ padding: "5px 8px", color: C.muted, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{col.sample || "—"}</td>
-                              <td style={{ padding: "5px 8px" }}>
+                            <tr key={col.id} className="border-b border-white/5">
+                              <td className="py-[5px] px-2 text-white font-semibold">{col.title}</td>
+                              <td className="py-[5px] px-2 text-accent font-mono text-[10px]">{col.id}</td>
+                              <td className="py-[5px] px-2 text-muted max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">{col.sample || "—"}</td>
+                              <td className="py-[5px] px-2">
                                 <select
                                   value={Object.entries(colMapDraft).find(([, v]) => v === col.id)?.[0] || ""}
                                   onChange={e => {
@@ -225,7 +224,7 @@ export default function SelectProjectPage({
                                       return next;
                                     });
                                   }}
-                                  style={{ background: "rgba(255,255,255,0.07)", color: C.white, border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 4, padding: "3px 6px", fontSize: 11 }}>
+                                  className="bg-white/[0.07] text-white border border-white/10 rounded px-1.5 py-[3px] text-[11px]">
                                   <option value="">— none —</option>
                                   <option value="customer">Customer Name</option>
                                   <option value="siteAddress">Site Address</option>
@@ -237,7 +236,7 @@ export default function SelectProjectPage({
                         </tbody>
                       </table>
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => {
                           const next = colMapDraft;
@@ -249,11 +248,11 @@ export default function SelectProjectPage({
                             .then(ps => { setProjects(ps); setLoadingProjects(false); })
                             .catch(() => setLoadingProjects(false));
                         }}
-                        style={{ background: C.success, color: C.white, border: "none", borderRadius: 5, padding: "6px 16px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        className="bg-success text-white border-none rounded-[5px] px-4 py-1.5 text-[11px] font-bold cursor-pointer">
                         ✓ Save Mapping
                       </button>
                       <button onClick={() => setColMapperOpen(false)}
-                        style={{ background: "rgba(255,255,255,0.07)", color: C.muted, border: "none", borderRadius: 5, padding: "6px 12px", fontSize: 11, cursor: "pointer" }}>
+                        className="bg-white/[0.07] text-muted border-none rounded-[5px] px-3 py-1.5 text-[11px] cursor-pointer">
                         Cancel
                       </button>
                     </div>
@@ -265,52 +264,54 @@ export default function SelectProjectPage({
         )}
 
         {loadingProjects ? (
-          <div style={{ textAlign: "center", color: C.muted, padding: 40 }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
+          <div className="text-center text-muted p-10">
+            <div className="text-[32px] mb-2">⏳</div>
             <div>Loading projects from monday.com...</div>
           </div>
         ) : projectsError ? (
-          <div style={{ background: "#3B0F0F", borderRadius: 8, padding: 16, color: "#FCA5A5", fontSize: 13, marginBottom: 16 }}>
+          <div className="bg-[#3B0F0F] rounded-lg p-4 text-[#FCA5A5] text-[13px] mb-4">
             Error: {projectsError}. Check your API token and board ID.
           </div>
         ) : projects.length > 0 ? (
           <>
             {/* Status filter */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+            <div className="flex gap-1.5 mb-3 flex-wrap">
               {PROJECT_STATUSES.map(s => {
                 const count = s === "All" ? projects.length : projects.filter(p => (p.projectStatus || "") === s).length;
                 const active = statusFilter === s;
                 const sc = STATUS_COLORS[s] || { bg: "rgba(255,255,255,0.1)", color: C.white };
                 return (
                   <button key={s} onClick={() => setStatusFilter(s)}
-                    style={{ background: active ? (sc.bg || "rgba(0,174,239,0.2)") : "rgba(255,255,255,0.06)", color: active ? (sc.color || C.accent) : "rgba(255,255,255,0.5)", border: active ? `1.5px solid ${sc.color || C.accent}` : "1.5px solid transparent", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-                    {s} {count > 0 && <span style={{ opacity: 0.7 }}>({count})</span>}
+                    style={{ background: active ? (sc.bg || "rgba(0,174,239,0.2)") : "rgba(255,255,255,0.06)", color: active ? (sc.color || C.accent) : "rgba(255,255,255,0.5)", border: active ? `1.5px solid ${sc.color || C.accent}` : "1.5px solid transparent" }}
+                    className="rounded-lg px-3 py-[5px] text-[11px] font-bold cursor-pointer whitespace-nowrap">
+                    {s} {count > 0 && <span className="opacity-70">({count})</span>}
                   </button>
                 );
               })}
             </div>
             {/* Project list */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="flex flex-col gap-2.5">
               {projects.filter(p => statusFilter === "All" || (p.projectStatus || "") === statusFilter).map(p => {
                 const projSt = STATUS_COLORS[p.projectStatus] || null;
                 const progSt = PROG_COLORS[p.programmingStatus] || null;
                 return (
                   <div key={p.id} onClick={() => handleProjectClick(p)}
-                    style={{ background: selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.05)", border: `1px solid ${selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.1)"}`, borderRadius: 8, padding: "14px 18px", cursor: "pointer", transition: "background .15s" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <div style={{ color: C.white, fontWeight: 700, fontSize: 14, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    style={{ background: selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.05)", border: `1px solid ${selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.1)"}` }}
+                    className="rounded-lg px-[18px] py-3.5 cursor-pointer transition-[background] duration-150">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-white font-bold text-sm flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{p.name}</div>
+                      <div className="flex gap-1.5 shrink-0">
                         {progSt && p.programmingStatus && (
-                          <span style={{ background: progSt.bg, color: progSt.color, borderRadius: 8, padding: "3px 10px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap" }}>{p.programmingStatus}</span>
+                          <span style={{ background: progSt.bg, color: progSt.color }} className="rounded-lg px-2.5 py-[3px] text-[9px] font-extrabold whitespace-nowrap">{p.programmingStatus}</span>
                         )}
                         {projSt && p.projectStatus && (
-                          <span style={{ background: projSt.bg, color: projSt.color, borderRadius: 8, padding: "3px 10px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap" }}>{p.projectStatus}</span>
+                          <span style={{ background: projSt.bg, color: projSt.color }} className="rounded-lg px-2.5 py-[3px] text-[9px] font-extrabold whitespace-nowrap">{p.projectStatus}</span>
                         )}
                       </div>
                     </div>
-                    <div style={{ color: C.muted, fontSize: 11, marginTop: 3 }}>ID: {p.projectId}  |  Lead: {p.techLead}</div>
+                    <div className="text-muted text-[11px] mt-[3px]">ID: {p.projectId}  |  Lead: {p.techLead}</div>
                     {(p.customer || p.siteAddress || p.pm || p.schedule) && (
-                      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 2 }}>
+                      <div className="text-white/45 text-[10px] mt-0.5">
                         {[p.customer, p.siteAddress, p.pm ? `PM: ${p.pm}` : "", p.schedule ? `Schedule: ${p.schedule}` : ""].filter(Boolean).join("  ·  ")}
                       </div>
                     )}
@@ -320,22 +321,22 @@ export default function SelectProjectPage({
             </div>
           </>
         ) : mondayToken ? (
-          <div style={{ textAlign: "center", color: C.muted, padding: 24, fontSize: 13 }}>No projects found on board {MONDAY_BOARD_ID}.</div>
+          <div className="text-center text-muted p-6 text-[13px]">No projects found on board {MONDAY_BOARD_ID}.</div>
         ) : null}
 
         {/* Manual fallback */}
-        <div style={{ marginTop: 20 }}>
-          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 11, marginBottom: 12 }}>— or enter manually —</div>
-          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 16 }}>
+        <div className="mt-5">
+          <div className="text-center text-white/25 text-[11px] mb-3">— or enter manually —</div>
+          <div className="bg-white/[0.04] rounded-xl p-4">
             {[["Project Name","name"],["Project ID","projectId"]].map(([lbl, k]) => (
-              <div key={k} style={{ marginBottom: 10 }}>
-                <label style={{ color: C.muted, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: 4 }}>{lbl}</label>
+              <div key={k} className="mb-2.5">
+                <label className="text-muted text-[11px] font-bold uppercase tracking-[0.07em] block mb-1">{lbl}</label>
                 <input value={selectedProject?.[k] || ""} onChange={e => setSelectedProject(s => ({ ...(s || {}), [k]: e.target.value }))}
-                  style={inp2St} />
+                  className="w-full p-2.5 px-3.5 rounded-md border border-white/15 bg-white/[0.07] text-white text-[13px] outline-none box-border" />
               </div>
             ))}
           </div>
-          <button onClick={() => setPhase("build")} style={{ width: "100%", marginTop: 12, background: C.accent, color: C.white, border: "none", borderRadius: 8, padding: "12px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={() => setPhase("build")} className="w-full mt-3 bg-accent text-white border-none rounded-lg p-3 text-sm font-bold cursor-pointer">
             Continue →
           </button>
         </div>

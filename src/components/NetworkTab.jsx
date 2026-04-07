@@ -28,14 +28,14 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
   return (
     <div>
       {/* Mode Toggle */}
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 16 }}>
-        <div style={{ background: C.navy, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 18 }}>🌐</span>
-            <span style={{ color: C.white, fontWeight: 800, fontSize: 14 }}>Network Configuration</span>
+      <div className="bg-white rounded-xl border border-border overflow-hidden mb-4">
+        <div className="bg-navy px-[18px] py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="text-[18px]">🌐</span>
+            <span className="text-white font-extrabold text-sm">Network Configuration</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Tog label={<span style={{ color: C.white, fontSize: 12 }}>Use Calidad SOP Defaults</span>} val={useDefaults} set={v => {
+          <div className="flex items-center gap-3.5">
+            <Tog label={<span className="text-white text-xs">Use Calidad SOP Defaults</span>} val={useDefaults} set={v => {
               if (v) {
                 // Reset to SOP defaults
                 set("useDefaults", true);
@@ -48,8 +48,8 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
             }} />
           </div>
         </div>
-        <div style={{ padding: 16 }}>
-          <div style={{ background: useDefaults ? "#D1FAE5" : "#FEF3C7", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: useDefaults ? "#065F46" : "#92400E", marginBottom: 12 }}>
+        <div className="p-4">
+          <div className={`${useDefaults ? 'bg-[#D1FAE5] text-[#065F46]' : 'bg-[#FEF3C7] text-[#92400E]'} rounded-lg px-3.5 py-2.5 text-xs mb-3`}>
             {useDefaults
               ? "Using Calidad SOP standard network template. VLANs, subnets, and firewall rules follow the standard deployment spec."
               : "Custom mode — enter the customer's required network ranges below. All fields are editable."}
@@ -82,46 +82,46 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
       </div>
 
       {/* VLAN Table */}
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 16 }}>
+      <div className="bg-white rounded-xl border border-border overflow-hidden mb-4">
         <CardHead icon="🔗" title="VLAN & Subnet Configuration" count={cfg.vlans.length} color={C.navy} />
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
             <thead>
-              <tr style={{ background: C.surface }}>
+              <tr className="bg-surface">
                 {["Network Name", "VLAN ID", "Subnet", "DHCP", "Pool Size", "Purpose"].map(h => (
-                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} className="px-2.5 py-2 text-left text-muted font-bold text-[10px] uppercase tracking-[0.06em] border-b border-border whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {cfg.vlans.map((vlan, i) => (
-                <tr key={vlan.id} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
-                  <td style={{ padding: "6px 10px", fontWeight: 700, color: C.navy }}>
+                <tr key={vlan.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-surface'} border-b border-border`}>
+                  <td className="px-2.5 py-1.5 font-bold text-navy">
                     {useDefaults ? vlan.name : (
                       <input value={vlan.name} onChange={e => setVlan(i, "name", e.target.value)} style={inpSt} />
                     )}
                   </td>
-                  <td style={{ padding: "6px 10px" }}>
+                  <td className="px-2.5 py-1.5">
                     {useDefaults ? (
-                      <span style={{ background: C.accent + "22", color: C.accent, borderRadius: 6, padding: "2px 8px", fontWeight: 700, fontSize: 11 }}>{vlan.vlanId}</span>
+                      <span className="bg-accent/[0.13] text-accent rounded-md px-2 py-0.5 font-bold text-[11px]">{vlan.vlanId}</span>
                     ) : (
                       <input value={vlan.vlanId} onChange={e => setVlan(i, "vlanId", e.target.value)} style={{ ...inpSt, width: 60 }} />
                     )}
                   </td>
-                  <td style={{ padding: "6px 10px", fontFamily: "monospace", fontSize: 11 }}>
+                  <td className="px-2.5 py-1.5 font-mono text-[11px]">
                     {useDefaults ? vlan.subnet : (
                       <input value={vlan.subnet} onChange={e => setVlan(i, "subnet", e.target.value)} style={{ ...inpSt, width: 150 }} />
                     )}
                   </td>
-                  <td style={{ padding: "6px 10px", textAlign: "center" }}>
-                    <span style={{ color: vlan.dhcp ? C.success : C.muted, fontWeight: 700, fontSize: 11 }}>{vlan.dhcp ? "✓" : "—"}</span>
+                  <td className="px-2.5 py-1.5 text-center">
+                    <span className={`${vlan.dhcp ? 'text-success' : 'text-muted'} font-bold text-[11px]`}>{vlan.dhcp ? "✓" : "—"}</span>
                   </td>
-                  <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: 700, color: C.navy }}>
+                  <td className="px-2.5 py-1.5 text-center font-bold text-navy">
                     {useDefaults ? vlan.poolSize : (
                       <input type="number" value={vlan.poolSize} onChange={e => setVlan(i, "poolSize", e.target.value)} style={{ ...inpSt, width: 70, textAlign: "center" }} />
                     )}
                   </td>
-                  <td style={{ padding: "6px 10px", color: C.muted, fontSize: 11, maxWidth: 250 }}>
+                  <td className="px-2.5 py-1.5 text-muted text-[11px] max-w-[250px]">
                     {vlan.purpose}
                   </td>
                 </tr>
@@ -130,37 +130,37 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
           </table>
         </div>
         {cfg.vlans.length > 0 && (
-          <div style={{ padding: "8px 14px", background: C.surface, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.muted }}>
+          <div className="px-3.5 py-2 bg-surface border-t border-border text-[11px] text-muted">
             VMS VLAN uses /23 (500 addresses) for large camera deployments. All others use /24 (249 usable).
           </div>
         )}
       </div>
 
       {/* SSID Table */}
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 16 }}>
+      <div className="bg-white rounded-xl border border-border overflow-hidden mb-4">
         <CardHead icon="📶" title="Wireless (WiFi) Configuration" count={cfg.ssids.length} color={C.steel} />
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
             <thead>
-              <tr style={{ background: C.surface }}>
+              <tr className="bg-surface">
                 {["SSID Name", "Mapped Network", "Radio Band", "Security", "Password"].map(h => (
-                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: C.muted, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} className="px-2.5 py-2 text-left text-muted font-bold text-[10px] uppercase tracking-[0.06em] border-b border-border whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {cfg.ssids.map((ssid, i) => (
-                <tr key={ssid.id} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
-                  <td style={{ padding: "6px 10px", fontWeight: 700, color: C.navy, fontFamily: "monospace", fontSize: 12 }}>
+                <tr key={ssid.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-surface'} border-b border-border`}>
+                  <td className="px-2.5 py-1.5 font-bold text-navy font-mono text-xs">
                     {resolveSsid(ssid.pattern)}
                   </td>
-                  <td style={{ padding: "6px 10px" }}>
-                    <span style={{ background: C.accent + "18", color: C.accent, borderRadius: 6, padding: "2px 8px", fontWeight: 700, fontSize: 11 }}>{ssid.mappedVlan}</span>
+                  <td className="px-2.5 py-1.5">
+                    <span className="bg-accent/[0.09] text-accent rounded-md px-2 py-0.5 font-bold text-[11px]">{ssid.mappedVlan}</span>
                   </td>
-                  <td style={{ padding: "6px 10px", color: C.muted, fontSize: 11 }}>{ssid.band}</td>
-                  <td style={{ padding: "6px 10px" }}>
+                  <td className="px-2.5 py-1.5 text-muted text-[11px]">{ssid.band}</td>
+                  <td className="px-2.5 py-1.5">
                     {useDefaults ? (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: C.navy }}>{ssid.security}</span>
+                      <span className="text-[11px] font-semibold text-navy">{ssid.security}</span>
                     ) : (
                       <select value={ssid.security} onChange={e => setSsid(i, "security", e.target.value)}
                         style={{ ...inpSt, width: 120 }}>
@@ -170,7 +170,7 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
                       </select>
                     )}
                   </td>
-                  <td style={{ padding: "6px 10px" }}>
+                  <td className="px-2.5 py-1.5">
                     <input value={ssid.password || ""} onChange={e => setSsid(i, "password", e.target.value)}
                       placeholder="••••••••" type="password" style={{ ...inpSt, width: 140 }} />
                   </td>
@@ -179,35 +179,35 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
             </tbody>
           </table>
         </div>
-        <div style={{ padding: "8px 14px", background: C.surface, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.muted }}>
+        <div className="px-3.5 py-2 bg-surface border-t border-border text-[11px] text-muted">
           SSIDs auto-generate from site prefix: <strong>{cfg.sitePrefix || "[SITE]"}</strong>-STAFF, <strong>{cfg.sitePrefix || "[SITE]"}</strong>-GUEST, etc. SEC-FAILOVER broadcasts on all APs as backup for alarm panels.
         </div>
       </div>
 
       {/* Firewall Matrix */}
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 16 }}>
+      <div className="bg-white rounded-xl border border-border overflow-hidden mb-4">
         <CardHead icon="🛡" title="Inter-VLAN Firewall Rules" color={C.steel} />
-        <div style={{ padding: "10px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.muted, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="px-3.5 py-2.5 bg-surface border-b border-border text-[11px] text-muted flex justify-between items-center">
           <span>Default-deny model: all inter-VLAN traffic is blocked unless explicitly allowed. <strong>Click a cell</strong> to toggle ALLOW / DENY.</span>
           <button onClick={() => set("firewall", { rows: SOP_FIREWALL.rows, cols: SOP_FIREWALL.cols, matrix: SOP_FIREWALL.matrix.map(r => [...r]) })}
-            style={{ background: C.steel, color: C.white, border: "none", borderRadius: 5, padding: "4px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            className="bg-steel text-white border-none rounded-[5px] px-3 py-1 text-[10px] font-bold cursor-pointer whitespace-nowrap">
             ↻ Reset to SOP Defaults
           </button>
         </div>
-        <div style={{ overflowX: "auto", padding: 16 }}>
-          <table style={{ borderCollapse: "collapse", fontSize: 11, margin: "0 auto" }}>
+        <div className="overflow-x-auto p-4">
+          <table className="border-collapse text-[11px] mx-auto">
             <thead>
               <tr>
-                <th style={{ padding: "6px 10px", background: C.navy, color: C.white, fontWeight: 700, fontSize: 10, borderRadius: "6px 0 0 0" }}>From ↓ \ To →</th>
+                <th className="px-2.5 py-1.5 bg-navy text-white font-bold text-[10px] rounded-tl-md">From ↓ \ To →</th>
                 {fw.cols.map(col => (
-                  <th key={col} style={{ padding: "6px 10px", background: C.navy, color: "rgba(255,255,255,0.8)", fontWeight: 700, fontSize: 10, whiteSpace: "nowrap" }}>{col}</th>
+                  <th key={col} className="px-2.5 py-1.5 bg-navy text-white/80 font-bold text-[10px] whitespace-nowrap">{col}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {fw.rows.map((row, ri) => (
                 <tr key={row}>
-                  <td style={{ padding: "6px 10px", fontWeight: 700, color: C.navy, background: C.surface, whiteSpace: "nowrap", borderBottom: `1px solid ${C.border}` }}>{row}</td>
+                  <td className="px-2.5 py-1.5 font-bold text-navy bg-surface whitespace-nowrap border-b border-border">{row}</td>
                   {fw.matrix[ri].map((cell, ci) => {
                     const isDiag = cell === "—";
                     const bg = cell === "ALLOW" ? "#D1FAE5" : cell === "DENY" ? "#FEE2E2" : C.surface;
@@ -225,11 +225,10 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
                           });
                         }}
                         style={{
-                          padding: "6px 10px", textAlign: "center", fontWeight: 700, fontSize: 10,
-                          background: bg, color, borderBottom: `1px solid ${C.border}`, borderLeft: `1px solid ${C.border}`,
-                          cursor: isDiag ? "default" : "pointer", userSelect: "none",
-                          transition: "background .15s",
+                          background: bg, color,
+                          cursor: isDiag ? "default" : "pointer",
                         }}
+                        className="px-2.5 py-1.5 text-center font-bold text-[10px] border-b border-border border-l border-l-border select-none transition-[background] duration-150"
                         title={isDiag ? "" : `Click to toggle ${cell === "ALLOW" ? "DENY" : "ALLOW"}`}
                       >
                         {cell}
@@ -241,16 +240,16 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
             </tbody>
           </table>
         </div>
-        <div style={{ padding: "10px 14px", background: C.surface, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.muted }}>
+        <div className="px-3.5 py-2.5 bg-surface border-t border-border text-[11px] text-muted">
           <strong>Guest (VLAN 20)</strong> — fully isolated, internet only. <strong>Intrusion (VLAN 50)</strong> — fully isolated, outbound-only for cloud reporting.
           Employee can reach AV + VMS for display control and camera viewing.
         </div>
       </div>
 
       {/* Deployment Checklist */}
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+      <div className="bg-white rounded-xl border border-border overflow-hidden">
         <CardHead icon="✅" title="Deployment Checklist" color={C.steel} />
-        <div style={{ padding: 16 }}>
+        <div className="p-4">
           {[
             { section: "Pre-Deployment", items: [
               "ISP circuit active and handoff location confirmed",
@@ -274,17 +273,17 @@ export default function NetworkTab({ networkConfig, setNetworkConfig, sitePrefix
               "AP channels and signal strength verified with WiFi analyzer",
             ]},
           ].map(sec => (
-            <div key={sec.section} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.steel, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{sec.section}</div>
+            <div key={sec.section} className="mb-3.5">
+              <div className="text-[11px] font-extrabold text-steel uppercase tracking-[0.08em] mb-1.5">{sec.section}</div>
               {sec.items.map((item, i) => {
                 const key = `${sec.section}_${i}`;
                 const checked = cfg.checklist?.[key] || false;
                 return (
-                  <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", cursor: "pointer", fontSize: 12, color: checked ? C.success : C.navy }}>
+                  <label key={key} className={`flex items-center gap-2 py-[5px] cursor-pointer text-xs ${checked ? 'text-success' : 'text-navy'}`}>
                     <input type="checkbox" checked={checked}
                       onChange={e => setNetworkConfig(s => ({ ...s, checklist: { ...(s.checklist || {}), [key]: e.target.checked } }))}
-                      style={{ accentColor: C.success, width: 15, height: 15 }} />
-                    <span style={{ textDecoration: checked ? "line-through" : "none" }}>{item}</span>
+                      className="w-[15px] h-[15px] accent-success" />
+                    <span className={checked ? 'line-through' : ''}>{item}</span>
                   </label>
                 );
               })}

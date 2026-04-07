@@ -9,9 +9,9 @@ import GenerateBar from "../components/GenerateBar";
 export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
   return (
     <div>
-      <div style={{ background: "#FFFFFF", borderRadius: 10, border: `1px solid #CBD5E1`, overflow: "hidden" }}>
+      <div className="bg-white rounded-xl border border-border overflow-hidden">
         <CardHead icon="🚪" title="Access Control Door Programming" count={doorCount} onAdd={() => { setDoorGroups(g => [...g, mkDoorGrp()]); addLog("group_added", "Access door group added"); }} addLabel="Add Door Group" color="#0B1F3A" />
-        <div style={{ padding: 18 }}>
+        <div className="p-4">
           {doorGroups.length === 0 && <Empty icon="🚪" msg="No door groups yet. Click + Add Door Group." />}
           {doorGroups.map((grp, gi) => {
             const hw = grp.noProgramming;
@@ -32,8 +32,8 @@ export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collap
                   credentialType: obj.credentialType || g.credentialType,
                 } : g))} />
               {/* Hardware-only toggle — right after model selection */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "8px 12px", background: hw ? "#FEF3C7" : "#F0FDF4", borderRadius: 7, border: `1px solid ${hw ? "#FDE68A" : "#BBF7D0"}` }}>
-                <Tog label={<span style={{ fontSize: 12, fontWeight: 600, color: hw ? "#92400E" : "#065F46" }}>{hw ? "Hardware only — no programming required" : "Programming required — devices need configuration"}</span>} val={hw} set={v => updGrp(setDoorGroups, grp.id, "noProgramming", v)} />
+              <div className={`flex items-center gap-2.5 mt-2.5 p-2 px-3 rounded-[7px] border ${hw ? "bg-[#FEF3C7] border-[#FDE68A]" : "bg-[#F0FDF4] border-[#BBF7D0]"}`}>
+                <Tog label={<span className={`text-xs font-semibold ${hw ? "text-[#92400E]" : "text-[#065F46]"}`}>{hw ? "Hardware only — no programming required" : "Programming required — devices need configuration"}</span>} val={hw} set={v => updGrp(setDoorGroups, grp.id, "noProgramming", v)} />
               </div>
               {/* Only show config fields when programming is required */}
               {!hw && (

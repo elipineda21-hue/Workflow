@@ -1,4 +1,3 @@
-import { C } from "../constants";
 import { uploadProjectFile, listProjectFiles, deleteProjectFile, getProjectFileUrl } from "../supabase";
 
 const FILE_CATS = ["Drawings", "Quotes", "Contracts", "Notes", "Photos", "Other"];
@@ -18,17 +17,17 @@ export default function FilesTab({
   return (
     <div>
       {/* Upload bar */}
-      <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 16, marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>📁 Upload File</span>
+      <div className="bg-white rounded-xl border border-border p-4 mb-4 flex gap-2.5 items-center flex-wrap">
+        <span className="font-bold text-[13px] text-navy">📁 Upload File</span>
         <select value={fileUploadCat} onChange={e => setFileUploadCat(e.target.value)}
-          style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.border}`, fontSize: 12, color: C.navy, background: C.white }}>
+          className="py-1.5 px-2.5 rounded-md border border-border text-xs text-navy bg-white">
           {FILE_CATS.map(c => <option key={c}>{c}</option>)}
         </select>
         <button onClick={() => fileInputRef.current?.click()}
-          style={{ background: C.accent, color: C.white, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          className="bg-accent text-white border-none rounded-md py-[7px] px-4 text-xs font-bold cursor-pointer">
           + Choose File
         </button>
-        <input ref={fileInputRef} type="file" style={{ display: "none" }}
+        <input ref={fileInputRef} type="file" className="hidden"
           onChange={async e => {
             const file = e.target.files?.[0];
             if (!file || !selectedProject) return;
@@ -40,13 +39,13 @@ export default function FilesTab({
               showToast(`✓ ${file.name} uploaded to ${fileUploadCat}`);
             } catch(err) { showToast(`Upload failed: ${err.message}`); }
           }} />
-        <span style={{ color: C.muted, fontSize: 11 }}>Drawings · Quotes · Contracts · Notes · Photos · Portal.io CSVs</span>
+        <span className="text-muted text-[11px]">Drawings · Quotes · Contracts · Notes · Photos · Portal.io CSVs</span>
       </div>
 
       {filesLoading ? (
-        <div style={{ textAlign: "center", color: C.muted, padding: 40 }}>Loading files…</div>
+        <div className="text-center text-muted p-10">Loading files…</div>
       ) : projectFiles.length === 0 ? (
-        <div style={{ textAlign: "center", color: C.muted, padding: 40, fontSize: 13 }}>
+        <div className="text-center text-muted p-10 text-[13px]">
           No files yet. Upload drawings, quotes, contracts, or notes for this project.
         </div>
       ) : (
@@ -54,30 +53,30 @@ export default function FilesTab({
           const files = grouped[cat];
           if (!files.length) return null;
           return (
-            <div key={cat} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 14 }}>
-              <div style={{ background: C.surface, padding: "10px 16px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${C.border}` }}>
-                <span style={{ fontSize: 15 }}>{catIcon[cat]}</span>
-                <span style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>{cat}</span>
-                <span style={{ background: C.accent, color: C.white, borderRadius: 10, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>{files.length}</span>
+            <div key={cat} className="bg-white rounded-xl border border-border overflow-hidden mb-3.5">
+              <div className="bg-surface py-2.5 px-4 flex items-center gap-2 border-b border-border">
+                <span className="text-[15px]">{catIcon[cat]}</span>
+                <span className="font-bold text-[13px] text-navy">{cat}</span>
+                <span className="bg-accent text-white rounded-xl py-px px-2 text-[10px] font-bold">{files.length}</span>
               </div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table className="w-full border-collapse text-xs">
                 <thead>
-                  <tr style={{ background: C.surface }}>
-                    <th style={{ padding: "6px 14px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700 }}>File Name</th>
-                    <th style={{ padding: "6px 14px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, width: 80 }}>Size</th>
-                    <th style={{ padding: "6px 14px", textAlign: "left", color: C.muted, fontSize: 11, fontWeight: 700, width: 110 }}>Uploaded</th>
-                    <th style={{ padding: "6px 14px", textAlign: "right", color: C.muted, fontSize: 11, fontWeight: 700, width: 110 }}>Actions</th>
+                  <tr className="bg-surface">
+                    <th className="py-1.5 px-3.5 text-left text-muted text-[11px] font-bold">File Name</th>
+                    <th className="py-1.5 px-3.5 text-left text-muted text-[11px] font-bold w-[80px]">Size</th>
+                    <th className="py-1.5 px-3.5 text-left text-muted text-[11px] font-bold w-[110px]">Uploaded</th>
+                    <th className="py-1.5 px-3.5 text-right text-muted text-[11px] font-bold w-[110px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {files.map((f, i) => (
-                    <tr key={f.id} style={{ background: i % 2 === 0 ? C.white : C.surface, borderBottom: `1px solid ${C.border}` }}>
-                      <td style={{ padding: "8px 14px", color: C.navy, fontWeight: 600 }}>{f.file_name}</td>
-                      <td style={{ padding: "8px 14px", color: C.muted }}>{f.file_size ? fmtSize(f.file_size) : "—"}</td>
-                      <td style={{ padding: "8px 14px", color: C.muted }}>{new Date(f.created_at).toLocaleDateString()}</td>
-                      <td style={{ padding: "8px 14px", textAlign: "right", display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                    <tr key={f.id} className={`border-b border-border ${i % 2 === 0 ? "bg-white" : "bg-surface"}`}>
+                      <td className="py-2 px-3.5 text-navy font-semibold">{f.file_name}</td>
+                      <td className="py-2 px-3.5 text-muted">{f.file_size ? fmtSize(f.file_size) : "—"}</td>
+                      <td className="py-2 px-3.5 text-muted">{new Date(f.created_at).toLocaleDateString()}</td>
+                      <td className="py-2 px-3.5 text-right flex gap-1.5 justify-end">
                         <a href={getProjectFileUrl(f.file_path)} target="_blank" rel="noopener noreferrer"
-                          style={{ background: C.accent, color: C.white, borderRadius: 5, padding: "3px 10px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>
+                          className="bg-accent text-white rounded-[5px] py-[3px] px-2.5 text-[11px] font-bold no-underline">
                           Open
                         </a>
                         <button onClick={async () => {
@@ -88,7 +87,7 @@ export default function FilesTab({
                               showToast("File deleted");
                             } catch(err) { showToast(`Delete failed: ${err.message}`); }
                           }}
-                          style={{ background: "#FEE2E2", color: C.danger, border: "none", borderRadius: 5, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          className="bg-[#FEE2E2] text-danger border-none rounded-[5px] py-[3px] px-2.5 text-[11px] font-bold cursor-pointer">
                           Delete
                         </button>
                       </td>

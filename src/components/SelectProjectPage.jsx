@@ -33,7 +33,7 @@ export default function SelectProjectPage({
   selectedProject, setSelectedProject,
   setPhase,
   // state loaders
-  setInfo, setNVR, setPanel,
+  setInfo, setNVR, setPanel, setAccess,
   setCameraGroups, setSwitchGroups, setServerGroups,
   setDoorGroups, setZoneGroups, setSpeakerGroups,
   setLaborBudget, setLaborActual, setSpecSheetUrls, setChangeLog, setNetworkConfig,
@@ -65,6 +65,7 @@ export default function SelectProjectPage({
         setInfo(mergedInfo);
         if (s.nvrInfo)       setNVR(s.nvrInfo);
         if (s.panelInfo)     setPanel(s.panelInfo);
+        if (s.accessInfo)    setAccess(s.accessInfo);
         if (s.cameraGroups)  setCameraGroups(s.cameraGroups);
         if (s.switchGroups)  setSwitchGroups(s.switchGroups);
         if (s.serverGroups)  setServerGroups(s.serverGroups);

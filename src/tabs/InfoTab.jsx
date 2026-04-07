@@ -4,7 +4,7 @@ import { CardHead, G, F, Inp, Sel } from "../components/ui";
 import { Camera, MonitorCog, Network, DoorOpen, ShieldAlert, Volume2, Globe, Wifi } from "lucide-react";
 
 export default function InfoTab({
-  info, setI, nvrInfo, setNV, panelInfo, setPan,
+  info, setI, nvrInfo, setNV, panelInfo, setPan, accessInfo, setAcc,
   cameraGroups, switchGroups, serverGroups,
   doorGroups, zoneGroups, speakerGroups,
   camCount, swCount, srvCount, doorCount, zoneCount, spkCount,
@@ -116,6 +116,23 @@ export default function InfoTab({
             {[["NVR/DVR Brand","nvrBrand","e.g. Hikvision"],["Model","nvrModel","DS-9632NI"],["IP Address","nvrIp","192.168.x.x"],["Serial Number","nvrSerial",""],["Firmware","nvrFirmware",""],["Storage","nvrStorage","e.g. 4x4TB"],["Retention","nvrRetention","e.g. 30 days"],["VMS Software","vmsSoftware","e.g. iVMS-4200"]].map(([lbl, k, ph]) => (
               <F key={k} label={lbl}><Inp value={nvrInfo[k]} onChange={e => setNV(k, e.target.value)} placeholder={ph} /></F>
             ))}
+          </G>
+        </div>
+      </div>
+
+      {/* Access Control Details */}
+      <div className="bg-white rounded-xl border border-border overflow-hidden mb-5">
+        <CardHead icon="🚪" title="Access Control Details" color="#1E293B" />
+        <div className="p-4">
+          <G cols={4}>
+            <F label="Access Platform"><Sel value={(accessInfo || {}).accessPlatform || ""} onChange={e => setAcc("accessPlatform", e.target.value)}><option value="">Select...</option>{ACCESS_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
+            <F label="Controller Brand"><Inp value={(accessInfo || {}).controllerBrand || ""} onChange={e => setAcc("controllerBrand", e.target.value)} placeholder="e.g. Brivo, PDK" /></F>
+            <F label="Controller Model"><Inp value={(accessInfo || {}).controllerModel || ""} onChange={e => setAcc("controllerModel", e.target.value)} placeholder="e.g. ACS6100" /></F>
+            <F label="Controller IP"><Inp value={(accessInfo || {}).controllerIp || ""} onChange={e => setAcc("controllerIp", e.target.value)} placeholder="192.168.x.x" /></F>
+            <F label="Controller S/N"><Inp value={(accessInfo || {}).controllerSerial || ""} onChange={e => setAcc("controllerSerial", e.target.value)} /></F>
+            <F label="Firmware"><Inp value={(accessInfo || {}).firmware || ""} onChange={e => setAcc("firmware", e.target.value)} /></F>
+            <F label="Total Doors"><Inp type="number" value={(accessInfo || {}).totalDoors || ""} onChange={e => setAcc("totalDoors", e.target.value)} placeholder="e.g. 12" /></F>
+            <F label="Credential Format"><Inp value={(accessInfo || {}).credentialFormat || ""} onChange={e => setAcc("credentialFormat", e.target.value)} placeholder="e.g. 26-bit Wiegand" /></F>
           </G>
         </div>
       </div>

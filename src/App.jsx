@@ -66,6 +66,7 @@ export default function App() {
   const [info, setInfo] = useState({ customer: "", siteAddress: "", techLead: "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" });
   const [nvrInfo, setNVR] = useState({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
   const [panelInfo, setPanel] = useState({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
+  const [accessInfo, setAccess] = useState({ accessPlatform: "", controllerBrand: "", controllerModel: "", controllerIp: "", controllerSerial: "", firmware: "", totalDoors: "", credentialFormat: "" });
   // labor hours
   const [laborBudget, setLaborBudget] = useState(emptyLabor());
   const [laborActual, setLaborActual] = useState(emptyLabor());
@@ -144,6 +145,7 @@ export default function App() {
   const setI   = (k, v) => setInfo(s => ({ ...s, [k]: v }));
   const setNV  = (k, v) => setNVR(s => ({ ...s, [k]: v }));
   const setPan = (k, v) => setPanel(s => ({ ...s, [k]: v }));
+  const setAcc = (k, v) => setAccess(s => ({ ...s, [k]: v }));
   // ── Auto-save to Supabase ─────────────────────────────────────────────────
   const pendingSnapRef = useRef(null);
   const flushSave = useCallback(async (project, extraSnap) => {
@@ -186,9 +188,9 @@ export default function App() {
   // Watch all state and auto-save when anything changes (only in build phase)
   useEffect(() => {
     if (phase !== "build" || !selectedProject) return;
-    const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig };
+    const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig };
     triggerSave(snap, selectedProject);
-  }, [info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig]); // eslint-disable-line
+  }, [info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig]); // eslint-disable-line
   // Flush save on tab close / refresh
   useEffect(() => {
     const handleUnload = () => { if (selectedProject) flushSave(selectedProject); };
@@ -248,7 +250,7 @@ export default function App() {
       .then(rows => { setProjectFiles(rows); setFilesLoading(false); })
       .catch(() => setFilesLoading(false));
   }, [tab, selectedProject]);
-  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls, changeLog, networkConfig });
+  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, ...accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls, changeLog, networkConfig });
   const projectMeta  = () => ({ name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" });
   const handleCSV = () => {
     try { buildCSV(stateSnapshot(), projectMeta()); }
@@ -353,7 +355,7 @@ export default function App() {
     if (p.id === selectedProject?.id) return;
     // Save current project first
     if (selectedProject?.id) {
-      const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig };
+      const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig };
       await flushSave(selectedProject, snap);
     }
     // Load new project
@@ -366,6 +368,7 @@ export default function App() {
         setInfo({ customer: p.customer || "", siteAddress: p.siteAddress || "", techLead: p.techLead || "", ...(s.info || {}), ...(p.customer && !s.info?.customer ? { customer: p.customer } : {}), ...(p.siteAddress && !s.info?.siteAddress ? { siteAddress: p.siteAddress } : {}), ...(p.techLead && !s.info?.techLead ? { techLead: p.techLead } : {}) });
         if (s.nvrInfo) setNVR(s.nvrInfo);
         if (s.panelInfo) setPanel(s.panelInfo);
+        if (s.accessInfo) setAccess(s.accessInfo);
         setCameraGroups(s.cameraGroups || []);
         setSwitchGroups(s.switchGroups || []);
         setServerGroups(s.serverGroups || []);
@@ -383,6 +386,7 @@ export default function App() {
         setNVR({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
         setPanel({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
         setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
+        setAccess({ accessPlatform: "", controllerBrand: "", controllerModel: "", controllerIp: "", controllerSerial: "", firmware: "", totalDoors: "", credentialFormat: "" });
         setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
         setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
         setSpecSheetUrls({}); setChangeLog([]); setNetworkConfig(emptyNetworkConfig());
@@ -443,7 +447,7 @@ export default function App() {
         projectsError={projectsError}
         selectedProject={selectedProject} setSelectedProject={setSelectedProject}
         setPhase={setPhase}
-        setInfo={setInfo} setNVR={setNVR} setPanel={setPanel}
+        setInfo={setInfo} setNVR={setNVR} setPanel={setPanel} setAccess={setAccess}
         setCameraGroups={setCameraGroups} setSwitchGroups={setSwitchGroups}
         setServerGroups={setServerGroups} setDoorGroups={setDoorGroups}
         setZoneGroups={setZoneGroups} setSpeakerGroups={setSpeakerGroups}
@@ -480,6 +484,7 @@ export default function App() {
           setNVR({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
           setPanel({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
           setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
+          setAccess({ accessPlatform: "", controllerBrand: "", controllerModel: "", controllerIp: "", controllerSerial: "", firmware: "", totalDoors: "", credentialFormat: "" });
           setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
           setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
           setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]); setNetworkConfig(emptyNetworkConfig());
@@ -491,7 +496,7 @@ export default function App() {
 
         {/* ─ INFO ─ */}
         {tab === "info" && (
-          <InfoTab info={info} setI={setI} nvrInfo={nvrInfo} setNV={setNV} panelInfo={panelInfo} setPan={setPan}
+          <InfoTab info={info} setI={setI} nvrInfo={nvrInfo} setNV={setNV} panelInfo={panelInfo} setPan={setPan} accessInfo={accessInfo} setAcc={setAcc}
             cameraGroups={cameraGroups} switchGroups={switchGroups} serverGroups={serverGroups}
             doorGroups={doorGroups} zoneGroups={zoneGroups} speakerGroups={speakerGroups}
             camCount={camCount} swCount={swCount} srvCount={srvCount}

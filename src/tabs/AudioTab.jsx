@@ -1,5 +1,6 @@
+import { AUDIO_PLATFORMS } from "../constants";
 import { mkSpkGrp, mkSpkDev, genSpk, updGrp, remGrp, getNextIpStart } from "../models";
-import { CardHead, Empty, G, F, Inp, Tog, SectionLabel } from "../components/ui";
+import { CardHead, Empty, G, F, Inp, Sel, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
 import DevTable from "../components/DevTable";
 import GenerateBar from "../components/GenerateBar";
@@ -44,6 +45,7 @@ export default function AudioTab({ speakerGroups, setSpeakerGroups, spkCount, co
               {/* Group label always visible */}
               <G cols={4}>
                 <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setSpeakerGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. Lobby PA" /></F>
+                <F label="AV Platform"><Sel value={grp.platform || ""} onChange={e => updGrp(setSpeakerGroups, grp.id, "platform", e.target.value)}><option value="">Select...</option>{AUDIO_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
               </G>
               <GenerateBar group={grp} setter={setSpeakerGroups} genFn={genSpk} showIP={!hw} />
               <DevTable gid={grp.id} setter={setSpeakerGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkSpkDev("", i || grp.devices.length)}

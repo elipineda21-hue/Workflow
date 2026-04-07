@@ -1,4 +1,5 @@
 import { CAM_DB } from "../deviceDB";
+import { CCTV_PLATFORMS } from "../constants";
 import { mkCamGroup, mkCamDev, genCam, updGrp, remGrp, getNextIpStart } from "../models";
 import { CardHead, Empty, G, F, Inp, Sel, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
@@ -67,6 +68,7 @@ export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, co
                 {/* Group label always visible */}
                 <G cols={3}>
                   <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setCameraGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. Perimeter Cameras" /></F>
+                  <F label="VMS Platform"><Sel value={grp.platform || ""} onChange={e => updGrp(setCameraGroups, grp.id, "platform", e.target.value)}><option value="">Select...</option>{CCTV_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
                 </G>
                 <GenerateBar group={grp} setter={setCameraGroups} genFn={genCam} showIP={!hw} />
                 <DevTable gid={grp.id} setter={setCameraGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkCamDev("", i || grp.devices.length)}

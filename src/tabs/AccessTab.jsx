@@ -1,4 +1,5 @@
 import { ACCESS_DB } from "../deviceDB";
+import { ACCESS_PLATFORMS } from "../constants";
 import { mkDoorGrp, mkDoorDev, genDoor, updGrp, remGrp } from "../models";
 import { CardHead, Empty, G, F, Inp, Sel, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
@@ -53,6 +54,7 @@ export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collap
               {/* Group label always visible */}
               <G cols={3}>
                 <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setDoorGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. Interior Doors" /></F>
+                <F label="Access Platform"><Sel value={grp.platform || ""} onChange={e => updGrp(setDoorGroups, grp.id, "platform", e.target.value)}><option value="">Select...</option>{ACCESS_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
               </G>
               <GenerateBar group={grp} setter={setDoorGroups} genFn={genDoor} showIP={false} />
               <DevTable gid={grp.id} setter={setDoorGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkDoorDev(i || grp.devices.length)}

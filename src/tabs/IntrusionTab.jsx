@@ -1,3 +1,4 @@
+import { INTRUSION_PLATFORMS } from "../constants";
 import { mkZoneGrp, mkZoneDev, genZone, updGrp, remGrp } from "../models";
 import { CardHead, Empty, G, F, Inp, Sel, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
@@ -40,6 +41,7 @@ export default function IntrusionTab({ zoneGroups, setZoneGroups, zoneCount, col
               {/* Group label always visible */}
               <G cols={4}>
                 <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setZoneGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. Perimeter PIRs" /></F>
+                <F label="Alarm Platform"><Sel value={grp.platform || ""} onChange={e => updGrp(setZoneGroups, grp.id, "platform", e.target.value)}><option value="">Select...</option>{INTRUSION_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
               </G>
               <GenerateBar group={grp} setter={setZoneGroups} genFn={genZone} showIP={false} />
               <DevTable gid={grp.id} setter={setZoneGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkZoneDev(i || grp.devices.length, grp)}

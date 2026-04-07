@@ -1,4 +1,5 @@
 import { PANEL_DB } from "../deviceDB";
+import { CCTV_PLATFORMS, ACCESS_PLATFORMS, INTRUSION_PLATFORMS, AUDIO_PLATFORMS } from "../constants";
 import { CardHead, G, F, Inp, Sel } from "../components/ui";
 
 export default function InfoTab({ info, setI, nvrInfo, setNV, panelInfo, setPan }) {
@@ -24,6 +25,7 @@ export default function InfoTab({ info, setI, nvrInfo, setNV, panelInfo, setPan 
             {[["NVR/DVR Brand","nvrBrand","e.g. Hikvision"],["Model","nvrModel","DS-9632NI"],["IP Address","nvrIp","192.168.x.x"],["Serial Number","nvrSerial",""],["Firmware","nvrFirmware",""],["Storage","nvrStorage","e.g. 4x4TB"],["Retention","nvrRetention","e.g. 30 days"],["VMS Software","vmsSoftware","e.g. iVMS-4200"]].map(([lbl, k, ph]) => (
               <F key={k} label={lbl}><Inp value={nvrInfo[k]} onChange={e => setNV(k, e.target.value)} placeholder={ph} /></F>
             ))}
+            <F label="VMS Platform"><Sel value={nvrInfo.vmsPlatform || ""} onChange={e => setNV("vmsPlatform", e.target.value)}><option value="">Select...</option>{CCTV_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
           </G>
         </div>
       </div>
@@ -54,6 +56,7 @@ export default function InfoTab({ info, setI, nvrInfo, setNV, panelInfo, setPan 
             {[["Serial #","panelSerial"],["Firmware","panelFirmware"]].map(([lbl, k]) => (
               <F key={k} label={lbl}><Inp value={panelInfo[k]} onChange={e => setPan(k, e.target.value)} /></F>
             ))}
+            <F label="Alarm Platform"><Sel value={panelInfo.panelPlatform || ""} onChange={e => setPan("panelPlatform", e.target.value)}><option value="">Select...</option>{INTRUSION_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
           </G>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { SERVER_DB } from "../deviceDB";
-import { SERVER_ROLES } from "../constants";
+import { SERVER_ROLES, CCTV_PLATFORMS } from "../constants";
 import { mkSrvGrp, mkSrvDev, genSrv, updGrp, remGrp, getNextIpStart } from "../models";
 import { CardHead, Empty, G, F, Inp, Sel, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
@@ -50,6 +50,7 @@ export default function ServersTab({ serverGroups, setServerGroups, srvCount, co
               {/* Group label always visible */}
               <G cols={3}>
                 <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setServerGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. VMS Servers" /></F>
+                <F label="VMS Platform"><Sel value={grp.platform || ""} onChange={e => updGrp(setServerGroups, grp.id, "platform", e.target.value)}><option value="">Select...</option>{CCTV_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
               </G>
               <GenerateBar group={grp} setter={setServerGroups} genFn={genSrv} showIP={!hw} />
               <DevTable gid={grp.id} setter={setServerGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkSrvDev("", i || grp.devices.length)}

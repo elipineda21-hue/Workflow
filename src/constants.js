@@ -17,6 +17,13 @@ export const LOCK_TYPES = ["Mag Lock","Electric Strike","Electronic Deadbolt","O
 export const ZONE_TYPES = ["Motion","Door Contact","Glass Break","Smoke","CO","Heat","Panic","Tamper"];
 export const SERVER_ROLES = ["VMS Server","NVR","DVR","Access Control Server","Video Analytics","Storage Array","Workstation","Other"];
 
+// ── Platform lists per system type ───────────────────────────────────────────
+export const CCTV_PLATFORMS = ["Avigilon (Motorola)","Milestone","Genetec","Digital Watchdog","Hanwha WAVE","Verkada","Rhombus","ExacqVision","Hikvision iVMS","UniView EZStation","Other"];
+export const ACCESS_PLATFORMS = ["Brivo","PDK (ProdataKey)","Genetec Synergis","LenelS2","Honeywell Pro-Watch","AMAG Symmetry","Verkada","Avigilon Alta","Salto","Allegion","Other"];
+export const INTRUSION_PLATFORMS = ["Ajax","Alarm.com","DMP","Honeywell Vista","Honeywell Lyric","DSC PowerSeries","Bosch","Qolsys","Elk Products","Napco","Other"];
+export const AUDIO_PLATFORMS = ["Control4","Crestron","Savant","QSC Q-SYS","Bogen","AtlasIED","Sonance","Sonos Pro","Biamp","RTI","Other"];
+export const NETWORK_PLATFORMS = ["Ubiquiti (UniFi)","Cisco Meraki","Aruba","Ruckus","Fortinet","SonicWall","Juniper Mist","TP-Link Omada","Netgear Insight","Other"];
+
 // ── Network SOP Defaults (Calidad Projects) ──────────────────────────────────
 export const SOP_VLANS = [
   { id: "mgmt",      vlanId: "1",  name: "Default (Mgmt)",  subnet: "192.168.0.0/24", dhcp: true, poolSize: 249, purpose: "Management network for infrastructure devices: switches, access points, controller." },

@@ -491,7 +491,13 @@ export default function App() {
 
         {/* ─ INFO ─ */}
         {tab === "info" && (
-          <InfoTab info={info} setI={setI} nvrInfo={nvrInfo} setNV={setNV} panelInfo={panelInfo} setPan={setPan} />
+          <InfoTab info={info} setI={setI} nvrInfo={nvrInfo} setNV={setNV} panelInfo={panelInfo} setPan={setPan}
+            cameraGroups={cameraGroups} switchGroups={switchGroups} serverGroups={serverGroups}
+            doorGroups={doorGroups} zoneGroups={zoneGroups} speakerGroups={speakerGroups}
+            camCount={camCount} swCount={swCount} srvCount={srvCount}
+            doorCount={doorCount} zoneCount={zoneCount} spkCount={spkCount}
+            totalDevices={totalDevices} networkConfig={networkConfig}
+          />
         )}
         {/* ─ SERVERS ─ */}
         {tab === "servers" && (

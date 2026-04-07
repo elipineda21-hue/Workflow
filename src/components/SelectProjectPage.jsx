@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Zap } from "lucide-react";
+import { Zap, Search, X } from "lucide-react";
 import { C } from "../constants";
 import { MONDAY_BOARD_ID, fetchProjects, fetchBoardColumns } from "../api/monday";
 import { loadWorkOrder } from "../supabase";
@@ -39,6 +39,7 @@ export default function SelectProjectPage({
   setLaborBudget, setLaborActual, setSpecSheetUrls, setChangeLog, setNetworkConfig,
 }) {
   const [statusFilter, setStatusFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const saveToken = () => {
     const t = tokenDraft.trim();
     if (!t) return;
@@ -276,6 +277,25 @@ export default function SelectProjectPage({
           </div>
         ) : projects.length > 0 ? (
           <>
+            {/* Search bar */}
+            <div className="relative mb-3">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full py-2.5 pl-10 pr-10 rounded-xl bg-white/[0.06] border border-white/[0.08] text-white text-sm outline-none placeholder:text-white/25"
+                placeholder="Search projects by name, ID, customer, address..."
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 bg-transparent border-none cursor-pointer p-0"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
             {/* Status filter */}
             <div className="flex gap-1.5 mb-3 flex-wrap">
               {PROJECT_STATUSES.map(s => {
@@ -291,9 +311,29 @@ export default function SelectProjectPage({
                 );
               })}
             </div>
+            {/* Result count */}
+            {(() => {
+              const filtered = projects.filter(p => {
+                const matchesStatus = statusFilter === "All" || (p.projectStatus || "") === statusFilter;
+                const q = searchQuery.toLowerCase();
+                const matchesSearch = !q || [p.name, p.projectId, p.customer, p.siteAddress, p.techLead, p.pm].some(v => (v || "").toLowerCase().includes(q));
+                return matchesStatus && matchesSearch;
+              });
+              return (
+                <div className="text-white/30 text-[11px] font-medium mb-2">
+                  Showing {filtered.length} of {projects.length} projects
+                </div>
+              );
+            })()}
+
             {/* Project list */}
             <div className="flex flex-col gap-2.5">
-              {projects.filter(p => statusFilter === "All" || (p.projectStatus || "") === statusFilter).map(p => {
+              {projects.filter(p => {
+                const matchesStatus = statusFilter === "All" || (p.projectStatus || "") === statusFilter;
+                const q = searchQuery.toLowerCase();
+                const matchesSearch = !q || [p.name, p.projectId, p.customer, p.siteAddress, p.techLead, p.pm].some(v => (v || "").toLowerCase().includes(q));
+                return matchesStatus && matchesSearch;
+              }).map(p => {
                 const projSt = STATUS_COLORS[p.projectStatus] || null;
                 const progSt = PROG_COLORS[p.programmingStatus] || null;
                 return (

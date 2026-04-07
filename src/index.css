@@ -2,24 +2,24 @@
 
 /* ── ProjectPal Theme ─────────────────────────────────────────────────────── */
 @theme {
-  --color-navy: #0B1F3A;
-  --color-steel: #1A3355;
-  --color-accent: #00AEEF;
-  --color-gold: #F4A300;
-  --color-bg: #EEF2F7;
+  --color-navy: #0F172A;
+  --color-steel: #1E293B;
+  --color-accent: #3B82F6;
+  --color-gold: #F59E0B;
+  --color-bg: #F1F5F9;
   --color-white: #FFFFFF;
-  --color-muted: #6B7E96;
-  --color-border: #CBD5E1;
-  --color-success: #10B981;
+  --color-muted: #64748B;
+  --color-border: #E2E8F0;
+  --color-success: #22C55E;
   --color-warn: #F59E0B;
   --color-danger: #EF4444;
-  --color-surface: #F8FAFD;
-  --color-dark: #07142A;
+  --color-surface: #F8FAFC;
+  --color-dark: #020617;
 }
 
 /* ── Base ──────────────────────────────────────────────────────────────────── */
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   background-color: var(--color-bg);
   color: var(--color-navy);
   -webkit-font-smoothing: antialiased;
@@ -37,7 +37,7 @@ button, select, a, input, .transition-default {
 }
 
 button:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.06);
 }
 
 button:active {
@@ -69,7 +69,7 @@ tbody tr {
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--color-accent) !important;
-  box-shadow: 0 0 0 2px rgba(0, 174, 239, 0.15);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 /* ── Card hover lift ──────────────────────────────────────────────────────── */

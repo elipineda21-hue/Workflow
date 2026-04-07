@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Zap } from "lucide-react";
 import { C } from "../constants";
 import { MONDAY_BOARD_ID, fetchProjects, fetchBoardColumns } from "../api/monday";
 import { loadWorkOrder } from "../supabase";
@@ -92,8 +93,8 @@ export default function SelectProjectPage({
       <div className="max-w-[720px] w-full">
         {/* Branding */}
         <div className="text-center mb-10">
-          <div className="text-[48px] mb-2 drop-shadow-lg">⚡</div>
-          <div className="text-white font-black text-[32px] tracking-tight">ProjectPal</div>
+          <div className="mb-3 inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/20"><Zap size={32} className="text-accent" /></div>
+          <div className="text-white font-extrabold text-[32px] tracking-tight">ProjectPal</div>
           <div className="text-accent/70 text-[11px] mt-1.5 tracking-[0.12em] uppercase font-medium">by Anonymous - Zero</div>
         </div>
 

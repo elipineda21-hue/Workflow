@@ -1,5 +1,3 @@
-import { C } from "../constants";
-
 export default function DashboardTab({
   cameraGroups, doorGroups, speakerGroups, zoneGroups, serverGroups, switchGroups,
   laborBudget, laborActual, LABOR_TYPES,
@@ -27,8 +25,8 @@ export default function DashboardTab({
   const totalActual = LABOR_TYPES.reduce((s, t) => s + (parseFloat(laborActual[t.key]) || 0), 0);
 
   const logTypeMeta = {
-    programmed:   { label: "Programmed",   bg: "#D1FAE5", color: C.success },
-    unprogrammed: { label: "Unprogrammed", bg: "#FEE2E2", color: C.danger },
+    programmed:   { label: "Programmed",   bg: "#D1FAE5", color: "#10B981" },
+    unprogrammed: { label: "Unprogrammed", bg: "#FEE2E2", color: "#EF4444" },
     group_added:  { label: "Group Added",  bg: "#DBEAFE", color: "#1D4ED8" },
     name_change:  { label: "Renamed",      bg: "#FEF9C3", color: "#92400E" },
     location_set: { label: "Location",     bg: "#E0F2FE", color: "#0369A1" },
@@ -40,10 +38,10 @@ export default function DashboardTab({
       {/* Summary cards */}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 mb-4">
         {[
-          { label: "Install %",  value: `${instPct}%`, sub: `${installedCount} / ${allDevs.length} devices`, color: instPct === 100 ? C.success : C.warn },
-          { label: "Program %",  value: `${pct}%`,     sub: `${programmedCount} / ${allDevs.length} devices`, color: pct === 100 ? C.success : C.accent },
-          { label: "Budget Hrs", value: `${totalBudget}h`, sub: "from proposal", color: C.navy },
-          { label: "Actual Hrs", value: `${totalActual}h`, sub: totalBudget ? `${totalActual - totalBudget > 0 ? "+" : ""}${totalActual - totalBudget}h variance` : "enter in Labor tab", color: totalActual > totalBudget ? C.danger : C.success },
+          { label: "Install %",  value: `${instPct}%`, sub: `${installedCount} / ${allDevs.length} devices`, color: instPct === 100 ? "#10B981" : "#F59E0B" },
+          { label: "Program %",  value: `${pct}%`,     sub: `${programmedCount} / ${allDevs.length} devices`, color: pct === 100 ? "#10B981" : "#00AEEF" },
+          { label: "Budget Hrs", value: `${totalBudget}h`, sub: "from proposal", color: "#0B1F3A" },
+          { label: "Actual Hrs", value: `${totalActual}h`, sub: totalBudget ? `${totalActual - totalBudget > 0 ? "+" : ""}${totalActual - totalBudget}h variance` : "enter in Labor tab", color: totalActual > totalBudget ? "#EF4444" : "#10B981" },
         ].map(card => (
           <div key={card.label} className="bg-white rounded-xl border border-border p-4">
             <div className="text-muted text-[11px] font-bold mb-1">{card.label}</div>
@@ -57,17 +55,17 @@ export default function DashboardTab({
       <div className="bg-white rounded-xl border border-border p-5 mb-4">
         <div className="flex justify-between mb-2">
           <div className="font-bold text-[13px] text-navy">Installation</div>
-          <div className="font-extrabold" style={{ color: instPct === 100 ? C.success : C.warn }}>{instPct}%</div>
+          <div className="font-extrabold" style={{ color: instPct === 100 ? "#10B981" : "#F59E0B" }}>{instPct}%</div>
         </div>
         <div className="bg-bg rounded-full h-2.5 overflow-hidden mb-1">
-          <div className="h-full rounded-full transition-[width] duration-400" style={{ width: `${instPct}%`, background: instPct === 100 ? C.success : C.warn }} />
+          <div className="h-full rounded-full transition-[width] duration-400" style={{ width: `${instPct}%`, background: instPct === 100 ? "#10B981" : "#F59E0B" }} />
         </div>
         <div className="flex justify-between mt-3">
           <div className="font-bold text-[13px] text-navy">Programming</div>
-          <div className="font-extrabold" style={{ color: pct === 100 ? C.success : C.accent }}>{pct}%</div>
+          <div className="font-extrabold" style={{ color: pct === 100 ? "#10B981" : "#00AEEF" }}>{pct}%</div>
         </div>
         <div className="bg-bg rounded-full h-2.5 overflow-hidden mt-1">
-          <div className="h-full rounded-full transition-[width] duration-400" style={{ width: `${pct}%`, background: pct === 100 ? C.success : C.accent }} />
+          <div className="h-full rounded-full transition-[width] duration-400" style={{ width: `${pct}%`, background: pct === 100 ? "#10B981" : "#00AEEF" }} />
         </div>
       </div>
 
@@ -93,12 +91,12 @@ export default function DashboardTab({
                     <span className="bg-white/15 text-white rounded-xl px-2 py-px text-[11px] font-bold">{cat.devs.length}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-xs" style={{ color: cp === 100 ? C.success : "#FCD34D" }}>{done}/{cat.devs.length} programmed</span>
+                    <span className="font-bold text-xs" style={{ color: cp === 100 ? "#10B981" : "#FCD34D" }}>{done}/{cat.devs.length} programmed</span>
                     <span className="text-white/60 text-sm">{isCollapsed ? "▶" : "▼"}</span>
                   </div>
                 </div>
                 <div className="h-[3px] bg-bg">
-                  <div className="h-full transition-[width] duration-400" style={{ width: `${cp}%`, background: cp === 100 ? C.success : C.accent }} />
+                  <div className="h-full transition-[width] duration-400" style={{ width: `${cp}%`, background: cp === 100 ? "#10B981" : "#00AEEF" }} />
                 </div>
                 {!isCollapsed && (
                   <table className="w-full border-collapse text-xs">
@@ -111,9 +109,9 @@ export default function DashboardTab({
                     </thead>
                     <tbody>
                       {cat.devs.map((dev, i) => (
-                        <tr key={dev.id} style={{ background: (dev.programmed || dev._noProg) ? "#F0FDF4" : (i % 2 === 0 ? C.white : C.surface) }}>
+                        <tr key={dev.id} style={{ background: (dev.programmed || dev._noProg) ? "#F0FDF4" : (i % 2 === 0 ? "#FFFFFF" : "#F8FAFD") }}>
                           <td className="py-1.5 px-3">
-                            <span className="inline-block py-0.5 px-2 rounded-xl text-[10px] font-bold" style={{ background: dev._noProg ? "#E0F2FE" : dev.programmed ? "#D1FAE5" : "#FEF3C7", color: dev._noProg ? C.accent : dev.programmed ? C.success : C.warn }}>
+                            <span className="inline-block py-0.5 px-2 rounded-xl text-[10px] font-bold" style={{ background: dev._noProg ? "#E0F2FE" : dev.programmed ? "#D1FAE5" : "#FEF3C7", color: dev._noProg ? "#00AEEF" : dev.programmed ? "#10B981" : "#F59E0B" }}>
                               {dev._noProg ? "N/A" : dev.programmed ? "✓ Done" : "Pending"}
                             </span>
                           </td>
@@ -156,7 +154,7 @@ export default function DashboardTab({
           ) : (
             <div className="max-h-[280px] overflow-y-auto">
               {changeLog.map(entry => {
-                const meta = logTypeMeta[entry.type] || { label: entry.type, bg: C.surface, color: C.muted };
+                const meta = logTypeMeta[entry.type] || { label: entry.type, bg: "#F8FAFD", color: "#6B7E96" };
                 return (
                   <div key={entry.id} className="flex items-center gap-2.5 py-[7px] px-3.5 border-b border-border text-xs">
                     <span className="text-muted text-[11px] min-w-[70px] shrink-0">{new Date(entry.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>

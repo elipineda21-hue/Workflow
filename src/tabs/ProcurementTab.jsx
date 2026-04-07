@@ -1,13 +1,12 @@
-import { C } from "../constants";
 import { updGrp } from "../models";
 import { Tog } from "../components/ui";
 
 const PROC_STATUSES = [
-  { value: "not_ordered", label: "Not Ordered", color: C.muted,   bg: "#F1F5F9" },
-  { value: "ordered",     label: "Ordered",     color: C.accent,  bg: "#E0F2FE" },
-  { value: "in_transit",  label: "In Transit",  color: C.gold,    bg: "#FEF3C7" },
+  { value: "not_ordered", label: "Not Ordered", color: "#6B7E96", bg: "#F1F5F9" },
+  { value: "ordered",     label: "Ordered",     color: "#00AEEF", bg: "#E0F2FE" },
+  { value: "in_transit",  label: "In Transit",  color: "#F4A300", bg: "#FEF3C7" },
   { value: "received",    label: "Received",    color: "#059669", bg: "#D1FAE5" },
-  { value: "in_house",    label: "In House",    color: C.success, bg: "#ECFDF5" },
+  { value: "in_house",    label: "In House",    color: "#10B981", bg: "#ECFDF5" },
 ];
 const procStatusMeta = Object.fromEntries(PROC_STATUSES.map(s => [s.value, s]));
 

@@ -459,7 +459,7 @@ export default function App() {
   }
   // ─ BUILD PHASE ────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar
         projects={projects}
         selectedProject={selectedProject}
@@ -467,7 +467,7 @@ export default function App() {
         onToggle={() => setSidebarCollapsed(v => !v)}
         onSelectProject={switchProject}
       />
-      <div className="flex-1 min-w-0 bg-bg">
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
       <TopBar
         selectedProject={selectedProject} saveStatus={saveStatus}
         totalDevices={totalDevices} importFileRef={importFileRef}
@@ -487,7 +487,7 @@ export default function App() {
         onReports={() => setTab("export")}
         onPdfImport={() => setPdfImportOpen(true)}
       />
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "22px 16px" }}>
+      <div className="flex-1 overflow-y-auto" style={{ maxWidth: 1080, margin: "0 auto", padding: "22px 16px", width: "100%" }}>
 
         {/* ─ INFO ─ */}
         {tab === "info" && (

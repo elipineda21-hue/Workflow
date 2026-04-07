@@ -30,7 +30,7 @@ export default function Sidebar({
         <div className="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center mb-4">
           <Zap size={14} className="text-accent" />
         </div>
-        <div className="flex flex-col gap-1.5 mt-2 w-full px-1.5">
+        <div className="flex flex-col gap-1.5 mt-2 w-full px-1.5 overflow-y-auto flex-1">
           {projects.slice(0, 20).map(p => (
             <button key={p.id}
               onClick={() => onSelectProject(p)}

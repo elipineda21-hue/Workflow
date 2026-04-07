@@ -88,26 +88,26 @@ export default function SelectProjectPage({
   };
 
   return (
-    <div className="min-h-screen bg-navy flex flex-col items-center justify-center p-6 font-['Segoe_UI',system-ui,sans-serif]">
+    <div className="min-h-screen bg-gradient-to-br from-dark via-navy to-steel flex flex-col items-center justify-center p-6">
       <div className="max-w-[720px] w-full">
         {/* Branding */}
-        <div className="text-center mb-8">
-          <div className="text-[44px] mb-1.5">⚡</div>
-          <div className="text-white font-extrabold text-[28px] tracking-[0.02em]">ProjectPal</div>
-          <div className="text-accent text-xs mt-1 tracking-[0.08em]">by Anonymous - Zero</div>
+        <div className="text-center mb-10">
+          <div className="text-[48px] mb-2 drop-shadow-lg">⚡</div>
+          <div className="text-white font-black text-[32px] tracking-tight">ProjectPal</div>
+          <div className="text-accent/70 text-[11px] mt-1.5 tracking-[0.12em] uppercase font-medium">by Anonymous - Zero</div>
         </div>
 
         {/* Dashboard preview (when connected) */}
         {mondayToken && projects.length > 0 && (
-          <div className="bg-white/[0.04] rounded-xl border border-accent/15 p-[18px] mb-5">
-            <div className="flex items-center justify-between mb-3.5">
-              <div className="text-white font-extrabold text-[15px]">Dashboard</div>
+          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-white/90 font-bold text-sm tracking-tight">Dashboard</div>
               <button onClick={() => setPhase("master")}
-                className="bg-accent text-white border-none rounded-md px-4 py-1.5 text-[11px] font-bold cursor-pointer">
+                className="bg-accent/90 hover:bg-accent text-white border-none rounded-lg px-4 py-1.5 text-[11px] font-semibold cursor-pointer">
                 Open Full Dashboard
               </button>
             </div>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2.5">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
               {(() => {
                 const statusCounts = {};
                 projects.forEach(p => {
@@ -126,9 +126,9 @@ export default function SelectProjectPage({
                     label: status, value: count, color: statusColors[status] || C.gold,
                   })),
                 ].map(card => (
-                  <div key={card.label} className="bg-white/[0.06] rounded-lg px-3.5 py-3 text-center">
-                    <div className="text-2xl font-extrabold" style={{ color: card.color }}>{card.value}</div>
-                    <div className="text-[10px] font-bold text-white/50 mt-0.5 whitespace-nowrap">{card.label}</div>
+                  <div key={card.label} className="bg-white/[0.05] hover:bg-white/[0.08] rounded-xl px-3 py-3 text-center transition-colors">
+                    <div className="text-[22px] font-black" style={{ color: card.color }}>{card.value}</div>
+                    <div className="text-[10px] font-medium text-white/40 mt-1 whitespace-nowrap">{card.label}</div>
                   </div>
                 ));
               })()}
@@ -296,22 +296,21 @@ export default function SelectProjectPage({
                 const progSt = PROG_COLORS[p.programmingStatus] || null;
                 return (
                   <div key={p.id} onClick={() => handleProjectClick(p)}
-                    style={{ background: selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.05)", border: `1px solid ${selectedProject?.id === p.id ? C.accent : "rgba(255,255,255,0.1)"}` }}
-                    className="rounded-lg px-[18px] py-3.5 cursor-pointer transition-[background] duration-150">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-white font-bold text-sm flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{p.name}</div>
-                      <div className="flex gap-1.5 shrink-0">
+                    className={`rounded-xl px-5 py-4 cursor-pointer transition-all duration-150 border ${selectedProject?.id === p.id ? 'bg-accent/20 border-accent' : 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] hover:border-white/20'}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-white font-semibold text-sm flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{p.name}</div>
+                      <div className="flex gap-2 shrink-0">
                         {progSt && p.programmingStatus && (
-                          <span style={{ background: progSt.bg, color: progSt.color }} className="rounded-lg px-2.5 py-[3px] text-[9px] font-extrabold whitespace-nowrap">{p.programmingStatus}</span>
+                          <span style={{ background: progSt.bg, color: progSt.color }} className="rounded-md px-2.5 py-1 text-[9px] font-bold whitespace-nowrap">{p.programmingStatus}</span>
                         )}
                         {projSt && p.projectStatus && (
-                          <span style={{ background: projSt.bg, color: projSt.color }} className="rounded-lg px-2.5 py-[3px] text-[9px] font-extrabold whitespace-nowrap">{p.projectStatus}</span>
+                          <span style={{ background: projSt.bg, color: projSt.color }} className="rounded-md px-2.5 py-1 text-[9px] font-bold whitespace-nowrap">{p.projectStatus}</span>
                         )}
                       </div>
                     </div>
-                    <div className="text-muted text-[11px] mt-[3px]">ID: {p.projectId}  |  Lead: {p.techLead}</div>
+                    <div className="text-white/40 text-[11px] mt-1.5 font-medium">ID: {p.projectId}  |  Lead: {p.techLead}</div>
                     {(p.customer || p.siteAddress || p.pm || p.schedule) && (
-                      <div className="text-white/45 text-[10px] mt-0.5">
+                      <div className="text-white/30 text-[10px] mt-1">
                         {[p.customer, p.siteAddress, p.pm ? `PM: ${p.pm}` : "", p.schedule ? `Schedule: ${p.schedule}` : ""].filter(Boolean).join("  ·  ")}
                       </div>
                     )}

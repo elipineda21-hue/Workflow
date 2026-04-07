@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ── ProjectPal Theme (mapped from C palette) ─────────────────────────────── */
+/* ── ProjectPal Theme ─────────────────────────────────────────────────────── */
 @theme {
   --color-navy: #0B1F3A;
   --color-steel: #1A3355;
@@ -17,14 +17,66 @@
   --color-dark: #07142A;
 }
 
+/* ── Base ──────────────────────────────────────────────────────────────────── */
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--color-bg);
   color: var(--color-navy);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* ── Smooth transitions on interactive elements ───────────────────────────── */
+button, select, a, input, .transition-default {
+  transition: all 0.15s ease;
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* ── Better scrollbars ────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+/* ── Table row hover ──────────────────────────────────────────────────────── */
+tbody tr {
+  transition: background 0.1s ease;
+}
+
+/* ── Focus rings ──────────────────────────────────────────────────────────── */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 2px rgba(0, 174, 239, 0.15);
+}
+
+/* ── Card hover lift ──────────────────────────────────────────────────────── */
+.card-hover {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }

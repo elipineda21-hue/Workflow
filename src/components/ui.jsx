@@ -1,30 +1,29 @@
 export const F = ({ label, children, span = 1 }) => (
-  <div style={{ gridColumn: `span ${span}` }} className="flex flex-col gap-[3px]">
-    <label className="text-[10px] font-bold text-muted tracking-[0.07em] uppercase">{label}</label>
+  <div style={{ gridColumn: `span ${span}` }} className="flex flex-col gap-1">
+    <label className="text-[10px] font-semibold text-muted/80 tracking-[0.06em] uppercase">{label}</label>
     {children}
   </div>
 );
 
 export const Inp = (props) => (
-  <input {...props} className="py-[7px] px-[9px] rounded-[5px] border-[1.5px] border-border text-xs bg-white text-navy outline-none w-full box-border"
+  <input {...props}
+    className={`py-2 px-2.5 rounded-lg border border-border text-xs bg-white text-navy outline-none w-full box-border transition-shadow duration-150 placeholder:text-muted/40 ${props.className || ""}`}
     style={props.style}
-    onFocus={e => { e.target.style.borderColor = '#00AEEF'; props.onFocus?.(e); }}
-    onBlur={e => { e.target.style.borderColor = '#CBD5E1'; props.onBlur?.(e); }}
   />
 );
 
 export const Sel = ({ children, ...props }) => (
-  <select {...props} className="py-[7px] px-[9px] rounded-[5px] border-[1.5px] border-border text-xs bg-white text-navy outline-none w-full" style={props.style}>{children}</select>
+  <select {...props} className={`py-2 px-2.5 rounded-lg border border-border text-xs bg-white text-navy outline-none w-full cursor-pointer ${props.className || ""}`} style={props.style}>{children}</select>
 );
 
 export const TA = (props) => (
-  <textarea {...props} rows={2} className="py-[7px] px-[9px] rounded-[5px] border-[1.5px] border-border text-xs bg-white text-navy outline-none resize-y font-[inherit] w-full box-border" />
+  <textarea {...props} rows={2} className="py-2 px-2.5 rounded-lg border border-border text-xs bg-white text-navy outline-none resize-y font-[inherit] w-full box-border" />
 );
 
 export const Tog = ({ label, val, set }) => (
-  <label className="flex items-center gap-[7px] cursor-pointer text-xs text-navy select-none">
-    <div onClick={() => set(!val)} className="w-[34px] h-[18px] rounded-[9px] relative cursor-pointer transition-colors duration-200 shrink-0" style={{ background: val ? '#00AEEF' : '#CBD5E1' }}>
-      <div className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.2)]" style={{ left: val ? 16 : 2 }} />
+  <label className="flex items-center gap-2 cursor-pointer text-xs text-navy select-none">
+    <div onClick={() => set(!val)} className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors duration-200 shrink-0 ${val ? 'bg-accent' : 'bg-border'}`}>
+      <div className="absolute top-[3px] w-3.5 h-3.5 rounded-full bg-white transition-all duration-200 shadow-sm" style={{ left: val ? 18 : 3 }} />
     </div>
     {label}
   </label>
@@ -35,14 +34,14 @@ export const G = ({ children, cols = 3 }) => (
 );
 
 export const CardHead = ({ icon, title, count, onAdd, addLabel, color }) => (
-  <div className="flex items-center justify-between rounded-t-lg px-4 py-2.5" style={{ background: color || '#0B1F3A' }}>
+  <div className="flex items-center justify-between rounded-t-xl px-4 py-3" style={{ background: color || '#0B1F3A' }}>
     <div className="flex items-center gap-2.5">
-      <span className="text-[18px]">{icon}</span>
-      <span className="text-white font-bold text-[13px]">{title}</span>
-      {count !== undefined && <span className="bg-accent text-white rounded-xl px-2 py-[1px] text-[11px] font-bold">{count}</span>}
+      <span className="text-lg">{icon}</span>
+      <span className="text-white font-semibold text-[13px] tracking-tight">{title}</span>
+      {count !== undefined && <span className="bg-white/15 text-white/90 rounded-md px-2 py-0.5 text-[10px] font-semibold">{count}</span>}
     </div>
     {onAdd && (
-      <button onClick={onAdd} className="bg-accent text-white border-none rounded-[5px] px-3 py-[5px] text-[11px] font-bold cursor-pointer">
+      <button onClick={onAdd} className="bg-white/15 hover:bg-white/25 text-white border-none rounded-lg px-3 py-1.5 text-[11px] font-semibold cursor-pointer">
         + {addLabel}
       </button>
     )}
@@ -50,12 +49,12 @@ export const CardHead = ({ icon, title, count, onAdd, addLabel, color }) => (
 );
 
 export const Empty = ({ icon, msg }) => (
-  <div className="text-center p-8 text-muted">
-    <div className="text-[36px] mb-1.5">{icon}</div>
-    <div className="font-semibold text-[13px]">{msg}</div>
+  <div className="text-center py-12 text-muted">
+    <div className="text-4xl mb-2 opacity-50">{icon}</div>
+    <div className="font-medium text-sm">{msg}</div>
   </div>
 );
 
 export const SectionLabel = ({ text }) => (
-  <div className="text-[10px] font-extrabold text-muted tracking-[0.1em] uppercase border-b border-border pb-1 mb-2.5 mt-3.5">{text}</div>
+  <div className="text-[10px] font-semibold text-muted/60 tracking-[0.08em] uppercase border-b border-border/50 pb-1.5 mb-3 mt-4">{text}</div>
 );

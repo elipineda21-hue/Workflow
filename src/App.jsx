@@ -132,6 +132,7 @@ export default function App() {
   // network config
   const emptyNetworkConfig = () => ({ useDefaults: true, sitePrefix: "", routerModel: "", apCount: "", isp: "", itContact: "", controllerType: "cloud", vlans: SOP_VLANS.map(v => ({ ...v })), ssids: SOP_SSIDS.map(s => ({ ...s })), firewall: { rows: SOP_FIREWALL.rows, cols: SOP_FIREWALL.cols, matrix: SOP_FIREWALL.matrix.map(r => [...r]) }, checklist: {} });
   const [networkConfig, setNetworkConfig] = useState(emptyNetworkConfig());
+  const [miscHardware, setMiscHardware] = useState([]);
   const libUploadFileRef = useRef(null);
   // device counts
   const camCount  = cameraGroups.reduce((s, g) => s + g.devices.length, 0);
@@ -188,9 +189,9 @@ export default function App() {
   // Watch all state and auto-save when anything changes (only in build phase)
   useEffect(() => {
     if (phase !== "build" || !selectedProject) return;
-    const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig };
+    const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig, miscHardware };
     triggerSave(snap, selectedProject);
-  }, [info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig]); // eslint-disable-line
+  }, [info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig, miscHardware]); // eslint-disable-line
   // Flush save on tab close / refresh
   useEffect(() => {
     const handleUnload = () => { if (selectedProject) flushSave(selectedProject); };
@@ -250,7 +251,7 @@ export default function App() {
       .then(rows => { setProjectFiles(rows); setFilesLoading(false); })
       .catch(() => setFilesLoading(false));
   }, [tab, selectedProject]);
-  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, ...accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls, changeLog, networkConfig });
+  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, ...accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls, changeLog, networkConfig, miscHardware });
   const projectMeta  = () => ({ name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" });
   const handleCSV = () => {
     try { buildCSV(stateSnapshot(), projectMeta()); }
@@ -355,7 +356,7 @@ export default function App() {
     if (p.id === selectedProject?.id) return;
     // Save current project first
     if (selectedProject?.id) {
-      const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig };
+      const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig, miscHardware };
       await flushSave(selectedProject, snap);
     }
     // Load new project
@@ -380,6 +381,7 @@ export default function App() {
         if (s.specSheetUrls) setSpecSheetUrls(s.specSheetUrls);
         if (s.changeLog) setChangeLog(s.changeLog);
         if (s.networkConfig) setNetworkConfig(s.networkConfig);
+        if (s.miscHardware) setMiscHardware(s.miscHardware);
       } else {
         // New project — reset state, prefill from Monday
         setInfo(s => ({ ...emptyLabor(), customer: p.customer || "", siteAddress: p.siteAddress || "", techLead: p.techLead || "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" }));
@@ -389,7 +391,7 @@ export default function App() {
         setAccess({ accessPlatform: "", controllerBrand: "", controllerModel: "", controllerIp: "", controllerSerial: "", firmware: "", totalDoors: "", credentialFormat: "" });
         setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
         setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
-        setSpecSheetUrls({}); setChangeLog([]); setNetworkConfig(emptyNetworkConfig());
+        setSpecSheetUrls({}); setChangeLog([]); setNetworkConfig(emptyNetworkConfig()); setMiscHardware([]);
       }
     } catch (e) { console.warn("Could not load project:", e); }
     setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle");
@@ -487,7 +489,7 @@ export default function App() {
           setAccess({ accessPlatform: "", controllerBrand: "", controllerModel: "", controllerIp: "", controllerSerial: "", firmware: "", totalDoors: "", credentialFormat: "" });
           setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
           setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
-          setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]); setNetworkConfig(emptyNetworkConfig());
+          setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]); setNetworkConfig(emptyNetworkConfig()); setMiscHardware([]);
         }}
         onReports={() => setTab("export")}
         onPdfImport={() => setPdfImportOpen(true)}
@@ -602,6 +604,7 @@ export default function App() {
             mondaySyncEnabled={mondaySyncEnabled} setMondaySyncEnabled={setMondaySyncEnabled}
             mondaySyncColId={mondaySyncColId} setMondaySyncColId={setMondaySyncColId}
             addLog={addLog} selectedProject={selectedProject}
+            miscHardware={miscHardware} setMiscHardware={setMiscHardware}
             moveGroup={moveGroup}
           />
         )}

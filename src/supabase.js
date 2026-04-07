@@ -185,3 +185,9 @@ export async function listCatalog() {
   if (error) throw error;
   return data || [];
 }
+
+// Delete a catalog entry
+export async function deleteCatalogEntry(id) {
+  const { error } = await supabase.from("device_catalog").delete().eq("id", id);
+  if (error) throw error;
+}

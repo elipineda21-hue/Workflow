@@ -12,6 +12,7 @@ import TopBar from "./components/TopBar";
 import ImportPreviewModal from "./components/ImportPreviewModal";
 import MasterDashboard from "./components/MasterDashboard";
 import PdfImportModal from "./components/PdfImportModal";
+import Sidebar from "./components/Sidebar";
 import InfoTab from "./tabs/InfoTab";
 import DashboardTab from "./tabs/DashboardTab";
 import LaborTab from "./tabs/LaborTab";
@@ -115,6 +116,7 @@ export default function App() {
   // proposal import
   const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
   const [pdfImportOpen, setPdfImportOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const importFileRef = useRef(null);
   // device library / OEM manual
   const [specSheetUrls,  setSpecSheetUrls]  = useState({}); // {"brand|model": url} — persisted (reference links only)
@@ -346,6 +348,49 @@ export default function App() {
     addLog("import", `${isChangeOrder ? "Change Order" : "Proposal"} #${importPreview.proposalId} — ${importedCount} hardware groups imported${recurringCount ? `, ${recurringCount} MRR items skipped` : ""}`);
     catalogDevices(hardwareRows.map(r => ({ category: overrideCats[r._idx] || r.category, brand: r.brand, model: r.model }))).catch(e => console.warn("Catalog update failed:", e));
   };
+  // Switch project from sidebar (save current, load new)
+  const switchProject = async (p) => {
+    if (p.id === selectedProject?.id) return;
+    // Save current project first
+    if (selectedProject?.id) {
+      const snap = { info, nvrInfo, panelInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig };
+      await flushSave(selectedProject, snap);
+    }
+    // Load new project
+    setSelectedProject(p);
+    try {
+      const { loadWorkOrder } = await import("./supabase");
+      const saved = await loadWorkOrder(p.id);
+      if (saved?.state) {
+        const s = saved.state;
+        setInfo({ customer: p.customer || "", siteAddress: p.siteAddress || "", techLead: p.techLead || "", ...(s.info || {}), ...(p.customer && !s.info?.customer ? { customer: p.customer } : {}), ...(p.siteAddress && !s.info?.siteAddress ? { siteAddress: p.siteAddress } : {}), ...(p.techLead && !s.info?.techLead ? { techLead: p.techLead } : {}) });
+        if (s.nvrInfo) setNVR(s.nvrInfo);
+        if (s.panelInfo) setPanel(s.panelInfo);
+        setCameraGroups(s.cameraGroups || []);
+        setSwitchGroups(s.switchGroups || []);
+        setServerGroups(s.serverGroups || []);
+        setDoorGroups(s.doorGroups || []);
+        setZoneGroups(s.zoneGroups || []);
+        setSpeakerGroups(s.speakerGroups || []);
+        if (s.laborBudget) setLaborBudget(s.laborBudget);
+        if (s.laborActual) setLaborActual(s.laborActual);
+        if (s.specSheetUrls) setSpecSheetUrls(s.specSheetUrls);
+        if (s.changeLog) setChangeLog(s.changeLog);
+        if (s.networkConfig) setNetworkConfig(s.networkConfig);
+      } else {
+        // New project — reset state, prefill from Monday
+        setInfo(s => ({ ...emptyLabor(), customer: p.customer || "", siteAddress: p.siteAddress || "", techLead: p.techLead || "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" }));
+        setNVR({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
+        setPanel({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
+        setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
+        setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
+        setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
+        setSpecSheetUrls({}); setChangeLog([]); setNetworkConfig(emptyNetworkConfig());
+      }
+    } catch (e) { console.warn("Could not load project:", e); }
+    setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle");
+    setTab("info");
+  };
   // PDF parts import handler
   const handlePdfImport = (items) => {
     const makers = { camera: mkCamGroup, switch: mkSwGrp, server: mkSrvGrp, door: mkDoorGrp, zone: mkZoneGrp, speaker: mkSpkGrp };
@@ -414,7 +459,15 @@ export default function App() {
   }
   // ─ BUILD PHASE ────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+    <div className="flex min-h-screen">
+      <Sidebar
+        projects={projects}
+        selectedProject={selectedProject}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(v => !v)}
+        onSelectProject={switchProject}
+      />
+      <div className="flex-1 min-w-0 bg-bg">
       <TopBar
         selectedProject={selectedProject} saveStatus={saveStatus}
         totalDevices={totalDevices} importFileRef={importFileRef}
@@ -578,6 +631,7 @@ export default function App() {
           />
         )}
 
+      </div>
       </div>
 
       <PdfImportModal

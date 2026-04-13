@@ -88,8 +88,9 @@ export default function LibraryTab({
   const [newForm, setNewForm] = useState({ category: "", brand: "", model: "", displayName: "" });
   const [newFile, setNewFile] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [uploadingFor, setUploadingFor] = useState(null);
+  const [uploadingFor, setUploadingFor] = useState(null); // entry ID being uploaded to
   const uploadForRef = useRef(null);
+  const uploadForEntryRef = useRef(null); // stores the entry object for the upload callback
 
   // Load catalog on mount
   useEffect(() => {
@@ -313,10 +314,9 @@ export default function LibraryTab({
       <input ref={uploadForRef} type="file" accept=".pdf" className="hidden"
         onChange={e => {
           const f = e.target.files?.[0];
-          if (f && uploadingFor) {
-            const entry = combined.find(r => r.id === uploadingFor);
-            if (entry) handleUploadForEntry(entry, f);
-          }
+          const entry = uploadForEntryRef.current;
+          if (f && entry) handleUploadForEntry(entry, f);
+          uploadForEntryRef.current = null;
           e.target.value = "";
         }} />
 
@@ -494,6 +494,7 @@ export default function LibraryTab({
                         <span className="text-accent text-[10px] font-semibold">Uploading...</span>
                       ) : (
                         <button onClick={() => {
+                            uploadForEntryRef.current = entry;
                             setUploadingFor(entry.id);
                             uploadForRef.current?.click();
                           }}

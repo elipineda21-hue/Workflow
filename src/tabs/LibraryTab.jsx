@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { uploadSpecSheet, listLibrary, deleteLibraryEntry, getSpecSheetUrl, catalogDevice, listCatalog, deleteCatalogEntry } from "../supabase";
+import { uploadSpecSheet, listLibrary, deleteLibraryEntry, getSpecSheetUrl, catalogDevice, listCatalog, deleteCatalogEntry, updateCatalogEntry, updateLibraryEntry } from "../supabase";
 import { normalizeBrand } from "../constants";
 
 const CAT_META = {
@@ -179,13 +179,24 @@ export default function LibraryTab({
   const handleSaveEdit = async (entry) => {
     setSaving(true);
     try {
-      // If it has a library entry, we need to re-upload with updated metadata
-      // For now, update catalog entry and/or create one
-      if (entry.catalogId) {
-        // Update catalog by deleting and re-inserting
-        await deleteCatalogEntry(entry.catalogId);
+      const updates = {
+        category: editForm.category,
+        brand: normalizeBrand(editForm.brand.trim()),
+        model: editForm.model.trim(),
+        display_name: editForm.displayName?.trim() || editForm.model.trim(),
+      };
+      // Update library entry in place if it exists
+      if (entry.libraryId) {
+        await updateLibraryEntry(entry.libraryId, updates);
       }
-      await catalogDevice(editForm.category, editForm.brand.trim(), editForm.model.trim());
+      // Update catalog entry in place if it exists
+      if (entry.catalogId) {
+        await updateCatalogEntry(entry.catalogId, updates);
+      }
+      // If only one exists, create the other
+      if (!entry.catalogId) {
+        await catalogDevice(updates.category, updates.brand, updates.model);
+      }
       await reloadAll();
       setEditingId(null);
       setEditForm({});
@@ -333,10 +344,16 @@ export default function LibraryTab({
         </div>
         <div className="flex gap-2 items-center">
           {hasProjectDevices && (
-            <button onClick={() => setLibShowAll(v => !v)}
-              className={`border border-border rounded-[7px] py-[7px] px-3.5 text-xs font-bold cursor-pointer ${libShowAll ? "bg-bg text-muted" : "bg-surface text-accent"}`}>
-              {libShowAll ? "Show project only" : `Show all ${combined.length}`}
-            </button>
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              <button onClick={() => setLibShowAll(false)}
+                className={`py-1.5 px-3 text-[11px] font-semibold cursor-pointer border-none ${!libShowAll ? "bg-accent text-white" : "bg-white text-muted hover:bg-surface"}`}>
+                Project ({matchCount})
+              </button>
+              <button onClick={() => setLibShowAll(true)}
+                className={`py-1.5 px-3 text-[11px] font-semibold cursor-pointer border-none border-l border-border ${libShowAll ? "bg-accent text-white" : "bg-white text-muted hover:bg-surface"}`}>
+                All ({combined.length})
+              </button>
+            </div>
           )}
           <input ref={bulkFileRef} type="file" accept=".pdf" multiple className="hidden" onChange={handleBulkUpload} />
           <button onClick={() => bulkFileRef.current?.click()} disabled={bulkUploading}

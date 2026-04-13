@@ -191,3 +191,18 @@ export async function deleteCatalogEntry(id) {
   const { error } = await supabase.from("device_catalog").delete().eq("id", id);
   if (error) throw error;
 }
+
+// Update a catalog entry in place (no delete+recreate)
+export async function updateCatalogEntry(id, updates) {
+  const { error } = await supabase.from("device_catalog").update({
+    ...updates,
+    last_seen_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) throw error;
+}
+
+// Update a library entry metadata (brand, model, category, display_name)
+export async function updateLibraryEntry(id, updates) {
+  const { error } = await supabase.from("device_library").update(updates).eq("id", id);
+  if (error) throw error;
+}

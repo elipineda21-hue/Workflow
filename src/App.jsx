@@ -13,6 +13,7 @@ import ImportPreviewModal from "./components/ImportPreviewModal";
 import MasterDashboard from "./components/MasterDashboard";
 import PdfImportModal from "./components/PdfImportModal";
 import Sidebar from "./components/Sidebar";
+import AuthGate from "./components/AuthGate";
 import InfoTab from "./tabs/InfoTab";
 import DashboardTab from "./tabs/DashboardTab";
 import LaborTab from "./tabs/LaborTab";
@@ -31,6 +32,14 @@ const showToast = (msg) => alert(msg);
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function App() {
+  return (
+    <AuthGate>
+      {(user, signOut) => <AppContent user={user} signOut={signOut} />}
+    </AuthGate>
+  );
+}
+
+function AppContent({ user, signOut }) {
   const LABOR_TYPES = [
     { key: "l1",           label: "Installation - L1" },
     { key: "l2",           label: "Installation - L2" },
@@ -472,6 +481,8 @@ export default function App() {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(v => !v)}
         onSelectProject={switchProject}
+        user={user}
+        signOut={signOut}
       />
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
       <TopBar
@@ -479,6 +490,7 @@ export default function App() {
         totalDevices={totalDevices} importFileRef={importFileRef}
         handleProposalFileChange={handleProposalFileChange}
         tab={tab} setTab={setTab} TABS={TABS}
+        user={user} signOut={signOut}
         onBack={async () => {
           await flushSave(selectedProject);
           setPhase("select");

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Zap, LogOut } from "lucide-react";
 import { loadWorkOrder } from "../supabase";
 
 const STATUS_DOT = {
@@ -12,7 +12,7 @@ const STATUS_DOT = {
 
 export default function Sidebar({
   projects, selectedProject, collapsed: sidebarCollapsed, onToggle,
-  onSelectProject,
+  onSelectProject, user, signOut,
 }) {
   const [search, setSearch] = useState("");
 
@@ -40,6 +40,17 @@ export default function Sidebar({
             </button>
           ))}
         </div>
+        {user && signOut && (
+          <div className="px-1.5 py-2 border-t border-white/[0.06]">
+            <button
+              onClick={signOut}
+              title={`Sign out ${user.email}`}
+              className="w-full h-7 rounded-md border-none cursor-pointer bg-white/[0.04] hover:bg-danger/20 text-white/30 hover:text-danger flex items-center justify-center transition-colors"
+            >
+              <LogOut size={13} />
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -93,6 +104,29 @@ export default function Sidebar({
           );
         })}
       </div>
+
+      {/* User info + sign out */}
+      {user && signOut && (
+        <div className="px-3 py-2.5 border-t border-white/[0.06] flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+            <span className="text-accent text-[9px] font-bold">
+              {(user.email || "?")[0].toUpperCase()}
+            </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-white/50 text-[10px] font-medium truncate" title={user.email}>
+              {user.email}
+            </div>
+          </div>
+          <button
+            onClick={signOut}
+            title="Sign Out"
+            className="bg-transparent hover:bg-danger/20 text-white/25 hover:text-danger border-none rounded-md p-1 cursor-pointer transition-colors shrink-0"
+          >
+            <LogOut size={13} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

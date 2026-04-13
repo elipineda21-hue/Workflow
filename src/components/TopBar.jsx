@@ -1,3 +1,4 @@
+import { LogOut } from "lucide-react";
 import { TabIcon, ActionIcon } from "./icons";
 
 export default function TopBar({
@@ -5,6 +6,7 @@ export default function TopBar({
   importFileRef, handleProposalFileChange,
   tab, setTab, TABS,
   onBack, onReports, onPdfImport,
+  user, signOut,
 }) {
   return (
     <div className="bg-gradient-to-r from-dark to-navy sticky top-0 z-[100] shadow-[0_2px_20px_rgba(0,0,0,.4)]">
@@ -33,6 +35,21 @@ export default function TopBar({
             className="bg-accent hover:bg-accent/90 text-white border-none rounded-lg px-4 py-1.5 text-[11px] font-semibold cursor-pointer">
             Reports
           </button>
+          {user && (
+            <>
+              <div className="w-px h-7 bg-white/10" />
+              <span className="text-white/40 text-[10px] font-medium truncate max-w-[140px]" title={user.email}>
+                {user.email}
+              </span>
+              <button
+                onClick={signOut}
+                title="Sign Out"
+                className="bg-white/[0.08] hover:bg-white/15 text-white/50 hover:text-white border-none rounded-lg p-1.5 cursor-pointer transition-colors"
+              >
+                <LogOut size={13} />
+              </button>
+            </>
+          )}
         </div>
       </div>
       {/* Tabs */}

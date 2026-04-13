@@ -2,9 +2,15 @@
 // Builds: branded cover page → clickable TOC → section dividers → merged spec sheets
 // Matches the Calidad Services skill output but runs entirely in the browser.
 
-import { PDFDocument, rgb, StandardFonts, PDFName, PDFArray, PDFDict, PDFNumber } from "pdf-lib";
+// pdf-lib loaded via CDN as window.PDFLib
+const getLib = () => {
+  const lib = window.PDFLib;
+  if (!lib) throw new Error("PDF library not loaded yet. Please wait a moment.");
+  return lib;
+};
+const rgb = (r, g, b) => getLib().rgb(r, g, b);
 
-const STORAGE_BASE = "https://nymnjhfpvwxdkxxcxbts.supabase.co/storage/v1/object/public/device-specs";
+const STORAGE_BASE = (import.meta.env.VITE_SUPABASE_URL || "https://nymnjhfpvwxdkxxcxbts.supabase.co") + "/storage/v1/object/public/device-specs";
 
 // ── Brand palette (pdf-lib rgb uses 0–1 range) ──────────────────────────────
 const NAVY       = rgb(13/255, 34/255, 64/255);    // #0D2240
@@ -130,6 +136,7 @@ export async function buildSubmittalPDF({
   sections    = [],
   onProgress  = () => {},
 }) {
+  const { PDFDocument, StandardFonts } = getLib();
   const pdfDoc = await PDFDocument.create();
 
   // Embed standard fonts

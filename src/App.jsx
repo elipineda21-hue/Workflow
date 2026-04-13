@@ -642,6 +642,7 @@ export default function App() {
             coverFileRef={coverFileRef} library={library}
             importPreview={importPreview} setImportPreview={setImportPreview}
             handleProposalImport={handleProposalImport} selectedProject={selectedProject}
+            info={info} nvrInfo={nvrInfo} panelInfo={panelInfo} accessInfo={accessInfo} networkConfig={networkConfig}
           />
         )}
 

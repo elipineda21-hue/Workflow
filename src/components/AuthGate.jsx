@@ -94,8 +94,8 @@ export default function AuthGate({ children }) {
         </div>
 
         {/* Form card */}
-        <div className="bg-surface border border-white/[0.08] rounded-2xl p-6 shadow-2xl">
-          <h2 className="text-white/90 font-semibold text-sm mb-5">
+        <div className="bg-white/[0.06] backdrop-blur border border-white/[0.1] rounded-2xl p-6 shadow-2xl">
+          <h2 className="text-white font-semibold text-sm mb-5">
             {mode === "signin" ? "Sign In" : "Create Account"}
           </h2>
 
@@ -107,7 +107,7 @@ export default function AuthGate({ children }) {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <div>
-              <label className="text-white/40 text-[10px] font-semibold uppercase tracking-wider block mb-1">
+              <label className="text-white/50 text-[10px] font-semibold uppercase tracking-wider block mb-1">
                 Email
               </label>
               <input
@@ -117,12 +117,12 @@ export default function AuthGate({ children }) {
                 required
                 autoComplete="email"
                 placeholder="you@company.com"
-                className="w-full py-2 px-3 rounded-lg bg-white/[0.06] border border-white/[0.08] text-white text-sm outline-none placeholder:text-white/20 focus:border-accent/50 transition-colors"
+                className="w-full py-2.5 px-3 rounded-lg bg-white/[0.08] border border-white/[0.12] text-white text-sm outline-none placeholder:text-white/25 focus:border-accent/50 transition-colors"
               />
             </div>
 
             <div>
-              <label className="text-white/40 text-[10px] font-semibold uppercase tracking-wider block mb-1">
+              <label className="text-white/50 text-[10px] font-semibold uppercase tracking-wider block mb-1">
                 Password
               </label>
               <input
@@ -133,7 +133,7 @@ export default function AuthGate({ children }) {
                 autoComplete={mode === "signin" ? "current-password" : "new-password"}
                 placeholder="••••••••"
                 minLength={6}
-                className="w-full py-2 px-3 rounded-lg bg-white/[0.06] border border-white/[0.08] text-white text-sm outline-none placeholder:text-white/20 focus:border-accent/50 transition-colors"
+                className="w-full py-2.5 px-3 rounded-lg bg-white/[0.08] border border-white/[0.12] text-white text-sm outline-none placeholder:text-white/25 focus:border-accent/50 transition-colors"
               />
             </div>
 
@@ -150,7 +150,7 @@ export default function AuthGate({ children }) {
             </button>
           </form>
 
-          <div className="mt-5 pt-4 border-t border-white/[0.06] text-center">
+          <div className="mt-5 pt-4 border-t border-white/[0.08] text-center">
             <button
               onClick={() => {
                 setMode(mode === "signin" ? "signup" : "signin");

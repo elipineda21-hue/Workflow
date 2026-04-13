@@ -343,18 +343,16 @@ export default function LibraryTab({
           </div>
         </div>
         <div className="flex gap-2 items-center">
-          {hasProjectDevices && (
-            <div className="flex rounded-lg border border-border overflow-hidden">
-              <button onClick={() => setLibShowAll(false)}
-                className={`py-1.5 px-3 text-[11px] font-semibold cursor-pointer border-none ${!libShowAll ? "bg-accent text-white" : "bg-white text-muted hover:bg-surface"}`}>
-                Project ({matchCount})
-              </button>
-              <button onClick={() => setLibShowAll(true)}
-                className={`py-1.5 px-3 text-[11px] font-semibold cursor-pointer border-none border-l border-border ${libShowAll ? "bg-accent text-white" : "bg-white text-muted hover:bg-surface"}`}>
-                All ({combined.length})
-              </button>
-            </div>
-          )}
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            <button onClick={() => setLibShowAll(false)}
+              className={`py-1.5 px-3 text-[11px] font-semibold cursor-pointer border-none ${!libShowAll ? "bg-accent text-white" : "bg-white text-muted hover:bg-surface"}`}>
+              Project {hasProjectDevices ? `(${matchCount})` : ""}
+            </button>
+            <button onClick={() => setLibShowAll(true)}
+              className={`py-1.5 px-3 text-[11px] font-semibold cursor-pointer border-none border-l border-border ${libShowAll ? "bg-accent text-white" : "bg-white text-muted hover:bg-surface"}`}>
+              All ({combined.length})
+            </button>
+          </div>
           <input ref={bulkFileRef} type="file" accept=".pdf" multiple className="hidden" onChange={handleBulkUpload} />
           <button onClick={() => bulkFileRef.current?.click()} disabled={bulkUploading}
             className="bg-steel text-white border-none rounded-lg py-2 px-3.5 text-[11px] font-semibold cursor-pointer">

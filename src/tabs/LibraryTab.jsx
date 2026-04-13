@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { uploadSpecSheet, listLibrary, deleteLibraryEntry, getSpecSheetUrl, catalogDevice, listCatalog, deleteCatalogEntry } from "../supabase";
+import { normalizeBrand } from "../constants";
 
 const CAT_META = {
   camera:  { label: "CCTV / Cameras" },
@@ -15,13 +16,13 @@ function mergeLibraryAndCatalog(library, catalog) {
   const map = new Map();
 
   for (const lib of library) {
-    const key = `${lib.brand}|${lib.model}`.toLowerCase();
+    const key = `${normalizeBrand(lib.brand)}|${lib.model}`.toLowerCase();
     map.set(key, {
       id: lib.id,
       libraryId: lib.id,
       catalogId: null,
       category: lib.category,
-      brand: lib.brand,
+      brand: normalizeBrand(lib.brand),
       model: lib.model,
       display_name: lib.display_name || lib.model,
       file_path: lib.file_path,
@@ -32,7 +33,7 @@ function mergeLibraryAndCatalog(library, catalog) {
   }
 
   for (const cat of catalog) {
-    const key = `${cat.brand}|${cat.model}`.toLowerCase();
+    const key = `${normalizeBrand(cat.brand)}|${cat.model}`.toLowerCase();
     if (map.has(key)) {
       const existing = map.get(key);
       existing.catalogId = cat.id;
@@ -47,7 +48,7 @@ function mergeLibraryAndCatalog(library, catalog) {
         libraryId: null,
         catalogId: cat.id,
         category: cat.category,
-        brand: cat.brand,
+        brand: normalizeBrand(cat.brand),
         model: cat.model,
         display_name: cat.display_name || cat.model,
         file_path: null,
@@ -126,7 +127,7 @@ export default function LibraryTab({
       const brand = parts[0] || "Unknown";
       const model = parts.slice(1).join("-") || name;
       try {
-        await uploadSpecSheet({ category: "camera", brand: brand.trim(), model: model.trim(), displayName: model.trim(), file });
+        await uploadSpecSheet({ category: "camera", brand: normalizeBrand(brand.trim()), model: model.trim(), displayName: model.trim(), file });
         success++;
       } catch (err) {
         console.warn(`Failed to upload ${file.name}:`, err);
@@ -224,7 +225,7 @@ export default function LibraryTab({
 
   const projectKeys = new Set(
     [...cameraGroups,...doorGroups,...zoneGroups,...speakerGroups,...switchGroups,...serverGroups]
-      .map(g => `${g.brand}|${g.model}`.toLowerCase())
+      .map(g => `${normalizeBrand(g.brand)}|${g.model}`.toLowerCase())
       .filter(k => k !== "|")
   );
   const hasProjectDevices = projectKeys.size > 0;

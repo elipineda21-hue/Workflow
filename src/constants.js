@@ -24,6 +24,86 @@ export const INTRUSION_PLATFORMS = ["Ajax","Alarm.com","DMP","Honeywell Vista","
 export const AUDIO_PLATFORMS = ["Control4","Crestron","Savant","QSC Q-SYS","Bogen","AtlasIED","Sonance","Sonos Pro","Biamp","RTI","Other"];
 export const NETWORK_PLATFORMS = ["Ubiquiti (UniFi)","Cisco Meraki","Aruba","Ruckus","Fortinet","SonicWall","Juniper Mist","TP-Link Omada","Netgear Insight","Other"];
 
+// ── Brand normalization (maps aliases → canonical brand name) ────────────────
+export const BRAND_ALIASES = {
+  // UniView
+  "uniview": "UniView",
+  "unv": "UniView",
+  "uniview technologies": "UniView",
+  "uniview technologies (uniview tec) (atv)": "UniView",
+  "uniview tec": "UniView",
+  "uniview (unv)": "UniView",
+  "atv": "UniView",
+  // Hanwha
+  "hanwha": "Hanwha Techwin",
+  "hanwha techwin": "Hanwha Techwin",
+  "hanwha techwin (vision)": "Hanwha Techwin",
+  "hanwha vision": "Hanwha Techwin",
+  "samsung": "Hanwha Techwin",
+  "samsung (hanwha)": "Hanwha Techwin",
+  "wisenet": "Hanwha Techwin",
+  // PDK
+  "pdk": "PDK",
+  "prodatakey": "PDK",
+  "pdk prodatakey": "PDK",
+  // Hikvision
+  "hikvision": "Hikvision",
+  "hik": "Hikvision",
+  "hikvision digital": "Hikvision",
+  // Dahua
+  "dahua": "Dahua",
+  "dahua technology": "Dahua",
+  // Axis
+  "axis": "Axis",
+  "axis communications": "Axis",
+  // Bosch
+  "bosch": "Bosch",
+  "bosch security": "Bosch",
+  // Honeywell
+  "honeywell": "Honeywell",
+  "honeywell security": "Honeywell",
+  "ademco": "Honeywell",
+  // Digital Watchdog
+  "digital watchdog": "Digital Watchdog",
+  "dw": "Digital Watchdog",
+  // Ubiquiti
+  "ubiquiti": "Ubiquiti",
+  "ubiquiti networks": "Ubiquiti",
+  "ubnt": "Ubiquiti",
+  "unifi": "Ubiquiti",
+  // Avigilon
+  "avigilon": "Avigilon",
+  "avigilon (motorola)": "Avigilon",
+  "motorola solutions": "Avigilon",
+  // Brivo
+  "brivo": "Brivo",
+  // Ajax
+  "ajax": "Ajax",
+  "ajax systems": "Ajax",
+  // Alarm.com
+  "alarm.com": "Alarm.com",
+  "alarmcom": "Alarm.com",
+  // ICC
+  "icc": "ICC",
+  "icc (int'l connectors and cable)": "ICC",
+  "international connectors": "ICC",
+  // Tripp Lite
+  "tripp-lite": "Tripp Lite",
+  "tripp lite": "Tripp Lite",
+  "tripplite": "Tripp Lite",
+  // Altronix
+  "altronix": "Altronix",
+  // Bogen
+  "bogen": "Bogen",
+  "bogen communications": "Bogen",
+};
+
+export function normalizeBrand(brand) {
+  if (!brand) return brand;
+  const key = brand.toLowerCase().trim();
+  return BRAND_ALIASES[key] || brand.trim();
+}
+
 // ── Network SOP Defaults (Calidad Projects) ──────────────────────────────────
 export const SOP_VLANS = [
   { id: "mgmt",      vlanId: "1",  name: "Default (Mgmt)",  subnet: "192.168.0.0/24", dhcp: true, poolSize: 249, purpose: "Management network for infrastructure devices: switches, access points, controller." },

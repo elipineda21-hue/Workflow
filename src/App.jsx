@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { saveWorkOrder, listLibrary, getSpecSheetUrl, listProjectFiles, catalogDevices } from "./supabase";
-import { C, SOP_VLANS, SOP_SSIDS, SOP_FIREWALL } from "./constants";
+import { C, SOP_VLANS, SOP_SSIDS, SOP_FIREWALL, normalizeBrand } from "./constants";
 import NetworkTab from "./components/NetworkTab";
 import { uid, mkCamGroup, mkSwGrp, mkSrvGrp, mkDoorGrp, mkZoneGrp, mkSpkGrp, getNextIpStart } from "./models";
 import { fetchProjects, pushMondayUpdate } from "./api/monday";
@@ -349,7 +349,7 @@ export default function App() {
     const importedCount = hardwareRows.filter((r, i) => (overrideCats[i] || r.category) !== "unknown").length;
     const recurringCount = rows.filter(r => r.recurring).length;
     addLog("import", `${isChangeOrder ? "Change Order" : "Proposal"} #${importPreview.proposalId} — ${importedCount} hardware groups imported${recurringCount ? `, ${recurringCount} MRR items skipped` : ""}`);
-    catalogDevices(hardwareRows.map(r => ({ category: overrideCats[r._idx] || r.category, brand: r.brand, model: r.model }))).catch(e => console.warn("Catalog update failed:", e));
+    catalogDevices(hardwareRows.map(r => ({ category: overrideCats[r._idx] || r.category, brand: normalizeBrand(r.brand), model: r.model }))).catch(e => console.warn("Catalog update failed:", e));
   };
   // Switch project from sidebar (save current, load new)
   const switchProject = async (p) => {
@@ -406,12 +406,12 @@ export default function App() {
       const setter = setters[item.category];
       if (!mk || !setter) continue;
       const ip = getNextIpStart(item.category, networkConfig, allGroupsTagged);
-      const grp = { ...mk(), brand: item.brand, model: item.model, quantity: String(item.qty), groupLabel: "", noProgramming: !!item.hardware, ...(ip ? { ipStart: ip } : {}) };
+      const grp = { ...mk(), brand: normalizeBrand(item.brand), model: item.model, quantity: String(item.qty), groupLabel: "", noProgramming: !!item.hardware, ...(ip ? { ipStart: ip } : {}) };
       setter(gs => [...gs, grp]);
     }
     addLog("import", `PDF import — ${items.length} groups added (${items.filter(i => i.hardware).length} hardware-only)`);
     // Auto-catalog imported devices for the growing model library
-    catalogDevices(items).catch(e => console.warn("Catalog update failed:", e));
+    catalogDevices(items.map(i => ({ ...i, brand: normalizeBrand(i.brand) }))).catch(e => console.warn("Catalog update failed:", e));
   };
   const TABS = [
     // ── Exec overview ─────────────────────────────────────────────────────────

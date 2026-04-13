@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { uploadSpecSheet, listLibrary, deleteLibraryEntry, getSpecSheetUrl, catalogDevice, listCatalog, deleteCatalogEntry, updateCatalogEntry, updateLibraryEntry } from "../supabase";
+import { uploadSpecSheet, listLibrary, deleteLibraryEntry, getSpecSheetUrl, catalogDevice, listCatalog, deleteCatalogEntry, updateCatalogEntry, updateLibraryEntry, addDeviceToProject, removeDeviceFromProject, listProjectDeviceIds } from "../supabase";
 import { normalizeBrand } from "../constants";
 
 const CAT_META = {
@@ -75,6 +75,7 @@ export default function LibraryTab({
   libUploadForm, setLibUploadForm,
   libShowAll, setLibShowAll,
   cameraGroups, doorGroups, zoneGroups, speakerGroups, switchGroups, serverGroups,
+  selectedProject,
 }) {
   const libUploadFileRef = useRef(null);
   const bulkFileRef = useRef(null);
@@ -89,11 +90,12 @@ export default function LibraryTab({
   const [newForm, setNewForm] = useState({ category: "", brand: "", model: "", displayName: "" });
   const [newFile, setNewFile] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [uploadingFor, setUploadingFor] = useState(null); // entry ID being uploaded to
+  const [uploadingFor, setUploadingFor] = useState(null);
   const uploadForRef = useRef(null);
-  const uploadForEntryRef = useRef(null); // stores the entry object for the upload callback
+  const uploadForEntryRef = useRef(null);
+  const [projectDeviceIds, setProjectDeviceIds] = useState({ lib: new Set(), cat: new Set() });
 
-  // Load catalog on mount
+  // Load catalog + project associations on mount
   useEffect(() => {
     (async () => {
       try {
@@ -103,6 +105,52 @@ export default function LibraryTab({
       setCatalogLoaded(true);
     })();
   }, []);
+
+  // Load project device associations
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    (async () => {
+      try {
+        const assocs = await listProjectDeviceIds(selectedProject.id);
+        setProjectDeviceIds({
+          lib: new Set(assocs.map(a => a.library_entry_id).filter(Boolean)),
+          cat: new Set(assocs.map(a => a.catalog_entry_id).filter(Boolean)),
+        });
+      } catch {}
+    })();
+  }, [selectedProject?.id]);
+
+  const isOnProject = (entry) => {
+    if (entry.libraryId && projectDeviceIds.lib.has(entry.libraryId)) return true;
+    if (entry.catalogId && projectDeviceIds.cat.has(entry.catalogId)) return true;
+    return false;
+  };
+
+  const toggleProjectDevice = async (entry) => {
+    if (!selectedProject?.id) return;
+    const on = isOnProject(entry);
+    try {
+      if (on) {
+        await removeDeviceFromProject(selectedProject.id, entry.libraryId, entry.catalogId);
+        setProjectDeviceIds(prev => {
+          const lib = new Set(prev.lib); const cat = new Set(prev.cat);
+          if (entry.libraryId) lib.delete(entry.libraryId);
+          if (entry.catalogId) cat.delete(entry.catalogId);
+          return { lib, cat };
+        });
+      } else {
+        await addDeviceToProject(selectedProject.id, entry.libraryId, entry.catalogId);
+        setProjectDeviceIds(prev => {
+          const lib = new Set(prev.lib); const cat = new Set(prev.cat);
+          if (entry.libraryId) lib.add(entry.libraryId);
+          if (entry.catalogId) cat.add(entry.catalogId);
+          return { lib, cat };
+        });
+      }
+    } catch (err) {
+      console.warn("Toggle project device failed:", err);
+    }
+  };
 
   const reloadAll = async () => {
     try {
@@ -234,13 +282,15 @@ export default function LibraryTab({
   // Build combined data
   const combined = mergeLibraryAndCatalog(library, catalog);
 
+  // Project filter: use explicit associations (junction table) + auto-detect from groups
   const projectKeys = new Set(
     [...cameraGroups,...doorGroups,...zoneGroups,...speakerGroups,...switchGroups,...serverGroups]
       .map(g => `${normalizeBrand(g.brand)}|${g.model}`.toLowerCase())
       .filter(k => k !== "|")
   );
-  const hasProjectDevices = projectKeys.size > 0;
-  const matchedRows = combined.filter(e => projectKeys.has(`${e.brand}|${e.model}`.toLowerCase()));
+  const isProjectMatch = (e) => isOnProject(e) || projectKeys.has(`${e.brand}|${e.model}`.toLowerCase());
+  const hasProjectDevices = projectDeviceIds.lib.size > 0 || projectDeviceIds.cat.size > 0 || projectKeys.size > 0;
+  const matchedRows = combined.filter(isProjectMatch);
   const matchCount = matchedRows.length;
   const visibleRows = (hasProjectDevices && !libShowAll) ? matchedRows : combined;
 
@@ -386,7 +436,7 @@ export default function LibraryTab({
           <table className="w-full border-collapse text-[12px]">
             <thead>
               <tr className="bg-navy">
-                {["Category", "Brand", "Model", "Display Name", "Spec Sheet", "Seen", "Actions"].map(h => (
+                {["", "Category", "Brand", "Model", "Display Name", "Spec Sheet", "Seen", "Actions"].map(h => (
                   <th key={h} className="px-3 py-2.5 text-left text-white/80 font-semibold text-[10px] uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -443,13 +493,20 @@ export default function LibraryTab({
 
               {visibleRows.map((entry, i) => {
                 const isEditing = editingId === entry.id;
-                const onProject = projectKeys.has(`${entry.brand}|${entry.model}`.toLowerCase());
+                const onProject = isProjectMatch(entry);
                 const hasPdf = !!entry.file_path;
                 const pdfUrl = hasPdf ? getSpecSheetUrl(entry.file_path) : null;
                 const isUploading = uploadingFor === entry.id;
 
                 return (
                   <tr key={entry.id} className={`border-b border-border ${i % 2 === 0 ? "bg-white" : "bg-surface"} ${onProject ? "ring-1 ring-inset ring-success/20" : ""}`}>
+                    {/* Project toggle */}
+                    <td className="px-2 py-2 text-center w-8">
+                      <input type="checkbox" checked={onProject}
+                        onChange={() => toggleProjectDevice(entry)}
+                        title={onProject ? "Remove from this project" : "Add to this project"}
+                        className="accent-accent w-3.5 h-3.5 cursor-pointer" />
+                    </td>
                     {/* Category */}
                     <td className="px-3 py-2">
                       {isEditing ? (
@@ -490,11 +547,6 @@ export default function LibraryTab({
                       ) : (
                         <span className="text-navy text-[12px]">
                           {entry.display_name || entry.model}
-                          {onProject && (
-                            <span className="ml-1.5 bg-success/10 text-success text-[9px] font-bold py-0.5 px-1.5 rounded-xl whitespace-nowrap align-middle">
-                              In project
-                            </span>
-                          )}
                         </span>
                       )}
                     </td>

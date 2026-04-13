@@ -206,3 +206,35 @@ export async function updateLibraryEntry(id, updates) {
   const { error } = await supabase.from("device_library").update(updates).eq("id", id);
   if (error) throw error;
 }
+
+// ── Project ↔ Device Associations ─────────────────────────────────────────────
+
+// Add a device to a project (by library or catalog ID)
+export async function addDeviceToProject(mondayProjectId, libraryEntryId, catalogEntryId) {
+  const row = { monday_project_id: String(mondayProjectId) };
+  if (libraryEntryId) row.library_entry_id = libraryEntryId;
+  if (catalogEntryId) row.catalog_entry_id = catalogEntryId;
+  const { error } = await supabase.from("project_devices").upsert(row, {
+    onConflict: libraryEntryId ? "monday_project_id,library_entry_id" : "monday_project_id,catalog_entry_id",
+  });
+  if (error) throw error;
+}
+
+// Remove a device from a project
+export async function removeDeviceFromProject(mondayProjectId, libraryEntryId, catalogEntryId) {
+  let query = supabase.from("project_devices").delete().eq("monday_project_id", String(mondayProjectId));
+  if (libraryEntryId) query = query.eq("library_entry_id", libraryEntryId);
+  else if (catalogEntryId) query = query.eq("catalog_entry_id", catalogEntryId);
+  const { error } = await query;
+  if (error) throw error;
+}
+
+// List all device IDs associated with a project
+export async function listProjectDeviceIds(mondayProjectId) {
+  const { data, error } = await supabase
+    .from("project_devices")
+    .select("library_entry_id, catalog_entry_id")
+    .eq("monday_project_id", String(mondayProjectId));
+  if (error) throw error;
+  return data || [];
+}

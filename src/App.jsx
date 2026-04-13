@@ -625,6 +625,7 @@ export default function App() {
             libShowAll={libShowAll} setLibShowAll={setLibShowAll}
             cameraGroups={cameraGroups} doorGroups={doorGroups} zoneGroups={zoneGroups}
             speakerGroups={speakerGroups} switchGroups={switchGroups} serverGroups={serverGroups}
+            selectedProject={selectedProject}
           />
         )}
 

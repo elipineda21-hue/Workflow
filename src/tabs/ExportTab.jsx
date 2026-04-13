@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { CardHead } from "../components/ui";
 import { getSpecSheetUrl } from "../supabase";
-import { generateSubmittal } from "../api/claude";
-import { Zap } from "lucide-react";
+import { planSections, buildSubmittalPDF } from "../utils/buildSubmittalPDF";
+import { FileDown, Package } from "lucide-react";
 
 export default function ExportTab({
   cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups,
@@ -17,84 +17,46 @@ export default function ExportTab({
   selectedProject,
   info, nvrInfo, panelInfo, accessInfo, networkConfig,
 }) {
-  const [submittalLoading, setSubmittalLoading] = useState(false);
-  const [submittalResult, setSubmittalResult] = useState("");
-  const [submittalSystem, setSubmittalSystem] = useState("all");
-  const [submittalError, setSubmittalError] = useState("");
-
-  const handleGenerateSubmittal = async () => {
-    setSubmittalLoading(true);
-    setSubmittalError("");
-    setSubmittalResult("");
-    try {
-      const projectData = {
-        projectName: selectedProject?.name || "Project",
-        projectId: selectedProject?.projectId || "",
-        customer: info?.customer || "",
-        siteAddress: info?.siteAddress || "",
-        techLead: info?.techLead || "",
-        date: info?.date || "",
-        systems: {},
-      };
-      if (submittalSystem === "all" || submittalSystem === "cctv") {
-        projectData.systems.cctv = {
-          groups: cameraGroups.map(g => ({ brand: g.brand, model: g.model, quantity: g.devices.length || g.quantity, codec: g.codec, resolution: g.resolution, lens: g.lens, type: g.type, platform: g.platform, groupLabel: g.groupLabel })),
-          totalDevices: camCount,
-          vmsPlatform: nvrInfo?.vmsPlatform || "",
-          nvrBrand: nvrInfo?.nvrBrand || "",
-          nvrModel: nvrInfo?.nvrModel || "",
-        };
-      }
-      if (submittalSystem === "all" || submittalSystem === "access") {
-        projectData.systems.accessControl = {
-          groups: doorGroups.map(g => ({ brand: g.brand, model: g.model, quantity: g.devices.length || g.quantity, readerType: g.readerType, credentialType: g.credentialType, lockType: g.lockType, platform: g.platform, groupLabel: g.groupLabel })),
-          totalDevices: doorCount,
-          platform: accessInfo?.accessPlatform || "",
-        };
-      }
-      if (submittalSystem === "all" || submittalSystem === "intrusion") {
-        projectData.systems.intrusion = {
-          groups: zoneGroups.map(g => ({ zoneType: g.zoneType, quantity: g.devices.length || g.quantity, platform: g.platform, groupLabel: g.groupLabel })),
-          totalDevices: zoneCount,
-          panelBrand: panelInfo?.panelBrand || "",
-          panelModel: panelInfo?.panelModel || "",
-          platform: panelInfo?.panelPlatform || "",
-        };
-      }
-      if (submittalSystem === "all" || submittalSystem === "audio") {
-        projectData.systems.audio = {
-          groups: speakerGroups.map(g => ({ brand: g.brand, model: g.model, quantity: g.devices.length || g.quantity, platform: g.platform, groupLabel: g.groupLabel })),
-          totalDevices: spkCount,
-        };
-      }
-      if (submittalSystem === "all" || submittalSystem === "network") {
-        projectData.systems.network = {
-          vlans: networkConfig?.vlans || [],
-          ssids: networkConfig?.ssids || [],
-          routerModel: networkConfig?.routerModel || "",
-          apCount: networkConfig?.apCount || "",
-        };
-      }
-      if (submittalSystem === "all" || submittalSystem === "servers") {
-        projectData.systems.servers = {
-          groups: serverGroups.map(g => ({ brand: g.brand, model: g.model, quantity: g.devices.length || g.quantity, role: g.role, os: g.os, storage: g.storage, platform: g.platform, groupLabel: g.groupLabel })),
-          totalDevices: srvCount,
-        };
-      }
-
-      const systemLabel = submittalSystem === "all" ? "Complete Security System" : submittalSystem.toUpperCase();
-      const result = await generateSubmittal(projectData, systemLabel);
-      setSubmittalResult(result);
-    } catch (err) {
-      setSubmittalError(err.message || "Failed to generate submittal");
-    }
-    setSubmittalLoading(false);
-  };
-  const projectKeys = new Set(
-    [...cameraGroups,...doorGroups,...zoneGroups,...speakerGroups,...switchGroups,...serverGroups]
-      .map(g => `${g.brand}|${g.model}`.toLowerCase())
-  );
+  // ── Submittal Package (PDF assembly, no AI) ──
+  const [pkgLoading, setPkgLoading] = useState(false);
+  const [pkgProgress, setPkgProgress] = useState("");
+  const [pkgError, setPkgError] = useState("");
+  const allGroups = [...cameraGroups,...doorGroups,...zoneGroups,...speakerGroups,...switchGroups,...serverGroups];
+  const projectKeys = new Set(allGroups.map(g => `${g.brand}|${g.model}`.toLowerCase()));
   const matchCount = library.filter(e => projectKeys.has(`${e.brand}|${e.model}`.toLowerCase())).length;
+
+  // Pre-plan sections for the submittal package button
+  const plannedSections = planSections(allGroups, library);
+  const specSheetCount = plannedSections.reduce((n, s) => n + s.items.length, 0);
+
+  const handleBuildPackage = async () => {
+    setPkgLoading(true);
+    setPkgError("");
+    setPkgProgress("Planning sections...");
+    try {
+      const pdfBytes = await buildSubmittalPDF({
+        projectName: selectedProject?.name || "Project",
+        company: "Calidad Services, Inc.",
+        date: info?.date || new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+        submittalNumber: "001-R0",
+        specSection: "28 00 00 – Electronic Safety and Security",
+        sections: plannedSections,
+        onProgress: setPkgProgress,
+      });
+      // Trigger download
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(selectedProject?.name || "Project").replace(/\s+/g, "_")}_Submittal_Package.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setPkgProgress("Download started!");
+    } catch (err) {
+      setPkgError(err.message || "Failed to build submittal package");
+    }
+    setPkgLoading(false);
+  };
 
   return (
     <>
@@ -189,75 +151,56 @@ export default function ExportTab({
         </div>
       </div>
 
-      {/* ── AI Submittal Generator ── */}
+      {/* ── Submittal Package Builder (No AI) ── */}
       <div className="bg-white rounded-xl border border-border overflow-hidden mt-6">
-        <div className="bg-gradient-to-r from-dark to-navy px-5 py-3.5 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
-            <Zap size={16} className="text-accent" />
+        <div className="bg-gradient-to-r from-navy to-dark px-5 py-3.5 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gold/20 flex items-center justify-center">
+            <Package size={16} className="text-gold" />
           </div>
           <div>
-            <div className="text-white font-bold text-sm">AI Submittal Generator</div>
-            <div className="text-white/40 text-[10px]">Powered by Claude — generates professional submittal documents from your project data</div>
+            <div className="text-white font-bold text-sm">Submittal Package Builder</div>
+            <div className="text-white/40 text-[10px]">Assembles a branded PDF with cover page, table of contents, and all matched spec sheets — no AI required</div>
           </div>
         </div>
         <div className="p-5">
-          <div className="flex gap-3 items-end mb-4 flex-wrap">
-            <div>
-              <label className="text-[10px] font-semibold text-muted uppercase block mb-1">System</label>
-              <select value={submittalSystem} onChange={e => setSubmittalSystem(e.target.value)}
-                className="py-2 px-3 rounded-lg border border-border text-sm text-navy bg-white cursor-pointer">
-                <option value="all">All Systems (Full Submittal)</option>
-                <option value="cctv">CCTV / Surveillance</option>
-                <option value="access">Access Control</option>
-                <option value="intrusion">Intrusion / Alarm</option>
-                <option value="audio">Audio / AV</option>
-                <option value="servers">Servers / NVR</option>
-                <option value="network">Network Infrastructure</option>
-              </select>
-            </div>
-            <button onClick={handleGenerateSubmittal} disabled={submittalLoading || totalDevices === 0}
-              className="bg-accent hover:bg-accent/90 text-white border-none rounded-lg px-5 py-2 text-sm font-semibold cursor-pointer flex items-center gap-2"
-              style={{ opacity: (submittalLoading || totalDevices === 0) ? 0.5 : 1 }}>
-              <Zap size={14} />
-              {submittalLoading ? "Generating..." : "Generate Submittal"}
-            </button>
-            {submittalResult && (
-              <button onClick={() => {
-                  const blob = new Blob([submittalResult], { type: "text/plain" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a"); a.href = url;
-                  a.download = `Submittal_${(selectedProject?.name || "Project").replace(/\s+/g, "_")}_${submittalSystem}_${new Date().toISOString().split("T")[0]}.txt`;
-                  a.click(); URL.revokeObjectURL(url);
-                }}
-                className="bg-success hover:bg-success/90 text-white border-none rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer">
-                Download .txt
-              </button>
-            )}
-          </div>
-
-          {submittalError && (
-            <div className="bg-danger/10 text-danger rounded-lg p-3 text-xs font-semibold mb-4">{submittalError}</div>
-          )}
-
-          {submittalLoading && (
-            <div className="bg-accent/5 rounded-xl p-8 text-center">
-              <div className="text-2xl mb-2 animate-pulse">⚡</div>
-              <div className="text-sm text-muted font-medium">Claude is generating your submittal...</div>
-              <div className="text-[11px] text-muted/60 mt-1">This may take 15-30 seconds</div>
-            </div>
-          )}
-
-          {submittalResult && !submittalLoading && (
-            <div className="bg-surface rounded-xl border border-border p-5 max-h-[500px] overflow-y-auto">
-              <pre className="whitespace-pre-wrap text-sm text-navy leading-relaxed font-[inherit]">{submittalResult}</pre>
-            </div>
-          )}
-
-          {!submittalResult && !submittalLoading && (
+          {specSheetCount > 0 ? (
+            <>
+              <div className="bg-surface rounded-lg p-4 mb-4">
+                <div className="font-bold text-navy text-[13px] mb-2">Package will contain:</div>
+                {plannedSections.map((sec, i) => (
+                  <div key={i} className="text-[12px] text-navy py-1.5 border-b border-border last:border-b-0 flex items-center justify-between">
+                    <span>
+                      <span className="font-bold text-accent">Section {i + 1}</span> · {sec.title}
+                    </span>
+                    <span className="text-muted text-[11px]">
+                      {sec.items.length} spec sheet{sec.items.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={handleBuildPackage}
+                  disabled={pkgLoading}
+                  className="bg-gold hover:bg-gold/90 text-navy border-none rounded-lg px-6 py-2.5 text-sm font-extrabold cursor-pointer flex items-center gap-2"
+                  style={{ opacity: pkgLoading ? 0.5 : 1 }}
+                >
+                  <FileDown size={15} />
+                  {pkgLoading ? "Building..." : "Build Submittal Package"}
+                </button>
+                {pkgProgress && (
+                  <span className="text-muted text-xs font-medium">{pkgProgress}</span>
+                )}
+              </div>
+              {pkgError && (
+                <div className="bg-danger/10 text-danger rounded-lg p-3 text-xs font-semibold mt-3">{pkgError}</div>
+              )}
+            </>
+          ) : (
             <div className="bg-surface rounded-xl p-6 text-center">
-              <div className="text-muted text-sm mb-2">Select a system and click Generate to create a professional submittal document.</div>
+              <div className="text-muted text-sm mb-2">No spec sheets matched for this project's devices.</div>
               <div className="text-muted/60 text-xs">
-                Includes: System overview · Equipment schedule · System narrative · Compliance notes
+                Upload spec sheets in the Library tab to match them to your project hardware.
               </div>
             </div>
           )}

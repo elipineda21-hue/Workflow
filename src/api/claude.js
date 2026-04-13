@@ -1,5 +1,5 @@
 // ── Claude Submittal API ─────────────────────────────────────────────────────
-const EDGE_URL = "https://nymnjhfpvwxdkxxcxbts.supabase.co/functions/v1/claude-submittal";
+const EDGE_URL = import.meta.env.VITE_CLAUDE_EDGE_URL || "https://nymnjhfpvwxdkxxcxbts.supabase.co/functions/v1/claude-submittal";
 
 export async function generateSubmittal(projectData, systemType = "security") {
   const res = await fetch(EDGE_URL, {

@@ -1,5 +1,5 @@
 // ── Monday API ────────────────────────────────────────────────────────────────
-export const MONDAY_BOARD_ID = "18394052747";
+export const MONDAY_BOARD_ID = import.meta.env.VITE_MONDAY_BOARD_ID || "18394052747";
 
 export async function fetchProjects(token, colMap = {}) {
   if (!token) return [];

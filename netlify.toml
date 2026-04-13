@@ -2,6 +2,12 @@
   command       = "npm run build"
   publish       = "dist"
 
+[build.environment]
+  VITE_SUPABASE_URL = "https://nymnjhfpvwxdkxxcxbts.supabase.co"
+  VITE_SUPABASE_KEY = "sb_publishable_UNqv0h8U6v0C0zo_dPj9BQ_cfDvIckJ"
+  VITE_MONDAY_BOARD_ID = "18394052747"
+  VITE_CLAUDE_EDGE_URL = "https://nymnjhfpvwxdkxxcxbts.supabase.co/functions/v1/claude-submittal"
+
 [[redirects]]
   from   = "/*"
   to     = "/index.html"

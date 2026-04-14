@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Zap, LogOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, Zap, LogOut, RefreshCw } from "lucide-react";
 import { loadWorkOrder } from "../supabase";
 
 const STATUS_DOT = {
@@ -12,9 +12,17 @@ const STATUS_DOT = {
 
 export default function Sidebar({
   projects, selectedProject, collapsed: sidebarCollapsed, onToggle,
-  onSelectProject, user, signOut,
+  onSelectProject, user, signOut, onRefresh,
 }) {
   const [search, setSearch] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setRefreshing(true);
+    try { await onRefresh(); } catch {}
+    setRefreshing(false);
+  };
 
   const filtered = projects.filter(p =>
     !search || p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -65,9 +73,15 @@ export default function Sidebar({
           </div>
           <span className="text-white/80 font-bold text-xs tracking-tight">ProjectPal</span>
         </div>
-        <button onClick={onToggle} className="bg-transparent text-white/30 hover:text-white/60 border-none cursor-pointer p-1">
-          <ChevronLeft size={14} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={handleRefresh} disabled={refreshing} title="Refresh projects from Monday.com"
+            className="bg-transparent text-white/30 hover:text-white/60 border-none cursor-pointer p-1">
+            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+          </button>
+          <button onClick={onToggle} className="bg-transparent text-white/30 hover:text-white/60 border-none cursor-pointer p-1">
+            <ChevronLeft size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Search */}

@@ -481,6 +481,10 @@ function AppContent({ user, signOut }) {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(v => !v)}
         onSelectProject={switchProject}
+        onRefresh={async () => {
+          const ps = await fetchProjects(mondayToken, colMap);
+          setProjects(ps);
+        }}
         user={user}
         signOut={signOut}
       />

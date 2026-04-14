@@ -165,6 +165,17 @@ export default function SelectProjectPage({
             <div className="flex justify-end mb-2 gap-2 items-center">
               <div className="flex gap-2 items-center">
                 <span className="text-success text-[11px] font-semibold">✓ Connected to monday.com</span>
+                <button onClick={async () => {
+                    setLoadingProjects(true);
+                    try {
+                      const ps = await fetchProjects(mondayToken, colMap);
+                      setProjects(ps);
+                    } catch {}
+                    setLoadingProjects(false);
+                  }}
+                  className="bg-accent/15 text-accent border border-accent/30 rounded-[5px] px-2.5 py-[3px] text-[11px] font-semibold cursor-pointer">
+                  ↻ Refresh
+                </button>
                 <button onClick={() => setColMapperOpen(v => !v)}
                   className="bg-white/[0.07] text-accent border border-accent/30 rounded-[5px] px-2.5 py-[3px] text-[11px] cursor-pointer">
                   ⚙ Column Map

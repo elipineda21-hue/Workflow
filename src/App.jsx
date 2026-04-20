@@ -406,6 +406,57 @@ function AppContent({ user, signOut }) {
     setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle");
     setTab("info");
   };
+  // System Surveyor import handler
+  const handleSystemSurveyorImport = ({ siteInfo, devices }) => {
+    // Update project info with site data
+    if (siteInfo) {
+      setInfo(s => ({
+        ...s,
+        ...(siteInfo.name ? { customer: siteInfo.name } : {}),
+        ...(siteInfo.address ? { siteAddress: siteInfo.address } : {}),
+      }));
+    }
+    // Group devices by category + brand + model
+    const grouped = {};
+    for (const dev of (devices || [])) {
+      const cat = dev.category || "camera";
+      const key = `${cat}|${normalizeBrand(dev.brand) || ""}|${dev.model || ""}`;
+      if (!grouped[key]) grouped[key] = { cat, brand: normalizeBrand(dev.brand) || "", model: dev.model || "", devices: [] };
+      grouped[key].devices.push(dev);
+    }
+    const makers = { camera: mkCamGroup, switch: mkSwGrp, server: mkSrvGrp, door: mkDoorGrp, zone: mkZoneGrp, speaker: mkSpkGrp };
+    const setters = { camera: setCameraGroups, switch: setSwitchGroups, server: setServerGroups, door: setDoorGroups, zone: setZoneGroups, speaker: setSpeakerGroups };
+    let totalImported = 0;
+    for (const g of Object.values(grouped)) {
+      const mk = makers[g.cat];
+      const setter = setters[g.cat];
+      if (!mk || !setter) continue;
+      const grp = {
+        ...mk(),
+        brand: g.brand,
+        model: g.model,
+        quantity: String(g.devices.length),
+        devices: g.devices.map((d, i) => ({
+          id: uid(),
+          name: d.name || `${g.cat.charAt(0).toUpperCase() + g.cat.slice(1)} ${String(i + 1).padStart(2, "0")}`,
+          location: d.location || "",
+          cableId: d.cableId || "",
+          ip: d.ip || "",
+          mac: d.mac || "",
+          serial: d.serial || "",
+          notes: d.notes || "",
+          installed: false,
+          programmed: false,
+          ...(d.username ? { username: d.username } : {}),
+          ...(d.password ? { password: d.password } : {}),
+        })),
+      };
+      setter(gs => [...gs, grp]);
+      totalImported += g.devices.length;
+    }
+    addLog("import", `System Surveyor import — ${totalImported} device${totalImported !== 1 ? "s" : ""} in ${Object.keys(grouped).length} group${Object.keys(grouped).length !== 1 ? "s" : ""}`);
+  };
+
   // PDF parts import handler
   const handlePdfImport = (items) => {
     const makers = { camera: mkCamGroup, switch: mkSwGrp, server: mkSrvGrp, door: mkDoorGrp, zone: mkZoneGrp, speaker: mkSpkGrp };
@@ -660,6 +711,7 @@ function AppContent({ user, signOut }) {
             importPreview={importPreview} setImportPreview={setImportPreview}
             handleProposalImport={handleProposalImport} selectedProject={selectedProject}
             info={info} nvrInfo={nvrInfo} panelInfo={panelInfo} accessInfo={accessInfo} networkConfig={networkConfig}
+            onSystemSurveyorImport={handleSystemSurveyorImport}
           />
         )}
 

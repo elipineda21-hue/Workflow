@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { CardHead } from "../components/ui";
 import { getSpecSheetUrl } from "../supabase";
 import { planSections, buildSubmittalPDF } from "../utils/buildSubmittalPDF";
-import { FileDown, Package } from "lucide-react";
+import { parseSystemSurveyorXlsx, buildSystemSurveyorXlsx } from "../utils/systemSurveyor";
+import { FileDown, FileUp, Package } from "lucide-react";
 
 export default function ExportTab({
   cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups,
@@ -16,7 +17,67 @@ export default function ExportTab({
   handleProposalImport,
   selectedProject,
   info, nvrInfo, panelInfo, accessInfo, networkConfig,
+  onSystemSurveyorImport,
 }) {
+  // ── System Surveyor import/export ──
+  const [ssImporting, setSsImporting] = useState(false);
+  const [ssExporting, setSsExporting] = useState(false);
+  const [ssError, setSsError] = useState("");
+  const ssFileRef = useRef(null);
+
+  const handleSsImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSsImporting(true);
+    setSsError("");
+    try {
+      const result = await parseSystemSurveyorXlsx(file);
+      if (onSystemSurveyorImport) onSystemSurveyorImport(result);
+    } catch (err) {
+      setSsError(err.message || "Failed to parse System Surveyor file");
+    }
+    setSsImporting(false);
+    e.target.value = "";
+  };
+
+  const handleSsExport = async () => {
+    setSsExporting(true);
+    setSsError("");
+    try {
+      const allDevices = [
+        ...cameraGroups.flatMap(g => g.devices.map(d => ({ ...d, _cat: "camera", _brand: g.brand, _model: g.model }))),
+        ...switchGroups.flatMap(g => g.devices.map(d => ({ ...d, _cat: "switch", _brand: g.brand, _model: g.model }))),
+        ...serverGroups.flatMap(g => g.devices.map(d => ({ ...d, _cat: "server", _brand: g.brand, _model: g.model }))),
+        ...doorGroups.flatMap(g => g.devices.map(d => ({ ...d, _cat: "door", _brand: g.brand, _model: g.model }))),
+        ...zoneGroups.flatMap(g => g.devices.map(d => ({ ...d, _cat: "zone", _brand: g.brand, _model: g.model }))),
+        ...speakerGroups.flatMap(g => g.devices.map(d => ({ ...d, _cat: "speaker", _brand: g.brand, _model: g.model }))),
+      ];
+      const buf = await buildSystemSurveyorXlsx({
+        siteInfo: {
+          name: info?.customer || "",
+          address: info?.siteAddress || "",
+          contact: info?.techLead || "",
+          date: info?.date || "",
+        },
+        devices: allDevices,
+        nvrInfo,
+        panelInfo,
+        accessInfo,
+        networkConfig,
+      });
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(selectedProject?.name || "Project").replace(/\s+/g, "_")}_SystemSurveyor.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setSsError(err.message || "Failed to build System Surveyor export");
+    }
+    setSsExporting(false);
+  };
+
   // ── Submittal Package (PDF assembly, no AI) ──
   const [pkgLoading, setPkgLoading] = useState(false);
   const [pkgProgress, setPkgProgress] = useState("");
@@ -60,6 +121,51 @@ export default function ExportTab({
 
   return (
     <>
+      {/* ── System Surveyor Integration ── */}
+      <div className="bg-white rounded-xl border border-border overflow-hidden mb-6">
+        <div className="bg-gradient-to-r from-navy to-dark px-5 py-3.5 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+            <FileUp size={16} className="text-accent" />
+          </div>
+          <div>
+            <div className="text-white font-bold text-sm">System Surveyor Integration</div>
+            <div className="text-white/40 text-[10px]">Import/export device data in System Surveyor batch format</div>
+          </div>
+        </div>
+        <div className="p-5">
+          <div className="flex gap-3 flex-wrap">
+            <input
+              ref={ssFileRef}
+              type="file"
+              accept=".xlsx"
+              className="hidden"
+              onChange={handleSsImport}
+            />
+            <button
+              onClick={() => ssFileRef.current?.click()}
+              disabled={ssImporting}
+              className="bg-accent hover:bg-accent/90 text-white border-none rounded-lg px-6 py-2.5 text-sm font-extrabold cursor-pointer flex items-center gap-2"
+              style={{ opacity: ssImporting ? 0.5 : 1 }}
+            >
+              <FileUp size={15} />
+              {ssImporting ? "Importing..." : "Import from System Surveyor"}
+            </button>
+            <button
+              onClick={handleSsExport}
+              disabled={ssExporting || totalDevices === 0}
+              className="bg-gold hover:bg-gold/90 text-navy border-none rounded-lg px-6 py-2.5 text-sm font-extrabold cursor-pointer flex items-center gap-2"
+              style={{ opacity: (ssExporting || totalDevices === 0) ? 0.5 : 1 }}
+            >
+              <FileDown size={15} />
+              {ssExporting ? "Exporting..." : "Export to System Surveyor"}
+            </button>
+          </div>
+          {ssError && (
+            <div className="bg-danger/10 text-danger rounded-lg p-3 text-xs font-semibold mt-3">{ssError}</div>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl border border-border overflow-hidden">
         <CardHead icon="📊" title="Reports" color="#0B1F3A" />
         <div className="p-6">

@@ -1,19 +1,11 @@
+import { CAT_OPTIONS } from "../constants";
+
 export default function ImportPreviewModal({
   importPreview, setImportPreview, handleProposalImport,
   selectedProject, cameraGroups, switchGroups, serverGroups,
   doorGroups, zoneGroups, speakerGroups,
 }) {
   if (!importPreview) return null;
-
-  const CAT_OPTIONS = [
-    { value: "camera",  label: "CCTV / Camera" },
-    { value: "door",    label: "Access Control" },
-    { value: "zone",    label: "Intrusion" },
-    { value: "speaker", label: "Audio" },
-    { value: "switch",  label: "Network Switch" },
-    { value: "server",  label: "Server / NVR" },
-    { value: "unknown", label: "Skip this row" },
-  ];
 
   return (
     <div className="fixed inset-0 bg-dark/[0.82] z-[500] flex items-center justify-center p-4">

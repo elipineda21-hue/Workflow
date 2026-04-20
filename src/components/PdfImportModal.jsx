@@ -1,15 +1,6 @@
 import { useState, useRef } from "react";
 import { extractPdfText, parsePdfParts } from "../utils/parsePdfParts";
-
-const CAT_OPTIONS = [
-  { value: "camera",  label: "CCTV / Camera",   icon: "📷" },
-  { value: "door",    label: "Access Control",   icon: "🚪" },
-  { value: "zone",    label: "Intrusion",        icon: "🔔" },
-  { value: "speaker", label: "Audio",            icon: "🔊" },
-  { value: "switch",  label: "Network Switch",   icon: "🔀" },
-  { value: "server",  label: "Server / NVR",     icon: "🖥" },
-  { value: "unknown", label: "Skip",             icon: "⊘" },
-];
+import { CAT_OPTIONS } from "../constants";
 
 export default function PdfImportModal({ open, onClose, onImport }) {
   const [items, setItems] = useState([]);

@@ -1,5 +1,5 @@
 import { CAM_DB } from "../deviceDB";
-import { CCTV_PLATFORMS } from "../constants";
+import { CCTV_PLATFORMS, CODECS, RESS, LENSES, CAM_TYPES } from "../constants";
 import { mkCamGroup, mkCamDev, genCam, updGrp, remGrp, getNextIpStart } from "../models";
 import { CardHead, Empty, G, F, Inp, Sel, Tog, SectionLabel } from "../components/ui";
 import GroupCard from "../components/GroupCard";
@@ -50,10 +50,10 @@ export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, co
                   <>
                     <SectionLabel text="Shared Settings (applied to all cameras in this group)" />
                     <G cols={4}>
-                      <F label="Codec"><Sel value={grp.codec} onChange={e => updGrp(setCameraGroups, grp.id, "codec", e.target.value)}>{["H.264","H.265","H.265+","MJPEG"].map(o => <option key={o}>{o}</option>)}</Sel></F>
-                      <F label="Resolution"><Sel value={grp.resolution} onChange={e => updGrp(setCameraGroups, grp.id, "resolution", e.target.value)}>{["1MP (720p)","2MP (1080p)","4MP","5MP","6MP","8MP (4K)","12MP"].map(o => <option key={o}>{o}</option>)}</Sel></F>
-                      <F label="Lens"><Sel value={grp.lens} onChange={e => updGrp(setCameraGroups, grp.id, "lens", e.target.value)}>{["2.8mm","4mm","6mm","8mm","2.8–12mm VF","Motorized VF","Other"].map(o => <option key={o}>{o}</option>)}</Sel></F>
-                      <F label="Camera Type"><Sel value={grp.type} onChange={e => updGrp(setCameraGroups, grp.id, "type", e.target.value)}>{["Indoor Dome","Outdoor Dome","Bullet","PTZ","Fisheye","Multi-Sensor","Box"].map(o => <option key={o}>{o}</option>)}</Sel></F>
+                      <F label="Codec"><Sel value={grp.codec} onChange={e => updGrp(setCameraGroups, grp.id, "codec", e.target.value)}>{CODECS.map(o => <option key={o}>{o}</option>)}</Sel></F>
+                      <F label="Resolution"><Sel value={grp.resolution} onChange={e => updGrp(setCameraGroups, grp.id, "resolution", e.target.value)}>{RESS.map(o => <option key={o}>{o}</option>)}</Sel></F>
+                      <F label="Lens"><Sel value={grp.lens} onChange={e => updGrp(setCameraGroups, grp.id, "lens", e.target.value)}>{LENSES.map(o => <option key={o}>{o}</option>)}</Sel></F>
+                      <F label="Camera Type"><Sel value={grp.type} onChange={e => updGrp(setCameraGroups, grp.id, "type", e.target.value)}>{CAM_TYPES.map(o => <option key={o}>{o}</option>)}</Sel></F>
                       <F label="HTTP Port"><Inp value={grp.port} onChange={e => updGrp(setCameraGroups, grp.id, "port", e.target.value)} placeholder="80" /></F>
                       <F label="RTSP Port"><Inp value={grp.rtspPort} onChange={e => updGrp(setCameraGroups, grp.id, "rtspPort", e.target.value)} placeholder="554" /></F>
                       <F label="FPS"><Inp value={grp.fps} onChange={e => updGrp(setCameraGroups, grp.id, "fps", e.target.value)} placeholder="15" /></F>

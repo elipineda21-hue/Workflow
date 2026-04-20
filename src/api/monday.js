@@ -53,11 +53,14 @@ export async function fetchBoardColumns(token) {
 // ── Monday Write-back ─────────────────────────────────────────────────────────
 export async function pushMondayUpdate(token, itemId, colId, textValue) {
   if (!token || !itemId || !colId || !textValue) return;
-  const mutation = `mutation { change_simple_column_value(board_id: ${MONDAY_BOARD_ID}, item_id: "${itemId}", column_id: "${colId}", value: ${JSON.stringify(String(textValue))}) { id } }`;
+  const mutation = `mutation ($boardId: ID!, $itemId: ID!, $colId: String!, $value: String!) {
+    change_simple_column_value(board_id: $boardId, item_id: $itemId, column_id: $colId, value: $value) { id }
+  }`;
+  const variables = { boardId: MONDAY_BOARD_ID, itemId: String(itemId), colId, value: String(textValue) };
   const res = await fetch("https://api.monday.com/v2", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": token },
-    body: JSON.stringify({ query: mutation }),
+    body: JSON.stringify({ query: mutation, variables }),
   });
   const data = await res.json();
   if (data.errors) throw new Error(data.errors[0].message);

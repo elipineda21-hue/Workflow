@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { saveWorkOrder, listLibrary, getSpecSheetUrl, listProjectFiles, catalogDevices } from "./supabase";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { saveWorkOrder, loadWorkOrder, listLibrary, getSpecSheetUrl, listProjectFiles, catalogDevices } from "./supabase";
 import { C, SOP_VLANS, SOP_SSIDS, SOP_FIREWALL, normalizeBrand } from "./constants";
 import NetworkTab from "./components/NetworkTab";
 import { uid, mkCamGroup, mkSwGrp, mkSrvGrp, mkDoorGrp, mkZoneGrp, mkSpkGrp, getNextIpStart } from "./models";
@@ -39,17 +39,18 @@ export default function App() {
   );
 }
 
+const LABOR_TYPES = [
+  { key: "l1", label: "Installation - L1" },
+  { key: "l2", label: "Installation - L2" },
+  { key: "l3", label: "Installation - L3" },
+  { key: "programming", label: "Programming" },
+  { key: "travel", label: "Travel" },
+  { key: "super", label: "Superintendent" },
+  { key: "pm", label: "Project Management" },
+];
+const emptyLabor = () => ({ l1: "", l2: "", l3: "", programming: "", travel: "", super: "", pm: "" });
+
 function AppContent({ user, signOut }) {
-  const LABOR_TYPES = [
-    { key: "l1",           label: "Installation - L1" },
-    { key: "l2",           label: "Installation - L2" },
-    { key: "l3",           label: "Installation - L3" },
-    { key: "programming",  label: "Programming" },
-    { key: "travel",       label: "Travel" },
-    { key: "super",        label: "Superintendent" },
-    { key: "pm",           label: "Project Management" },
-  ];
-  const emptyLabor = () => ({ l1: "", l2: "", l3: "", programming: "", travel: "", super: "", pm: "" });
   const [phase, setPhase] = useState("select");
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -115,14 +116,14 @@ function AppContent({ user, signOut }) {
     addLog("move", `Moved "${label}" from ${fromCat} → ${toCat}`);
   };
   // All groups with category tags (for IP allocation)
-  const allGroupsTagged = [
+  const allGroupsTagged = useMemo(() => [
     ...cameraGroups.map(g => ({ ...g, _cat: "camera" })),
     ...switchGroups.map(g => ({ ...g, _cat: "switch" })),
     ...serverGroups.map(g => ({ ...g, _cat: "server" })),
     ...doorGroups.map(g => ({ ...g, _cat: "door" })),
     ...zoneGroups.map(g => ({ ...g, _cat: "zone" })),
     ...speakerGroups.map(g => ({ ...g, _cat: "speaker" })),
-  ];
+  ], [cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups]);
   // proposal import
   const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
   const [pdfImportOpen, setPdfImportOpen] = useState(false);
@@ -143,6 +144,19 @@ function AppContent({ user, signOut }) {
   const [networkConfig, setNetworkConfig] = useState(emptyNetworkConfig());
   const [miscHardware, setMiscHardware] = useState([]);
   const libUploadFileRef = useRef(null);
+  const resetProjectState = () => {
+    setInfo({ customer: "", siteAddress: "", techLead: "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" });
+    setNVR({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
+    setPanel({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
+    setAccess({ accessPlatform: "", controllerBrand: "", controllerModel: "", controllerIp: "", controllerSerial: "", firmware: "", totalDoors: "", credentialFormat: "" });
+    setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
+    setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
+    setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
+    setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle");
+    setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null);
+    setChangeLog([]); setNetworkConfig(emptyNetworkConfig());
+    setMiscHardware([]);
+  };
   // device counts
   const camCount  = cameraGroups.reduce((s, g) => s + g.devices.length, 0);
   const swCount   = switchGroups.reduce((s, g) => s + g.devices.length, 0);
@@ -158,7 +172,7 @@ function AppContent({ user, signOut }) {
   const setAcc = (k, v) => setAccess(s => ({ ...s, [k]: v }));
   // ── Auto-save to Supabase ─────────────────────────────────────────────────
   const pendingSnapRef = useRef(null);
-  const flushSave = useCallback(async (project, extraSnap) => {
+  const flushSave = async (project, extraSnap) => {
     const snap = extraSnap || pendingSnapRef.current;
     if (!project?.id || !snap) return;
     pendingSnapRef.current = null;
@@ -187,14 +201,14 @@ function AppContent({ user, signOut }) {
         } catch (e) { console.warn("Monday write-back failed:", e.message); }
       }
     } catch { setSaveStatus("error"); }
-  }, []);
-  const triggerSave = useCallback((snap, project) => {
+  };
+  const triggerSave = (snap, project) => {
     if (!project?.id) return;
     pendingSnapRef.current = snap;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSaveStatus("saving");
     saveTimerRef.current = setTimeout(() => flushSave(project), 1000);
-  }, [flushSave]);
+  };
   // Watch all state and auto-save when anything changes (only in build phase)
   useEffect(() => {
     if (phase !== "build" || !selectedProject) return;
@@ -206,7 +220,7 @@ function AppContent({ user, signOut }) {
     const handleUnload = () => { if (selectedProject) flushSave(selectedProject); };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);
-  }, [selectedProject, flushSave]);
+  }, [selectedProject]); // eslint-disable-line
   useEffect(() => {
     if (window.jspdf) { setSDK(true); } else {
       if (!document.querySelector('script[src*="jspdf"]')) {
@@ -371,7 +385,6 @@ function AppContent({ user, signOut }) {
     // Load new project
     setSelectedProject(p);
     try {
-      const { loadWorkOrder } = await import("./supabase");
       const saved = await loadWorkOrder(p.id);
       if (saved?.state) {
         const s = saved.state;
@@ -393,14 +406,8 @@ function AppContent({ user, signOut }) {
         if (s.miscHardware) setMiscHardware(s.miscHardware);
       } else {
         // New project — reset state, prefill from Monday
-        setInfo(s => ({ ...emptyLabor(), customer: p.customer || "", siteAddress: p.siteAddress || "", techLead: p.techLead || "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" }));
-        setNVR({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
-        setPanel({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
-        setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
-        setAccess({ accessPlatform: "", controllerBrand: "", controllerModel: "", controllerIp: "", controllerSerial: "", firmware: "", totalDoors: "", credentialFormat: "" });
-        setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
-        setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
-        setSpecSheetUrls({}); setChangeLog([]); setNetworkConfig(emptyNetworkConfig()); setMiscHardware([]);
+        resetProjectState();
+        setInfo(s => ({ ...s, customer: p.customer || "", siteAddress: p.siteAddress || "", techLead: p.techLead || "" }));
       }
     } catch (e) { console.warn("Could not load project:", e); }
     setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle");
@@ -549,14 +556,7 @@ function AppContent({ user, signOut }) {
         onBack={async () => {
           await flushSave(selectedProject);
           setPhase("select");
-          setInfo({ customer: "", siteAddress: "", techLead: "", techs: "", date: new Date().toISOString().split("T")[0], submittedBy: "" });
-          setNVR({ nvrBrand: "", nvrModel: "", nvrIp: "", nvrSerial: "", nvrFirmware: "", nvrStorage: "", nvrRetention: "", vmsSoftware: "" });
-          setPanel({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
-          setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
-          setAccess({ accessPlatform: "", controllerBrand: "", controllerModel: "", controllerIp: "", controllerSerial: "", firmware: "", totalDoors: "", credentialFormat: "" });
-          setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
-          setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
-          setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle"); setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null); setChangeLog([]); setNetworkConfig(emptyNetworkConfig()); setMiscHardware([]);
+          resetProjectState();
         }}
         onReports={() => setTab("export")}
         onPdfImport={() => setPdfImportOpen(true)}

@@ -1,7 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nymnjhfpvwxdkxxcxbts.supabase.co";
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55bW5qaGZwdnd4ZGt4eGN4YnRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNTA3NjUsImV4cCI6MjA4ODkyNjc2NX0.lXCU54K25kKX0OQhmVA-e37ZuepMp7T-QtNaaZLASHM";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+if (!SUPABASE_URL) console.error("VITE_SUPABASE_URL not set — Supabase will not work");
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
+if (!SUPABASE_KEY) console.error("VITE_SUPABASE_KEY not set — Supabase will not work");
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -16,18 +18,37 @@ export async function loadWorkOrder(mondayProjectId) {
   return data || null;
 }
 
-// Save (upsert) a work order
+// Save a work order with optimistic locking (checks updated_at before saving)
 export async function saveWorkOrder(mondayProjectId, projectName, projectRef, state) {
-  const { error } = await supabase
+  const now = new Date().toISOString();
+  const { data: existing } = await supabase
     .from("work_orders")
-    .upsert({
-      monday_project_id: String(mondayProjectId),
-      project_name: projectName,
-      project_ref: projectRef,
-      state,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "monday_project_id" });
-  if (error) throw error;
+    .select("updated_at")
+    .eq("monday_project_id", String(mondayProjectId))
+    .single();
+
+  const row = {
+    monday_project_id: String(mondayProjectId),
+    project_name: projectName,
+    project_ref: projectRef,
+    state,
+    updated_at: now,
+  };
+
+  if (existing) {
+    // Update only if our version is newer or matches
+    const { error } = await supabase
+      .from("work_orders")
+      .update(row)
+      .eq("monday_project_id", String(mondayProjectId))
+      .gte("updated_at", existing.updated_at);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("work_orders")
+      .insert(row);
+    if (error) throw error;
+  }
 }
 
 // List all saved work orders (for the home screen summary)

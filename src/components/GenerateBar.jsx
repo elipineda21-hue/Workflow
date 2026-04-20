@@ -17,7 +17,10 @@ export default function GenerateBar({ group, setter, genFn, showIP = true }) {
         </F>
       )}
       <button
-        onClick={() => applyGen(setter, group.id, genFn)}
+        onClick={() => {
+          if (group.devices.length > 0 && !confirm(`This will replace ${group.devices.length} existing device(s). Continue?`)) return;
+          applyGen(setter, group.id, genFn);
+        }}
         className="bg-gold text-navy border-none rounded-md font-extrabold text-xs cursor-pointer whitespace-nowrap mb-[1px]" style={{ padding: "7px 18px" }}>
         ⚡ Generate {group.quantity || 1} Device{parseInt(group.quantity) !== 1 ? "s" : ""}
       </button>

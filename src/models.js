@@ -1,5 +1,5 @@
 // ── Utilities ─────────────────────────────────────────────────────────────────
-export const uid = () => Math.random().toString(36).slice(2, 9);
+export const uid = () => crypto.randomUUID();
 export const nextIP = (base, n) => {
   const p = (base || "").trim().split(".");
   if (p.length !== 4 || p.some(x => isNaN(parseInt(x)))) return base || "";

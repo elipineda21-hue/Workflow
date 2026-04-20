@@ -6,6 +6,17 @@ export const C = {
   surface: "#F8FAFD", dark: "#07142A",
 };
 
+// ── Category options (shared across import modals) ───────────────────────────
+export const CAT_OPTIONS = [
+  { value: "camera",  label: "CCTV / Camera",   icon: "📷" },
+  { value: "door",    label: "Access Control",   icon: "🚪" },
+  { value: "zone",    label: "Intrusion",        icon: "🔔" },
+  { value: "speaker", label: "Audio",            icon: "🔊" },
+  { value: "switch",  label: "Network Switch",   icon: "🔀" },
+  { value: "server",  label: "Server / NVR",     icon: "🖥" },
+  { value: "unknown", label: "Skip",             icon: "⊘" },
+];
+
 // ── Option lists ──────────────────────────────────────────────────────────────
 export const CODECS = ["H.264","H.265","H.265+","MJPEG"];
 export const RESS   = ["1MP (720p)","2MP (1080p)","4MP","5MP","6MP","8MP (4K)","12MP"];

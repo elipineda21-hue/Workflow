@@ -8,6 +8,7 @@ export default function AuthGate({ children }) {
   const [mode, setMode] = useState("signin"); // signin | signup
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mondayTokenInput, setMondayTokenInput] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,10 +39,13 @@ export default function AuthGate({ children }) {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              monday_token: mondayTokenInput.trim() || "",
+            },
+          },
         });
         if (signUpError) throw signUpError;
-        // Some Supabase configs require email confirmation
-        setError("");
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -136,6 +140,22 @@ export default function AuthGate({ children }) {
                 className="w-full py-2.5 px-3 rounded-lg bg-white/[0.08] border border-white/[0.12] text-white text-sm outline-none placeholder:text-white/25 focus:border-accent/50 transition-colors"
               />
             </div>
+
+            {mode === "signup" && (
+              <div>
+                <label className="text-white/50 text-[10px] font-semibold uppercase tracking-wider block mb-1">
+                  Monday.com API Token <span className="text-white/20">(optional — add later in settings)</span>
+                </label>
+                <input
+                  type="password"
+                  value={mondayTokenInput}
+                  onChange={(e) => setMondayTokenInput(e.target.value)}
+                  placeholder="eyJhbGci..."
+                  className="w-full py-2.5 px-3 rounded-lg bg-white/[0.08] border border-white/[0.12] text-white text-sm outline-none placeholder:text-white/25 focus:border-accent/50 transition-colors"
+                />
+                <div className="text-white/20 text-[9px] mt-1">Find at: monday.com → Avatar → Developers → API v2 Token</div>
+              </div>
+            )}
 
             <button
               type="submit"

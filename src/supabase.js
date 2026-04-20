@@ -164,6 +164,20 @@ export function getProjectFileUrl(filePath) {
   return data?.publicUrl || null;
 }
 
+// ── User Settings (stored in Supabase Auth user_metadata) ─────────────────────
+
+export async function saveUserSettings(settings) {
+  const { error } = await supabase.auth.updateUser({
+    data: settings,
+  });
+  if (error) throw error;
+}
+
+export async function getUserSettings() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.user_metadata || {};
+}
+
 // ── Device Catalog (auto-growing model list) ──────────────────────────────────
 
 // Upsert a brand/model into the catalog (increments seen_count if exists)

@@ -57,6 +57,16 @@ function AppContent({ user, signOut }) {
   const [projectsError, setProjectsError] = useState("");
   const [selectedProject, setSelectedProject] = useState(null);
   const [mondayToken, setMondayToken] = useState(() => import.meta.env.VITE_MONDAY_TOKEN || localStorage.getItem("mondayToken") || "");
+
+  // Load Monday token from user metadata on login
+  useEffect(() => {
+    if (!user) return;
+    const userToken = user.user_metadata?.monday_token;
+    if (userToken && !mondayToken) {
+      setMondayToken(userToken);
+      localStorage.setItem("mondayToken", userToken);
+    }
+  }, [user]); // eslint-disable-line
   const [tokenDraft, setTokenDraft] = useState("");
   const [colMap, setColMap] = useState(() => { try { return JSON.parse(localStorage.getItem("mondayColMap") || "{}"); } catch { return {}; } });
   const [colMapperOpen, setColMapperOpen] = useState(false);

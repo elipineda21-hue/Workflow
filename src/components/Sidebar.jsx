@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Zap, LogOut, RefreshCw } from "lucide-react";
-import { loadWorkOrder } from "../supabase";
+import { ChevronLeft, ChevronRight, Zap, LogOut, RefreshCw, Settings } from "lucide-react";
+import { loadWorkOrder, saveUserSettings } from "../supabase";
 
 const STATUS_DOT = {
   "Active":        "bg-success",
@@ -16,6 +16,8 @@ export default function Sidebar({
 }) {
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tokenEdit, setTokenEdit] = useState("");
 
   const handleRefresh = async () => {
     if (!onRefresh) return;
@@ -119,26 +121,66 @@ export default function Sidebar({
         })}
       </div>
 
-      {/* User info + sign out */}
+      {/* User info + settings + sign out */}
       {user && signOut && (
-        <div className="px-3 py-2.5 border-t border-white/[0.06] flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
-            <span className="text-accent text-[9px] font-bold">
-              {(user.email || "?")[0].toUpperCase()}
-            </span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-white/50 text-[10px] font-medium truncate" title={user.email}>
-              {user.email}
+        <div className="border-t border-white/[0.06]">
+          {/* Settings panel */}
+          {settingsOpen && (
+            <div className="px-3 py-2.5 border-b border-white/[0.06]">
+              <div className="text-white/40 text-[9px] font-semibold uppercase tracking-wider mb-1.5">Monday.com Token</div>
+              <input
+                type="password"
+                value={tokenEdit}
+                onChange={e => setTokenEdit(e.target.value)}
+                placeholder="eyJhbGci..."
+                className="w-full py-1.5 px-2 rounded-md bg-white/[0.06] border border-white/[0.08] text-white/80 text-[10px] outline-none placeholder:text-white/15 mb-1.5"
+              />
+              <div className="flex gap-1.5">
+                <button
+                  onClick={async () => {
+                    try {
+                      await saveUserSettings({ monday_token: tokenEdit.trim() });
+                      localStorage.setItem("mondayToken", tokenEdit.trim());
+                      if (onRefresh) onRefresh();
+                      setSettingsOpen(false);
+                    } catch (err) { alert("Save failed: " + err.message); }
+                  }}
+                  className="bg-accent/20 text-accent border-none rounded-md py-1 px-2.5 text-[9px] font-semibold cursor-pointer">
+                  Save Token
+                </button>
+                <button onClick={() => setSettingsOpen(false)}
+                  className="bg-transparent text-white/30 border-none rounded-md py-1 px-2 text-[9px] cursor-pointer">
+                  Cancel
+                </button>
+              </div>
             </div>
+          )}
+          <div className="px-3 py-2.5 flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+              <span className="text-accent text-[9px] font-bold">
+                {(user.email || "?")[0].toUpperCase()}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-white/50 text-[10px] font-medium truncate" title={user.email}>
+                {user.email}
+              </div>
+            </div>
+            <button
+              onClick={() => { setSettingsOpen(v => !v); setTokenEdit(user.user_metadata?.monday_token || localStorage.getItem("mondayToken") || ""); }}
+              title="Settings"
+              className="bg-transparent hover:bg-white/[0.08] text-white/25 hover:text-white/60 border-none rounded-md p-1 cursor-pointer transition-colors shrink-0"
+            >
+              <Settings size={13} />
+            </button>
+            <button
+              onClick={signOut}
+              title="Sign Out"
+              className="bg-transparent hover:bg-danger/20 text-white/25 hover:text-danger border-none rounded-md p-1 cursor-pointer transition-colors shrink-0"
+            >
+              <LogOut size={13} />
+            </button>
           </div>
-          <button
-            onClick={signOut}
-            title="Sign Out"
-            className="bg-transparent hover:bg-danger/20 text-white/25 hover:text-danger border-none rounded-md p-1 cursor-pointer transition-colors shrink-0"
-          >
-            <LogOut size={13} />
-          </button>
         </div>
       )}
     </div>

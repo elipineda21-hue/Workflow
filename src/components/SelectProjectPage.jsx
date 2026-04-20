@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Zap, Search, X } from "lucide-react";
 import { C } from "../constants";
 import { MONDAY_BOARD_ID, fetchProjects, fetchBoardColumns } from "../api/monday";
-import { loadWorkOrder } from "../supabase";
+import { loadWorkOrder, saveUserSettings } from "../supabase";
 
 const PROJECT_STATUSES = ["All", "Active", "Pending Start", "Paused/Stuck", "Closeout Req", "Complete"];
 
@@ -40,12 +40,13 @@ export default function SelectProjectPage({
 }) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const saveToken = () => {
+  const saveToken = async () => {
     const t = tokenDraft.trim();
     if (!t) return;
     localStorage.setItem("mondayToken", t);
     setMondayToken(t);
     setTokenDraft("");
+    try { await saveUserSettings({ monday_token: t }); } catch {}
   };
 
   const handleProjectClick = async (p) => {

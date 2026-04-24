@@ -475,6 +475,32 @@ export default function LibraryTab({
             : <>No devices match this project. <button onClick={() => setLibShowAll(true)} className="bg-transparent border-none text-accent font-bold cursor-pointer text-[13px]">View full library</button></>}
         </div>
       ) : (
+        <>
+        {/* Sort toolbar */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[10px] font-semibold text-muted uppercase">Sort:</span>
+          {[
+            { key: "brand", label: "Brand" },
+            { key: "category", label: "Category" },
+            { key: "model", label: "Model" },
+            { key: "recent", label: "Recent" },
+          ].map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => setSortBy(opt.key)}
+              className={`py-1 px-2.5 rounded-md text-[10px] font-semibold border-none cursor-pointer transition-colors ${
+                sortBy === opt.key
+                  ? "bg-accent text-white"
+                  : "bg-surface text-muted hover:bg-border"
+              }`}>
+              {opt.label}
+            </button>
+          ))}
+          <div className="ml-auto">
+            <Tog label="Group by brand" val={groupByBrand} set={setGroupByBrand} />
+          </div>
+        </div>
+
         <div className="bg-white rounded-xl border border-border overflow-hidden">
           <table className="w-full border-collapse text-[12px]">
             <thead>
@@ -534,138 +560,246 @@ export default function LibraryTab({
                 </tr>
               )}
 
-              {visibleRows.map((entry, i) => {
-                const isEditing = editingId === entry.id;
-                const onProject = isProjectMatch(entry);
-                const hasPdf = !!entry.file_path;
-                const pdfUrl = hasPdf ? getSpecSheetUrl(entry.file_path) : null;
-                const isUploading = uploadingFor === entry.id;
-
-                return (
-                  <tr key={entry.id} className={`border-b border-border ${i % 2 === 0 ? "bg-white" : "bg-surface"} ${onProject ? "ring-1 ring-inset ring-success/20" : ""}`}>
-                    {/* Project toggle */}
-                    <td className="px-2 py-2 text-center w-8">
-                      <input type="checkbox" checked={onProject}
-                        onChange={() => toggleProjectDevice(entry)}
-                        title={onProject ? "Remove from this project" : "Add to this project"}
-                        className="accent-accent w-3.5 h-3.5 cursor-pointer" />
-                    </td>
-                    {/* Category */}
-                    <td className="px-3 py-2">
-                      {isEditing ? (
-                        <select value={editForm.category || ""} onChange={e => setEditForm(s => ({ ...s, category: e.target.value }))}
-                          className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy bg-white">
-                          {CAT_ORDER.map(c => <option key={c} value={c}>{CAT_META[c]?.label}</option>)}
-                        </select>
-                      ) : (
-                        <span className="text-muted text-[11px]">{CAT_META[entry.category]?.label || entry.category}</span>
-                      )}
-                    </td>
-
-                    {/* Brand */}
-                    <td className="px-3 py-2">
-                      {isEditing ? (
-                        <input value={editForm.brand || ""} onChange={e => setEditForm(s => ({ ...s, brand: e.target.value }))}
-                          className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy bg-white" />
-                      ) : (
-                        <span className="text-navy font-semibold text-[12px]">{entry.brand}</span>
-                      )}
-                    </td>
-
-                    {/* Model */}
-                    <td className="px-3 py-2">
-                      {isEditing ? (
-                        <input value={editForm.model || ""} onChange={e => setEditForm(s => ({ ...s, model: e.target.value }))}
-                          className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy font-mono bg-white" />
-                      ) : (
-                        <span className="text-navy font-mono text-[11px]">{entry.model}</span>
-                      )}
-                    </td>
-
-                    {/* Display Name */}
-                    <td className="px-3 py-2">
-                      {isEditing ? (
-                        <input value={editForm.displayName || ""} onChange={e => setEditForm(s => ({ ...s, displayName: e.target.value }))}
-                          className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy bg-white" />
-                      ) : (
-                        <span className="text-navy text-[12px]">
-                          {entry.display_name || entry.model}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Spec Sheet */}
-                    <td className="px-3 py-2">
-                      {hasPdf && pdfUrl ? (
-                        <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
-                          className="text-accent text-[11px] font-semibold no-underline hover:underline">
-                          View PDF
-                        </a>
-                      ) : isUploading ? (
-                        <span className="text-accent text-[10px] font-semibold">Uploading...</span>
-                      ) : (
-                        <button onClick={() => {
-                            uploadForEntryRef.current = entry;
-                            setUploadingFor(entry.id);
-                            uploadForRef.current?.click();
-                          }}
-                          className="bg-accent/10 text-accent border-none rounded-md py-1 px-2 text-[10px] font-semibold cursor-pointer hover:bg-accent/20">
-                          Upload PDF
-                        </button>
-                      )}
-                    </td>
-
-                    {/* Seen count */}
-                    <td className="px-3 py-2 text-muted text-[11px]">
-                      {entry.seen_count ? `${entry.seen_count}x` : "--"}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-3 py-2">
-                      {isEditing ? (
-                        <div className="flex gap-1.5">
-                          <button
-                            disabled={saving}
-                            onClick={() => handleSaveEdit(entry)}
-                            className="bg-success text-white border-none rounded-md py-1 px-2.5 text-[10px] font-bold cursor-pointer"
-                            style={{ opacity: saving ? 0.5 : 1 }}>
-                            {saving ? "..." : "Save"}
-                          </button>
-                          <button onClick={() => { setEditingId(null); setEditForm({}); }}
-                            className="bg-transparent text-muted border border-border rounded-md py-1 px-2.5 text-[10px] cursor-pointer">
-                            Cancel
-                          </button>
+              {groupByBrand && brandGroups ? (
+                /* Grouped-by-brand view */
+                Array.from(brandGroups.entries()).map(([brand, entries]) => {
+                  const collapsed = collapsedBrands.has(brand);
+                  return [
+                    <tr key={`brand-header-${brand}`}
+                      onClick={() => toggleBrandCollapse(brand)}
+                      className="bg-navy/[0.06] border-b border-border cursor-pointer hover:bg-navy/[0.10] select-none">
+                      <td colSpan={8} className="px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-navy text-[11px] font-bold transition-transform inline-block" style={{ transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>
+                            &#9660;
+                          </span>
+                          <span className="text-navy font-extrabold text-[13px]">{brand}</span>
+                          <span className="text-muted text-[11px] font-semibold">
+                            ({entries.length} model{entries.length !== 1 ? "s" : ""})
+                          </span>
                         </div>
-                      ) : (
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={() => {
-                              setEditingId(entry.id);
-                              setEditForm({
-                                category: entry.category,
-                                brand: entry.brand,
-                                model: entry.model,
-                                displayName: entry.display_name || entry.model,
-                              });
+                      </td>
+                    </tr>,
+                    ...(!collapsed ? entries.map((entry, i) => {
+                      const isEditing = editingId === entry.id;
+                      const onProject = isProjectMatch(entry);
+                      const hasPdf = !!entry.file_path;
+                      const pdfUrl = hasPdf ? getSpecSheetUrl(entry.file_path) : null;
+                      const isUploading = uploadingFor === entry.id;
+
+                      return (
+                        <tr key={entry.id} className={`border-b border-border ${i % 2 === 0 ? "bg-white" : "bg-surface"} ${onProject ? "ring-1 ring-inset ring-success/20" : ""}`}>
+                          <td className="px-2 py-2 text-center w-8">
+                            <input type="checkbox" checked={onProject}
+                              onChange={() => toggleProjectDevice(entry)}
+                              title={onProject ? "Remove from this project" : "Add to this project"}
+                              className="accent-accent w-3.5 h-3.5 cursor-pointer" />
+                          </td>
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <select value={editForm.category || ""} onChange={e => setEditForm(s => ({ ...s, category: e.target.value }))}
+                                className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy bg-white">
+                                {CAT_ORDER.map(c => <option key={c} value={c}>{CAT_META[c]?.label}</option>)}
+                              </select>
+                            ) : (
+                              <span className="text-muted text-[11px]">{CAT_META[entry.category]?.label || entry.category}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <input value={editForm.brand || ""} onChange={e => setEditForm(s => ({ ...s, brand: e.target.value }))}
+                                className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy bg-white" />
+                            ) : (
+                              <span className="text-navy font-semibold text-[12px]">{entry.brand}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <input value={editForm.model || ""} onChange={e => setEditForm(s => ({ ...s, model: e.target.value }))}
+                                className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy font-mono bg-white" />
+                            ) : (
+                              <span className="text-navy font-mono text-[11px]">{entry.model}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <input value={editForm.displayName || ""} onChange={e => setEditForm(s => ({ ...s, displayName: e.target.value }))}
+                                className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy bg-white" />
+                            ) : (
+                              <span className="text-navy text-[12px]">{entry.display_name || entry.model}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {hasPdf && pdfUrl ? (
+                              <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
+                                className="text-accent text-[11px] font-semibold no-underline hover:underline">View PDF</a>
+                            ) : isUploading ? (
+                              <span className="text-accent text-[10px] font-semibold">Uploading...</span>
+                            ) : (
+                              <button onClick={() => { uploadForEntryRef.current = entry; setUploadingFor(entry.id); uploadForRef.current?.click(); }}
+                                className="bg-accent/10 text-accent border-none rounded-md py-1 px-2 text-[10px] font-semibold cursor-pointer hover:bg-accent/20">Upload PDF</button>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-muted text-[11px]">{entry.seen_count ? `${entry.seen_count}x` : "--"}</td>
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <div className="flex gap-1.5">
+                                <button disabled={saving} onClick={() => handleSaveEdit(entry)}
+                                  className="bg-success text-white border-none rounded-md py-1 px-2.5 text-[10px] font-bold cursor-pointer"
+                                  style={{ opacity: saving ? 0.5 : 1 }}>{saving ? "..." : "Save"}</button>
+                                <button onClick={() => { setEditingId(null); setEditForm({}); }}
+                                  className="bg-transparent text-muted border border-border rounded-md py-1 px-2.5 text-[10px] cursor-pointer">Cancel</button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-1.5">
+                                <button onClick={() => { setEditingId(entry.id); setEditForm({ category: entry.category, brand: entry.brand, model: entry.model, displayName: entry.display_name || entry.model }); }}
+                                  className="bg-transparent text-steel border border-border rounded-md py-1 px-2 text-[10px] cursor-pointer hover:bg-surface" title="Edit">Edit</button>
+                                <button onClick={() => handleDelete(entry)}
+                                  className="bg-transparent text-danger border border-danger/40 rounded-md py-1 px-2 text-[10px] cursor-pointer hover:bg-danger/5" title="Delete">Del</button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    }) : [])
+                  ];
+                }).flat()
+              ) : (
+                /* Flat (ungrouped) view */
+                visibleRows.map((entry, i) => {
+                  const isEditing = editingId === entry.id;
+                  const onProject = isProjectMatch(entry);
+                  const hasPdf = !!entry.file_path;
+                  const pdfUrl = hasPdf ? getSpecSheetUrl(entry.file_path) : null;
+                  const isUploading = uploadingFor === entry.id;
+
+                  return (
+                    <tr key={entry.id} className={`border-b border-border ${i % 2 === 0 ? "bg-white" : "bg-surface"} ${onProject ? "ring-1 ring-inset ring-success/20" : ""}`}>
+                      {/* Project toggle */}
+                      <td className="px-2 py-2 text-center w-8">
+                        <input type="checkbox" checked={onProject}
+                          onChange={() => toggleProjectDevice(entry)}
+                          title={onProject ? "Remove from this project" : "Add to this project"}
+                          className="accent-accent w-3.5 h-3.5 cursor-pointer" />
+                      </td>
+                      {/* Category */}
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <select value={editForm.category || ""} onChange={e => setEditForm(s => ({ ...s, category: e.target.value }))}
+                            className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy bg-white">
+                            {CAT_ORDER.map(c => <option key={c} value={c}>{CAT_META[c]?.label}</option>)}
+                          </select>
+                        ) : (
+                          <span className="text-muted text-[11px]">{CAT_META[entry.category]?.label || entry.category}</span>
+                        )}
+                      </td>
+
+                      {/* Brand */}
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <input value={editForm.brand || ""} onChange={e => setEditForm(s => ({ ...s, brand: e.target.value }))}
+                            className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy bg-white" />
+                        ) : (
+                          <span className="text-navy font-semibold text-[12px]">{entry.brand}</span>
+                        )}
+                      </td>
+
+                      {/* Model */}
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <input value={editForm.model || ""} onChange={e => setEditForm(s => ({ ...s, model: e.target.value }))}
+                            className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy font-mono bg-white" />
+                        ) : (
+                          <span className="text-navy font-mono text-[11px]">{entry.model}</span>
+                        )}
+                      </td>
+
+                      {/* Display Name */}
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <input value={editForm.displayName || ""} onChange={e => setEditForm(s => ({ ...s, displayName: e.target.value }))}
+                            className="w-full py-1 px-1.5 rounded border border-accent/40 text-[11px] text-navy bg-white" />
+                        ) : (
+                          <span className="text-navy text-[12px]">
+                            {entry.display_name || entry.model}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Spec Sheet */}
+                      <td className="px-3 py-2">
+                        {hasPdf && pdfUrl ? (
+                          <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
+                            className="text-accent text-[11px] font-semibold no-underline hover:underline">
+                            View PDF
+                          </a>
+                        ) : isUploading ? (
+                          <span className="text-accent text-[10px] font-semibold">Uploading...</span>
+                        ) : (
+                          <button onClick={() => {
+                              uploadForEntryRef.current = entry;
+                              setUploadingFor(entry.id);
+                              uploadForRef.current?.click();
                             }}
-                            className="bg-transparent text-steel border border-border rounded-md py-1 px-2 text-[10px] cursor-pointer hover:bg-surface"
-                            title="Edit">
-                            Edit
+                            className="bg-accent/10 text-accent border-none rounded-md py-1 px-2 text-[10px] font-semibold cursor-pointer hover:bg-accent/20">
+                            Upload PDF
                           </button>
-                          <button onClick={() => handleDelete(entry)}
-                            className="bg-transparent text-danger border border-danger/40 rounded-md py-1 px-2 text-[10px] cursor-pointer hover:bg-danger/5"
-                            title="Delete">
-                            Del
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                        )}
+                      </td>
+
+                      {/* Seen count */}
+                      <td className="px-3 py-2 text-muted text-[11px]">
+                        {entry.seen_count ? `${entry.seen_count}x` : "--"}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <div className="flex gap-1.5">
+                            <button
+                              disabled={saving}
+                              onClick={() => handleSaveEdit(entry)}
+                              className="bg-success text-white border-none rounded-md py-1 px-2.5 text-[10px] font-bold cursor-pointer"
+                              style={{ opacity: saving ? 0.5 : 1 }}>
+                              {saving ? "..." : "Save"}
+                            </button>
+                            <button onClick={() => { setEditingId(null); setEditForm({}); }}
+                              className="bg-transparent text-muted border border-border rounded-md py-1 px-2.5 text-[10px] cursor-pointer">
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => {
+                                setEditingId(entry.id);
+                                setEditForm({
+                                  category: entry.category,
+                                  brand: entry.brand,
+                                  model: entry.model,
+                                  displayName: entry.display_name || entry.model,
+                                });
+                              }}
+                              className="bg-transparent text-steel border border-border rounded-md py-1 px-2 text-[10px] cursor-pointer hover:bg-surface"
+                              title="Edit">
+                              Edit
+                            </button>
+                            <button onClick={() => handleDelete(entry)}
+                              className="bg-transparent text-danger border border-danger/40 rounded-md py-1 px-2 text-[10px] cursor-pointer hover:bg-danger/5"
+                              title="Delete">
+                              Del
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

@@ -388,7 +388,7 @@ function AppContent({ user, signOut }) {
     const importedCount = hardwareRows.filter((r, i) => (overrideCats[i] || r.category) !== "unknown").length;
     const recurringCount = rows.filter(r => r.recurring).length;
     addLog("import", `${isChangeOrder ? "Change Order" : "Proposal"} #${importPreview.proposalId} — ${importedCount} hardware groups imported${recurringCount ? `, ${recurringCount} MRR items skipped` : ""}`);
-    catalogDevices(hardwareRows.map(r => ({ category: overrideCats[r._idx] || r.category, brand: normalizeBrand(r.brand), model: r.model }))).catch(e => console.warn("Catalog update failed:", e));
+    catalogDevices(hardwareRows.map(r => ({ category: overrideCats[r._idx] || r.category, brand: normalizeBrand(r.brand), model: r.model }))).then(() => listCatalog().then(setDeviceCatalog).catch(() => {})).catch(e => console.warn("Catalog update failed:", e));
   };
   // Switch project from sidebar (save current, load new)
   const switchProject = async (p) => {
@@ -494,7 +494,7 @@ function AppContent({ user, signOut }) {
     }
     addLog("import", `PDF import — ${items.length} groups added (${items.filter(i => i.hardware).length} hardware-only)`);
     // Auto-catalog imported devices for the growing model library
-    catalogDevices(items.map(i => ({ ...i, brand: normalizeBrand(i.brand) }))).catch(e => console.warn("Catalog update failed:", e));
+    catalogDevices(items.map(i => ({ ...i, brand: normalizeBrand(i.brand) }))).then(() => listCatalog().then(setDeviceCatalog).catch(() => {})).catch(e => console.warn("Catalog update failed:", e));
   };
   const TABS = [
     // ── Exec overview ─────────────────────────────────────────────────────────
@@ -595,7 +595,7 @@ function AppContent({ user, signOut }) {
             serverGroups={serverGroups} setServerGroups={setServerGroups}
             srvCount={srvCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged} deviceCatalog={deviceCatalog}
           />
         )}
         {/* ─ SWITCHES ─ */}
@@ -604,7 +604,7 @@ function AppContent({ user, signOut }) {
             switchGroups={switchGroups} setSwitchGroups={setSwitchGroups}
             swCount={swCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged} deviceCatalog={deviceCatalog}
           />
         )}
         {/* ─ CAMERAS ─ */}
@@ -613,7 +613,7 @@ function AppContent({ user, signOut }) {
             cameraGroups={cameraGroups} setCameraGroups={setCameraGroups}
             camCount={camCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged} deviceCatalog={deviceCatalog}
           />
         )}
         {/* ─ ACCESS ─ */}
@@ -622,7 +622,7 @@ function AppContent({ user, signOut }) {
             doorGroups={doorGroups} setDoorGroups={setDoorGroups}
             doorCount={doorCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
-            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged}
+            moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged} deviceCatalog={deviceCatalog}
           />
         )}
         {/* ─ INTRUSION ─ */}

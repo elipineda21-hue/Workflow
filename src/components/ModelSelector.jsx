@@ -1,9 +1,36 @@
 import { F, Inp, Sel } from "./ui";
 
-export default function ModelSelector({ db, brand, model, onBrand, onModel, onApply }) {
-  const brandList = db.map(b => b.brand);
-  const brandEntry = db.find(b => b.brand === brand);
+export default function ModelSelector({ db, catalog, brand, model, onBrand, onModel, onApply }) {
+  // Merge hardcoded db with catalog entries
+  const mergedBrands = new Map();
+
+  // Add hardcoded db entries
+  for (const b of db) {
+    mergedBrands.set(b.brand, { brand: b.brand, models: [...b.models] });
+  }
+
+  // Add catalog entries (if provided)
+  if (catalog && catalog.length > 0) {
+    for (const entry of catalog) {
+      if (!entry.brand || !entry.model) continue;
+      if (mergedBrands.has(entry.brand)) {
+        const existing = mergedBrands.get(entry.brand);
+        if (!existing.models.find(m => m.model === entry.model)) {
+          existing.models.push({ model: entry.model, name: entry.display_name || entry.model });
+        }
+      } else {
+        mergedBrands.set(entry.brand, {
+          brand: entry.brand,
+          models: [{ model: entry.model, name: entry.display_name || entry.model }],
+        });
+      }
+    }
+  }
+
+  const brandList = [...mergedBrands.keys()].sort();
+  const brandEntry = mergedBrands.get(brand);
   const modelList = brandEntry ? brandEntry.models : [];
+
   const handleBrand = (b) => {
     onBrand(b);
     onModel("");
@@ -30,7 +57,7 @@ export default function ModelSelector({ db, brand, model, onBrand, onModel, onAp
         ) : (
           <Sel value={model} onChange={e => handleModel(e.target.value)}>
             <option value="">-- Select Model --</option>
-            {modelList.map(m => <option key={m.model} value={m.model}>{m.name} ({m.model})</option>)}
+            {modelList.map(m => <option key={m.model} value={m.model}>{m.name || m.model} ({m.model})</option>)}
           </Sel>
         )}
       </F>

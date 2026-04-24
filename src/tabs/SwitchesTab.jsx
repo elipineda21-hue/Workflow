@@ -6,7 +6,7 @@ import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
+export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged, deviceCatalog }) {
   return (
     <div>
       <div className="bg-white rounded-xl border border-border overflow-hidden">
@@ -24,6 +24,7 @@ export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, co
               onMove={cat => moveGroup(grp, "switch", cat)}
               currentCategory="switch">
               <ModelSelector db={SWITCH_DB} brand={grp.brand} model={grp.model}
+                catalog={(deviceCatalog || []).filter(c => c.category === "switch")}
                 onBrand={v => updGrp(setSwitchGroups, grp.id, "brand", v)}
                 onModel={v => updGrp(setSwitchGroups, grp.id, "model", v)}
                 onApply={() => {}} />

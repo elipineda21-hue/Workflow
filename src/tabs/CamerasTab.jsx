@@ -7,7 +7,7 @@ import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
+export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged, deviceCatalog }) {
   return (
     <div>
       <div className="bg-white rounded-xl border border-border overflow-hidden">
@@ -25,7 +25,7 @@ export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, co
                 onMove={cat => moveGroup(grp, "camera", cat)}
                 currentCategory="camera">
                 <SectionLabel text="Model" />
-                <ModelSelector db={CAM_DB} brand={grp.brand} model={grp.model}
+                <ModelSelector db={CAM_DB} catalog={(deviceCatalog || []).filter(c => c.category === "camera")} brand={grp.brand} model={grp.model}
                   onBrand={v => updGrp(setCameraGroups, grp.id, "brand", v)}
                   onModel={v => updGrp(setCameraGroups, grp.id, "model", v)}
                   onApply={obj => setCameraGroups(gs => gs.map(g => g.id === grp.id ? {

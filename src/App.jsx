@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { saveWorkOrder, loadWorkOrder, listLibrary, getSpecSheetUrl, listProjectFiles, catalogDevices } from "./supabase";
+import { saveWorkOrder, loadWorkOrder, listLibrary, listCatalog, getSpecSheetUrl, listProjectFiles, catalogDevices } from "./supabase";
 import { C, SOP_VLANS, SOP_SSIDS, SOP_FIREWALL, normalizeBrand } from "./constants";
 import NetworkTab from "./components/NetworkTab";
 import { uid, mkCamGroup, mkSwGrp, mkSrvGrp, mkDoorGrp, mkZoneGrp, mkSpkGrp, getNextIpStart } from "./models";
@@ -147,6 +147,7 @@ function AppContent({ user, signOut }) {
   // living library (Supabase-backed)
   const [library,        setLibrary]        = useState([]);  // all device_library rows
   const [libraryLoading, setLibraryLoading] = useState(false);
+  const [deviceCatalog, setDeviceCatalog] = useState([]);
   const [libUploadForm,  setLibUploadForm]  = useState(null); // null | { category, brand, model, displayName, file, uploading, error }
   const [libShowAll,     setLibShowAll]     = useState(false); // false = show only project-matched entries
   // network config
@@ -268,6 +269,11 @@ function AppContent({ user, signOut }) {
       .then(ps => { setProjects(ps); setLoadingProjects(false); })
       .catch(e => { setProjectsError(e.message || "Failed to load projects"); setLoadingProjects(false); });
   }, [mondayToken, colMap]);
+  // Load device catalog on mount (for model dropdowns)
+  useEffect(() => {
+    listCatalog().then(setDeviceCatalog).catch(() => {});
+  }, []);
+
   // Load library whenever the library or export tab is opened (export needs it for OEM match count)
   useEffect(() => {
     if (tab !== "library" && tab !== "export") return;

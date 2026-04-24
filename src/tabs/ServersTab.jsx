@@ -7,7 +7,7 @@ import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function ServersTab({ serverGroups, setServerGroups, srvCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged }) {
+export default function ServersTab({ serverGroups, setServerGroups, srvCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged, deviceCatalog }) {
   return (
     <div>
       <div className="bg-white rounded-xl border border-border overflow-hidden">
@@ -25,6 +25,7 @@ export default function ServersTab({ serverGroups, setServerGroups, srvCount, co
               onMove={cat => moveGroup(grp, "server", cat)}
               currentCategory="server">
               <ModelSelector db={SERVER_DB} brand={grp.brand} model={grp.model}
+                catalog={(deviceCatalog || []).filter(c => c.category === "server")}
                 onBrand={v => updGrp(setServerGroups, grp.id, "brand", v)}
                 onModel={v => updGrp(setServerGroups, grp.id, "model", v)}
                 onApply={obj => setServerGroups(gs => gs.map(g => g.id === grp.id ? { ...g, os: obj.os || g.os } : g))} />

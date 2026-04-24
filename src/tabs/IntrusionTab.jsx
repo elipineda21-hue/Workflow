@@ -46,12 +46,11 @@ export default function IntrusionTab({ zoneGroups, setZoneGroups, zoneCount, col
               <GenerateBar group={grp} setter={setZoneGroups} genFn={genZone} showIP={false} />
               <DevTable gid={grp.id} setter={setZoneGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkZoneDev(i || grp.devices.length, grp)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Intrusion)`)}
-                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Intrusion)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Intrusion)`); }}
+                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Intrusion)`); }}
                 cols={[
                   { key: "zoneNumber", label: "Zone #", ph: "01" },
                   { key: "name", label: "Zone Name", ph: "e.g. Back Door PIR" },
-                  { key: "location", label: "Location", ph: "" },
-                  { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-501" },
+                  { key: "cableId", label: "Device ID", ph: "e.g. ZDR-001" },
                   { key: "zoneType", label: "Type", ph: "" },
                   { key: "partitions", label: "Partitions", ph: "" },
                   { key: "notes", label: "Notes", ph: "EOL, wiring..." },

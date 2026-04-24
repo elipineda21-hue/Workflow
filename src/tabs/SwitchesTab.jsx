@@ -49,11 +49,10 @@ export default function SwitchesTab({ switchGroups, setSwitchGroups, swCount, co
               <GenerateBar group={grp} setter={setSwitchGroups} genFn={genSw} showIP={!hw} />
               <DevTable gid={grp.id} setter={setSwitchGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkSwDev("", i || grp.devices.length)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Switch)`)}
-                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Switch)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Switch)`); }}
+                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Switch)`); }}
                 cols={[
                   { key: "name", label: "Switch Name", ph: "e.g. CCTV-SW-01" },
-                  { key: "location", label: "Location", ph: "e.g. IDF Room B" },
-                  { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-301" },
+                  { key: "cableId", label: "Device ID", ph: "e.g. NSW-001" },
                   ...(!hw ? [
                     { key: "ip", label: "IP Address", ph: "192.168.x.x" },
                     { key: "mac", label: "MAC", ph: "AA:BB:CC..." },

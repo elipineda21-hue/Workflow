@@ -73,11 +73,10 @@ export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, co
                 <GenerateBar group={grp} setter={setCameraGroups} genFn={genCam} showIP={!hw} />
                 <DevTable gid={grp.id} setter={setCameraGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkCamDev("", i || grp.devices.length)}
                   onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Camera)`)}
-                  onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Camera)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Camera)`); }}
+                  onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Camera)`); }}
                   cols={[
                     { key: "name", label: "Camera Name", ph: "e.g. NE Entry" },
-                    { key: "location", label: "Location", ph: "e.g. NE Corner Lobby" },
-                    { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-101" },
+                    { key: "cableId", label: "Device ID", ph: "e.g. FCAM-001" },
                     ...(!hw ? [
                       { key: "ip", label: "IP Address", ph: "192.168.x.x" },
                       { key: "mac", label: "MAC Address", ph: "AA:BB:CC..." },

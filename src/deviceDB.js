@@ -37,6 +37,12 @@ export const CAM_DB = [
     { model: "5MP-HD-DO1-IR", name: "5MP H5A Dome Outdoor IR", resolution: "5MP", lens: "2.8mm", type: "Outdoor Dome", codec: "H.265", fps: "30", bitrate: "4096", port: "80", rtspPort: "554", ptz: false, specSheet: "" },
     { model: "4K-H4A-DO1-IR", name: "4K H4A Dome Outdoor IR", resolution: "8MP (4K)", lens: "2.8mm", type: "Outdoor Dome", codec: "H.265", fps: "15", bitrate: "8192", port: "80", rtspPort: "554", ptz: false, specSheet: "" },
   ]},
+  { brand: "Digital Watchdog", models: [
+    { model: "DWC-MV95Wi28TW", name: "MEGApix 5MP Vandal Dome", resolution: "5MP", lens: "2.8mm", type: "Outdoor Dome", codec: "H.265", fps: "30", bitrate: "4096", port: "80", rtspPort: "554", ptz: false, specSheet: "" },
+    { model: "DWC-MV84WiA", name: "MEGApix 4MP Vandal Dome", resolution: "4MP", lens: "2.8mm", type: "Outdoor Dome", codec: "H.265", fps: "30", bitrate: "4096", port: "80", rtspPort: "554", ptz: false, specSheet: "" },
+    { model: "DWC-MB44WiA", name: "MEGApix 4MP Bullet", resolution: "4MP", lens: "2.8mm", type: "Bullet", codec: "H.265", fps: "30", bitrate: "4096", port: "80", rtspPort: "554", ptz: false, specSheet: "" },
+    { model: "DWC-MPTZ30X", name: "MEGApix 30x PTZ", resolution: "2MP (1080p)", lens: "Motorized VF", type: "PTZ", codec: "H.265", fps: "30", bitrate: "4096", port: "80", rtspPort: "554", ptz: true, specSheet: "" },
+  ]},
 ];
 
 export const SWITCH_DB = [
@@ -84,6 +90,12 @@ export const SERVER_DB = [
   ]},
   { brand: "Genetec", models: [
     { model: "Stratocast-4T", name: "Stratocast Hybrid 4TB NVR", os: "Genetec Security Center", specSheet: "" },
+  ]},
+  { brand: "Digital Watchdog", models: [
+    { model: "DW-SPECTRUMLSC004", name: "Spectrum IPVMS Server 4-License", os: "DW Spectrum IPVMS", specSheet: "" },
+    { model: "DW-SPECTRUMLSC008", name: "Spectrum IPVMS Server 8-License", os: "DW Spectrum IPVMS", specSheet: "" },
+    { model: "DW-BJBOLT16T", name: "Blackjack BOLT 16-Ch NVR 16TB", os: "DW Spectrum IPVMS", specSheet: "" },
+    { model: "DW-BJCUBE9T", name: "Blackjack Cube 9-Ch NVR 4TB", os: "DW Spectrum IPVMS", specSheet: "" },
   ]},
 ];
 

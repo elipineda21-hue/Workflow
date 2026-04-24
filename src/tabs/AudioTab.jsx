@@ -50,11 +50,10 @@ export default function AudioTab({ speakerGroups, setSpeakerGroups, spkCount, co
               <GenerateBar group={grp} setter={setSpeakerGroups} genFn={genSpk} showIP={!hw} />
               <DevTable gid={grp.id} setter={setSpeakerGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkSpkDev("", i || grp.devices.length)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Audio)`)}
-                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Audio)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Audio)`); }}
+                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Audio)`); }}
                 cols={[
                   { key: "name", label: "Speaker / Zone", ph: "e.g. Lobby 01" },
-                  { key: "location", label: "Location", ph: "" },
-                  { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-601" },
+                  { key: "cableId", label: "Device ID", ph: "e.g. SPK-001" },
                   ...(!hw ? [
                     { key: "ip", label: "IP / Address", ph: "192.168.x.x" },
                   ] : []),

@@ -60,11 +60,10 @@ export default function AccessTab({ doorGroups, setDoorGroups, doorCount, collap
               <GenerateBar group={grp} setter={setDoorGroups} genFn={genDoor} showIP={false} />
               <DevTable gid={grp.id} setter={setDoorGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkDoorDev(i || grp.devices.length)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Access)`)}
-                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Access)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Access)`); }}
+                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Access)`); }}
                 cols={[
                   { key: "name", label: "Door Name", ph: "e.g. Main Entry" },
-                  { key: "location", label: "Location", ph: "e.g. Lobby" },
-                  { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-401" },
+                  { key: "cableId", label: "Device ID", ph: "e.g. IDR-001" },
                   { key: "controllerName", label: "Controller", ph: "" },
                   { key: "controllerIP", label: "Controller IP", ph: "192.168.x.x" },
                   { key: "controllerSerial", label: "Ctrl S/N", ph: "" },

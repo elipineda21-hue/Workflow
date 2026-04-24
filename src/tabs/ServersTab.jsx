@@ -56,11 +56,10 @@ export default function ServersTab({ serverGroups, setServerGroups, srvCount, co
               <GenerateBar group={grp} setter={setServerGroups} genFn={genSrv} showIP={!hw} />
               <DevTable gid={grp.id} setter={setServerGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkSrvDev("", i || grp.devices.length)}
                 onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Server)`)}
-                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Server)`); else if (key === "location") addLog("location_set", `Location "${newVal}" set (Server)`); }}
+                onFieldLog={(key, oldVal, newVal) => { if (!newVal) return; if (key === "name") addLog("name_change", `"${oldVal || "—"}" → "${newVal}" (Server)`); }}
                 cols={[
                   { key: "name", label: "Server Name", ph: "e.g. VMS-01" },
-                  { key: "location", label: "Location", ph: "e.g. Server Room" },
-                  { key: "cableId", label: "Blueprint ID", ph: "e.g. CR-201" },
+                  { key: "cableId", label: "Device ID", ph: "e.g. SVR-001" },
                   ...(!hw ? [
                     { key: "ip", label: "IP Address", ph: "192.168.x.x" },
                     { key: "mac", label: "MAC", ph: "AA:BB:CC..." },

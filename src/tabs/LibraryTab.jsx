@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { uploadSpecSheet, listLibrary, deleteLibraryEntry, getSpecSheetUrl, catalogDevice, listCatalog, deleteCatalogEntry, updateCatalogEntry, updateLibraryEntry, addDeviceToProject, removeDeviceFromProject, listProjectDeviceIds } from "../supabase";
 import { normalizeBrand } from "../constants";
+import { Tog } from "../components/ui";
 
 const CAT_META = {
   camera:  { label: "CCTV / Cameras" },
@@ -94,6 +95,9 @@ export default function LibraryTab({
   const uploadForRef = useRef(null);
   const uploadForEntryRef = useRef(null);
   const [projectDeviceIds, setProjectDeviceIds] = useState({ lib: new Set(), cat: new Set() });
+  const [sortBy, setSortBy] = useState("brand");
+  const [groupByBrand, setGroupByBrand] = useState(false);
+  const [collapsedBrands, setCollapsedBrands] = useState(new Set());
 
   // Load catalog + project associations on mount
   useEffect(() => {
@@ -292,7 +296,46 @@ export default function LibraryTab({
   const hasProjectDevices = projectDeviceIds.lib.size > 0 || projectDeviceIds.cat.size > 0 || projectKeys.size > 0;
   const matchedRows = combined.filter(isProjectMatch);
   const matchCount = matchedRows.length;
-  const visibleRows = (hasProjectDevices && !libShowAll) ? matchedRows : combined;
+  const filteredRows = (hasProjectDevices && !libShowAll) ? matchedRows : combined;
+
+  // Apply sorting AFTER merge
+  const sortedRows = [...filteredRows].sort((a, b) => {
+    switch (sortBy) {
+      case "brand":
+        return a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model);
+      case "category": {
+        const ci = CAT_ORDER.indexOf(a.category) - CAT_ORDER.indexOf(b.category);
+        if (ci !== 0) return ci;
+        return a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model);
+      }
+      case "model":
+        return a.model.localeCompare(b.model);
+      case "recent":
+        return (b.seen_count || 0) - (a.seen_count || 0) || a.brand.localeCompare(b.brand);
+      default:
+        return 0;
+    }
+  });
+  const visibleRows = sortedRows;
+
+  // Build grouped structure when groupByBrand is on
+  const brandGroups = groupByBrand
+    ? visibleRows.reduce((acc, entry) => {
+        const brand = entry.brand || "Unknown";
+        if (!acc.has(brand)) acc.set(brand, []);
+        acc.get(brand).push(entry);
+        return acc;
+      }, new Map())
+    : null;
+
+  const toggleBrandCollapse = (brand) => {
+    setCollapsedBrands(prev => {
+      const next = new Set(prev);
+      if (next.has(brand)) next.delete(brand);
+      else next.add(brand);
+      return next;
+    });
+  };
 
   const loading = libraryLoading || !catalogLoaded;
 

@@ -101,26 +101,40 @@ export async function parseSystemSurveyorXlsx(file) {
   const devices = [];
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
   const lastRow = range.e.r;
+  const lastCol = range.e.c;
 
-  // Find the header row (look for "System Type" in column B)
-  let headerRow = 14; // default: row 15 (0-indexed 14)
-  for (let r = 0; r <= Math.min(lastRow, 30); r++) {
-    const val = String(cellValue(sheet, r, 1)).trim().toLowerCase();
-    if (val === "system type") {
-      headerRow = r;
-      break;
-    }
+  // Debug: dump first rows
+  for (let r = 0; r <= Math.min(lastRow, 16); r++) {
+    const vals = [];
+    for (let c = 0; c <= Math.min(lastCol, 10); c++) vals.push(XLSX.utils.encode_col(c) + "=" + cellValue(sheet, r, c));
+    console.log("Row " + r + ":", vals.join(" | "));
   }
-  console.log("System Surveyor: header row", headerRow, "data starts at", headerRow + 1);
+
+  // Find the header row (search ALL columns for "System Type")
+  let headerRow = -1;
+  let systemTypeCol = 1;
+  for (let r = 0; r <= Math.min(lastRow, 30); r++) {
+    for (let c = 0; c <= Math.min(lastCol || 10, 10); c++) {
+      const val = String(cellValue(sheet, r, c)).trim().toLowerCase();
+      if (val === "system type") { headerRow = r; systemTypeCol = c; break; }
+    }
+    if (headerRow >= 0) break;
+  }
+  if (headerRow < 0) {
+    console.error("System Surveyor: could not find 'System Type' header");
+    return { siteInfo, devices: [] };
+  }
+  const colOffset = systemTypeCol - 1;
+  console.log("System Surveyor: headerRow", headerRow, "systemTypeCol", systemTypeCol, "colOffset", colOffset);
 
   for (let r = headerRow + 1; r <= lastRow; r++) {
-    // Skip empty rows (check column B = systemType)
-    const systemType = String(cellValue(sheet, r, 1)).trim();
+    // Skip empty rows
+    const systemType = String(cellValue(sheet, r, systemTypeCol)).trim();
     if (!systemType) continue;
 
     const device = {};
     for (const { col, key } of DEVICE_COLUMNS) {
-      let val = cellValue(sheet, r, col);
+      let val = cellValue(sheet, r, col + colOffset);
       // Coerce quantity to number
       if (key === "quantity") {
         val = val === "" || val == null ? 1 : Number(val) || 1;

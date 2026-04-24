@@ -738,6 +738,7 @@ function AppContent({ user, signOut }) {
         open={pdfImportOpen}
         onClose={() => setPdfImportOpen(false)}
         onImport={handlePdfImport}
+        existingGroups={[...cameraGroups, ...switchGroups, ...serverGroups, ...doorGroups, ...zoneGroups, ...speakerGroups]}
       />
       <ImportPreviewModal
         importPreview={importPreview} setImportPreview={setImportPreview}

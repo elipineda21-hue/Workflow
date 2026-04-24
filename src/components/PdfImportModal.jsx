@@ -1,8 +1,9 @@
 import { useState, useRef } from "react";
 import { extractPdfText, parsePdfParts } from "../utils/parsePdfParts";
 import { CAT_OPTIONS } from "../constants";
+import { normalizeBrand } from "../constants";
 
-export default function PdfImportModal({ open, onClose, onImport }) {
+export default function PdfImportModal({ open, onClose, onImport, existingGroups }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,7 +33,15 @@ export default function PdfImportModal({ open, onClose, onImport }) {
         setLoading(false);
         return;
       }
-      setItems(parsed.map((p, i) => ({ ...p, _idx: i, _include: true })));
+      // Build set of existing brand|model keys to auto-detect duplicates
+      const existingKeys = new Set(
+        (existingGroups || []).map(g => `${normalizeBrand(g.brand)}|${g.model}`.toLowerCase()).filter(k => k !== "|")
+      );
+      setItems(parsed.map((p, i) => {
+        const key = `${normalizeBrand(p.brand)}|${p.model}`.toLowerCase();
+        const isDuplicate = existingKeys.has(key);
+        return { ...p, _idx: i, _include: !isDuplicate, _duplicate: isDuplicate };
+      }));
     } catch (err) {
       console.error("PDF import error:", err);
       setError("Error reading PDF: " + (err.message || String(err)));
@@ -113,7 +122,10 @@ export default function PdfImportModal({ open, onClose, onImport }) {
                           className="w-3.5 h-3.5 accent-accent" />
                       </td>
                       <td className="px-2 py-1.5 text-muted text-[10px]">{item.lineNum}</td>
-                      <td className="px-2 py-1.5 text-navy font-semibold">{item.brand}</td>
+                      <td className="px-2 py-1.5 text-navy font-semibold">
+                        {item.brand}
+                        {item._duplicate && <span className="ml-1.5 text-[9px] font-semibold text-muted bg-border/50 rounded px-1 py-0.5">EXISTS</span>}
+                      </td>
                       <td className="px-2 py-1.5 text-navy font-mono text-[11px]">{item.model}</td>
                       <td className="px-2 py-1.5 w-[60px]">
                         <input type="number" min="1" value={item.qty}

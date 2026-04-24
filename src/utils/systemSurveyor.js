@@ -81,7 +81,10 @@ export async function parseSystemSurveyorXlsx(file) {
     : await file.arrayBuffer();
 
   const wb = XLSX.read(buf, { type: "array" });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
+  // Try "Summary Table" sheet first, fall back to first sheet
+  const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes("summary")) || wb.SheetNames[0];
+  const sheet = wb.Sheets[sheetName];
+  console.log("System Surveyor: using sheet", sheetName, "from", wb.SheetNames);
 
   // ── Site info (rows are 1-indexed in spec, 0-indexed here) ──
   const siteInfo = {
@@ -94,12 +97,23 @@ export async function parseSystemSurveyorXlsx(file) {
     exportDate:  String(cellValue(sheet, 11, 3)),  // Row 12, col D
   };
 
-  // ── Device table (header row 15 = index 14, data from row 16 = index 15+) ──
+  // ── Device table — auto-detect header row by finding "System Type" ──
   const devices = [];
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
   const lastRow = range.e.r;
 
-  for (let r = 15; r <= lastRow; r++) {
+  // Find the header row (look for "System Type" in column B)
+  let headerRow = 14; // default: row 15 (0-indexed 14)
+  for (let r = 0; r <= Math.min(lastRow, 30); r++) {
+    const val = String(cellValue(sheet, r, 1)).trim().toLowerCase();
+    if (val === "system type") {
+      headerRow = r;
+      break;
+    }
+  }
+  console.log("System Surveyor: header row", headerRow, "data starts at", headerRow + 1);
+
+  for (let r = headerRow + 1; r <= lastRow; r++) {
     // Skip empty rows (check column B = systemType)
     const systemType = String(cellValue(sheet, r, 1)).trim();
     if (!systemType) continue;

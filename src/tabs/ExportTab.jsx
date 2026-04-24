@@ -28,12 +28,22 @@ export default function ExportTab({
   const handleSsImport = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    console.log("System Surveyor import: file selected", file.name, file.size);
     setSsImporting(true);
     setSsError("");
     try {
       const result = await parseSystemSurveyorXlsx(file);
+      console.log("System Surveyor parsed:", result.siteInfo, result.devices?.length, "devices");
+      if (!result.devices || result.devices.length === 0) {
+        setSsError("No devices found in this file. Make sure it's a System Surveyor batch export with the 'Summary Table' sheet.");
+        setSsImporting(false);
+        e.target.value = "";
+        return;
+      }
       if (onSystemSurveyorImport) onSystemSurveyorImport(result);
+      setSsError(`Imported ${result.devices.length} devices from "${result.siteInfo?.name || file.name}"`);
     } catch (err) {
+      console.error("System Surveyor import error:", err);
       setSsError(err.message || "Failed to parse System Surveyor file");
     }
     setSsImporting(false);
@@ -137,7 +147,7 @@ export default function ExportTab({
             <input
               ref={ssFileRef}
               type="file"
-              accept=".xlsx"
+              accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className="hidden"
               onChange={handleSsImport}
             />

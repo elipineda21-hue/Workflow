@@ -30,6 +30,25 @@ export const ZONE_TYPES = ["Motion","Door Contact","Glass Break","Smoke","CO","H
 export const SERVER_ROLES = ["VMS Server","NVR","DVR","Access Control Server","Video Analytics","Storage Array","Workstation","Other"];
 export const SOFTWARE_TYPES = ["VMS License","Access Control License","Cloud Subscription","Firmware","Analytics","Integration","Monitoring","Other"];
 
+// ── Camera Programming Profiles ──────────────────────────────────────────────
+export const CAM_PROFILES = {
+  default: {
+    label: "Default",
+    main: { codec: "H.265", resolution: "4MP", fps: "15", bitrate: "4096" },
+    sub:  { codec: "H.264", resolution: "1MP (720p)", fps: "7", bitrate: "512" },
+  },
+  remoteGuarding: {
+    label: "Remote Guarding",
+    main: { codec: "H.265", resolution: "4MP", fps: "10", bitrate: "3072" },
+    sub:  { codec: "H.264", resolution: "2MP (1080p)", fps: "10", bitrate: "1024" },
+  },
+  custom: {
+    label: "Custom",
+    main: null,
+    sub: null,
+  },
+};
+
 // ── Platform lists per system type ───────────────────────────────────────────
 export const CCTV_PLATFORMS = ["Avigilon (Motorola)","Milestone","Genetec","Digital Watchdog","Hanwha WAVE","Verkada","Rhombus","ExacqVision","Hikvision iVMS","UniView EZStation","Other"];
 export const ACCESS_PLATFORMS = ["Brivo","PDK (ProdataKey)","Genetec Synergis","LenelS2","Honeywell Pro-Watch","AMAG Symmetry","Verkada","Avigilon Alta","Salto","Allegion","Other"];

@@ -113,8 +113,10 @@ export async function deleteLibraryEntry(id, filePath) {
   if (dbErr) throw dbErr;
 }
 
-// Get the public download URL for a stored spec sheet
+// Get download URL for a stored spec sheet
+// Uses public URL for now (sync) — signed URLs require async refactor of all callers
 export function getSpecSheetUrl(filePath) {
+  if (!filePath) return null;
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
   return data?.publicUrl || null;
 }
@@ -160,6 +162,7 @@ export async function deleteProjectFile(id, filePath) {
 }
 
 export function getProjectFileUrl(filePath) {
+  if (!filePath) return null;
   const { data } = supabase.storage.from(FILES_BUCKET).getPublicUrl(filePath);
   return data?.publicUrl || null;
 }

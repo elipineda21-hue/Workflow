@@ -329,7 +329,7 @@ function AppContent({ user, signOut }) {
       if (closeoutBytes) await appendPdfBytes(closeoutBytes);
     } catch (e) { console.warn("Could not generate close-out PDF:", e); }
     // 3. Spec sheet PDFs — auto-match from living library by brand+model
-    const allGroups = [...cameraGroups, ...doorGroups, ...zoneGroups, ...speakerGroups, ...switchGroups, ...serverGroups];
+    const allGroups = [...cameraGroups, ...doorGroups, ...zoneGroups, ...speakerGroups, ...switchGroups, ...serverGroups, ...softwareGroups];
     const usedKeys  = new Set(allGroups.map(g => `${g.brand}|${g.model}`.toLowerCase()));
     const matched   = library.filter(e => usedKeys.has(`${e.brand}|${e.model}`.toLowerCase()));
     for (const entry of matched) {
@@ -387,6 +387,7 @@ function AppContent({ user, signOut }) {
     setDoorGroups(g => [...g, ...newGroups.doorGroups]);
     setZoneGroups(g => [...g, ...newGroups.zoneGroups]);
     setSpeakerGroups(g => [...g, ...newGroups.speakerGroups]);
+    if (newGroups.softwareGroups) setSoftwareGroups(g => [...g, ...newGroups.softwareGroups]);
     setImportPreview(null);
     setSaveStatus("saved");
     setTimeout(() => setSaveStatus("idle"), 3000);
@@ -453,8 +454,8 @@ function AppContent({ user, signOut }) {
       if (!grouped[key]) grouped[key] = { cat, brand: normalizeBrand(dev.brand) || "", model: dev.model || "", devices: [] };
       grouped[key].devices.push(dev);
     }
-    const makers = { camera: mkCamGroup, switch: mkSwGrp, server: mkSrvGrp, door: mkDoorGrp, zone: mkZoneGrp, speaker: mkSpkGrp };
-    const setters = { camera: setCameraGroups, switch: setSwitchGroups, server: setServerGroups, door: setDoorGroups, zone: setZoneGroups, speaker: setSpeakerGroups };
+    const makers = { camera: mkCamGroup, switch: mkSwGrp, server: mkSrvGrp, door: mkDoorGrp, zone: mkZoneGrp, speaker: mkSpkGrp, software: mkSoftGrp };
+    const setters = { camera: setCameraGroups, switch: setSwitchGroups, server: setServerGroups, door: setDoorGroups, zone: setZoneGroups, speaker: setSpeakerGroups, software: setSoftwareGroups };
     let totalImported = 0;
     for (const g of Object.values(grouped)) {
       const mk = makers[g.cat];
@@ -488,8 +489,8 @@ function AppContent({ user, signOut }) {
 
   // PDF parts import handler
   const handlePdfImport = (items) => {
-    const makers = { camera: mkCamGroup, switch: mkSwGrp, server: mkSrvGrp, door: mkDoorGrp, zone: mkZoneGrp, speaker: mkSpkGrp };
-    const setters = { camera: setCameraGroups, switch: setSwitchGroups, server: setServerGroups, door: setDoorGroups, zone: setZoneGroups, speaker: setSpeakerGroups };
+    const makers = { camera: mkCamGroup, switch: mkSwGrp, server: mkSrvGrp, door: mkDoorGrp, zone: mkZoneGrp, speaker: mkSpkGrp, software: mkSoftGrp };
+    const setters = { camera: setCameraGroups, switch: setSwitchGroups, server: setServerGroups, door: setDoorGroups, zone: setZoneGroups, speaker: setSpeakerGroups, software: setSoftwareGroups };
     for (const item of items) {
       const mk = makers[item.category];
       const setter = setters[item.category];
@@ -514,6 +515,7 @@ function AppContent({ user, signOut }) {
     { id: "cameras",   label: "CCTV",          icon: "📷", count: camCount },
     { id: "intrusion", label: "Intrusion",     icon: "🔔", count: zoneCount },
     { id: "servers",   label: "Server / NVR",  icon: "🖥", count: srvCount },
+    { id: "software",  label: "Software",     icon: "💿", count: softCount },
     { id: "switches",  label: "Switching",     icon: "🔀", count: swCount },
     // ── Network ───────────────────────────────────────────────────────────────
     { id: "network",   label: "Network",       icon: "🌐" },
@@ -542,6 +544,7 @@ function AppContent({ user, signOut }) {
         setCameraGroups={setCameraGroups} setSwitchGroups={setSwitchGroups}
         setServerGroups={setServerGroups} setDoorGroups={setDoorGroups}
         setZoneGroups={setZoneGroups} setSpeakerGroups={setSpeakerGroups}
+        setSoftwareGroups={setSoftwareGroups}
         setLaborBudget={setLaborBudget} setLaborActual={setLaborActual}
         setSpecSheetUrls={setSpecSheetUrls} setChangeLog={setChangeLog}
         setNetworkConfig={setNetworkConfig}
@@ -590,8 +593,9 @@ function AppContent({ user, signOut }) {
           <InfoTab info={info} setI={setI} nvrInfo={nvrInfo} setNV={setNV} panelInfo={panelInfo} setPan={setPan} accessInfo={accessInfo} setAcc={setAcc}
             cameraGroups={cameraGroups} switchGroups={switchGroups} serverGroups={serverGroups}
             doorGroups={doorGroups} zoneGroups={zoneGroups} speakerGroups={speakerGroups}
+            softwareGroups={softwareGroups}
             camCount={camCount} swCount={swCount} srvCount={srvCount}
-            doorCount={doorCount} zoneCount={zoneCount} spkCount={spkCount}
+            doorCount={doorCount} zoneCount={zoneCount} spkCount={spkCount} softCount={softCount}
             totalDevices={totalDevices} networkConfig={networkConfig}
           />
         )}
@@ -602,6 +606,15 @@ function AppContent({ user, signOut }) {
             srvCount={srvCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
             moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged} deviceCatalog={deviceCatalog}
+          />
+        )}
+        {/* ─ SOFTWARE ─ */}
+        {tab === "software" && (
+          <SoftwareTab
+            softwareGroups={softwareGroups} setSoftwareGroups={setSoftwareGroups}
+            softCount={softCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
+            addLog={addLog}
+            moveGroup={moveGroup}
           />
         )}
         {/* ─ SWITCHES ─ */}
@@ -672,6 +685,7 @@ function AppContent({ user, signOut }) {
             cameraGroups={cameraGroups} doorGroups={doorGroups}
             speakerGroups={speakerGroups} zoneGroups={zoneGroups}
             serverGroups={serverGroups} switchGroups={switchGroups}
+            softwareGroups={softwareGroups}
             laborBudget={laborBudget} laborActual={laborActual}
             LABOR_TYPES={LABOR_TYPES} changeLog={changeLog} setChangeLog={setChangeLog}
             webhookUrl={webhookUrl} setWebhookUrl={setWebhookUrl}
@@ -691,6 +705,7 @@ function AppContent({ user, signOut }) {
             doorGroups={doorGroups} setDoorGroups={setDoorGroups}
             zoneGroups={zoneGroups} setZoneGroups={setZoneGroups}
             speakerGroups={speakerGroups} setSpeakerGroups={setSpeakerGroups}
+            softwareGroups={softwareGroups} setSoftwareGroups={setSoftwareGroups}
             mondaySyncEnabled={mondaySyncEnabled} setMondaySyncEnabled={setMondaySyncEnabled}
             mondaySyncColId={mondaySyncColId} setMondaySyncColId={setMondaySyncColId}
             addLog={addLog} selectedProject={selectedProject}
@@ -715,6 +730,7 @@ function AppContent({ user, signOut }) {
             libShowAll={libShowAll} setLibShowAll={setLibShowAll}
             cameraGroups={cameraGroups} doorGroups={doorGroups} zoneGroups={zoneGroups}
             speakerGroups={speakerGroups} switchGroups={switchGroups} serverGroups={serverGroups}
+            softwareGroups={softwareGroups}
             selectedProject={selectedProject}
           />
         )}
@@ -724,8 +740,9 @@ function AppContent({ user, signOut }) {
           <ExportTab
             cameraGroups={cameraGroups} switchGroups={switchGroups} serverGroups={serverGroups}
             doorGroups={doorGroups} zoneGroups={zoneGroups} speakerGroups={speakerGroups}
+            softwareGroups={softwareGroups}
             camCount={camCount} swCount={swCount} srvCount={srvCount}
-            doorCount={doorCount} zoneCount={zoneCount} spkCount={spkCount}
+            doorCount={doorCount} zoneCount={zoneCount} spkCount={spkCount} softCount={softCount}
             totalDevices={totalDevices} generating={generating} sdkReady={sdkReady}
             pdfLibReady={pdfLibReady} handleCSV={handleCSV} handleGenerate={handleGenerate}
             buildOEMManual={buildOEMManual} importFileRef={importFileRef}
@@ -745,7 +762,7 @@ function AppContent({ user, signOut }) {
         open={pdfImportOpen}
         onClose={() => setPdfImportOpen(false)}
         onImport={handlePdfImport}
-        existingGroups={[...cameraGroups, ...switchGroups, ...serverGroups, ...doorGroups, ...zoneGroups, ...speakerGroups]}
+        existingGroups={[...cameraGroups, ...switchGroups, ...serverGroups, ...doorGroups, ...zoneGroups, ...speakerGroups, ...softwareGroups]}
       />
       <ImportPreviewModal
         importPreview={importPreview} setImportPreview={setImportPreview}

@@ -206,6 +206,7 @@ function AppContent({ user, signOut }) {
             ...(snap.cameraGroups || []), ...(snap.switchGroups || []),
             ...(snap.serverGroups || []), ...(snap.doorGroups   || []),
             ...(snap.zoneGroups   || []), ...(snap.speakerGroups || []),
+            ...(snap.softwareGroups || []),
           ].flatMap(g => g.devices || []);
           const total = allDevs.length;
           const pgmd  = allDevs.filter(d => d.programmed).length;
@@ -227,9 +228,9 @@ function AppContent({ user, signOut }) {
   // Watch all state and auto-save when anything changes (only in build phase)
   useEffect(() => {
     if (phase !== "build" || !selectedProject) return;
-    const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig, miscHardware };
+    const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, softwareGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig, miscHardware };
     triggerSave(snap, selectedProject);
-  }, [info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig, miscHardware]); // eslint-disable-line
+  }, [info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, softwareGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig, miscHardware]); // eslint-disable-line
   // Flush save on tab close / refresh
   useEffect(() => {
     const handleUnload = () => { if (selectedProject) flushSave(selectedProject); };
@@ -294,7 +295,7 @@ function AppContent({ user, signOut }) {
       .then(rows => { setProjectFiles(rows); setFilesLoading(false); })
       .catch(() => setFilesLoading(false));
   }, [tab, selectedProject]);
-  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, ...accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, specSheetUrls, changeLog, networkConfig, miscHardware });
+  const stateSnapshot = () => ({ ...info, ...nvrInfo, ...panelInfo, ...accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, softwareGroups, specSheetUrls, changeLog, networkConfig, miscHardware });
   const projectMeta  = () => ({ name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" });
   const handleCSV = () => {
     try { buildCSV(stateSnapshot(), projectMeta()); }
@@ -399,7 +400,7 @@ function AppContent({ user, signOut }) {
     if (p.id === selectedProject?.id) return;
     // Save current project first
     if (selectedProject?.id) {
-      const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig, miscHardware };
+      const snap = { info, nvrInfo, panelInfo, accessInfo, cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, softwareGroups, laborBudget, laborActual, specSheetUrls, changeLog, networkConfig, miscHardware };
       await flushSave(selectedProject, snap);
     }
     // Load new project
@@ -418,6 +419,7 @@ function AppContent({ user, signOut }) {
         setDoorGroups(s.doorGroups || []);
         setZoneGroups(s.zoneGroups || []);
         setSpeakerGroups(s.speakerGroups || []);
+        setSoftwareGroups(s.softwareGroups || []);
         if (s.laborBudget) setLaborBudget(s.laborBudget);
         if (s.laborActual) setLaborActual(s.laborActual);
         if (s.specSheetUrls) setSpecSheetUrls(s.specSheetUrls);

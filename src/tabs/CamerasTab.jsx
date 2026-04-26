@@ -7,7 +7,7 @@ import DevTable from "../components/DevTable";
 import ModelSelector from "../components/ModelSelector";
 import GenerateBar from "../components/GenerateBar";
 
-export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged, deviceCatalog }) {
+export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, collapsed, toggleCollapse, addLog, moveGroup, networkConfig, allGroupsTagged, deviceCatalog, nvrInfo }) {
   return (
     <div>
       <div className="bg-white rounded-xl border border-border overflow-hidden">
@@ -60,16 +60,11 @@ export default function CamerasTab({ cameraGroups, setCameraGroups, camCount, co
                       <F label="Bitrate (kbps)"><Inp value={grp.bitrate} onChange={e => updGrp(setCameraGroups, grp.id, "bitrate", e.target.value)} placeholder="e.g. 4096" /></F>
                       <F label="Username"><Inp value={grp.username} onChange={e => updGrp(setCameraGroups, grp.id, "username", e.target.value)} /></F>
                       <F label="Password"><Inp value={grp.password} onChange={e => updGrp(setCameraGroups, grp.id, "password", e.target.value)} /></F>
-                      <F label="Storage Group"><Inp value={grp.storageGroup} onChange={e => updGrp(setCameraGroups, grp.id, "storageGroup", e.target.value)} /></F>
+                      <F label="VMS Platform"><Sel value={grp.platform || nvrInfo?.vmsSoftware || ""} onChange={e => updGrp(setCameraGroups, grp.id, "platform", e.target.value)}><option value="">Select...</option>{CCTV_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
                       <F label="PTZ"><div className="pt-1.5"><Tog label="PTZ Enabled" val={grp.ptz} set={v => updGrp(setCameraGroups, grp.id, "ptz", v)} /></div></F>
                     </G>
                   </>
                 )}
-                {/* Group label always visible */}
-                <G cols={3}>
-                  <F label="Group Label"><Inp value={grp.groupLabel} onChange={e => updGrp(setCameraGroups, grp.id, "groupLabel", e.target.value)} placeholder="e.g. Perimeter Cameras" /></F>
-                  <F label="VMS Platform"><Sel value={grp.platform || ""} onChange={e => updGrp(setCameraGroups, grp.id, "platform", e.target.value)}><option value="">Select...</option>{CCTV_PLATFORMS.map(o => <option key={o}>{o}</option>)}</Sel></F>
-                </G>
                 <GenerateBar group={grp} setter={setCameraGroups} genFn={genCam} showIP={!hw} />
                 <DevTable gid={grp.id} setter={setCameraGroups} noProgramming={hw} devices={grp.devices} newDevFn={(i) => mkCamDev("", i || grp.devices.length)}
                   onLog={(name, done) => addLog(done ? "programmed" : "unprogrammed", `${done ? "✓" : "○"} ${name} (Camera)`)}

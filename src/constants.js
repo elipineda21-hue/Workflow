@@ -14,6 +14,7 @@ export const CAT_OPTIONS = [
   { value: "speaker", label: "Audio",            icon: "🔊" },
   { value: "switch",  label: "Network Switch",   icon: "🔀" },
   { value: "server",  label: "Server / NVR",     icon: "🖥" },
+  { value: "software", label: "Software & Licenses", icon: "💿" },
   { value: "unknown", label: "Skip",             icon: "⊘" },
 ];
 
@@ -27,6 +28,7 @@ export const CRED_TYPES = ["Prox Card","Smart Card","Mobile","PIN","Biometric","
 export const LOCK_TYPES = ["Mag Lock","Electric Strike","Electronic Deadbolt","Other"];
 export const ZONE_TYPES = ["Motion","Door Contact","Glass Break","Smoke","CO","Heat","Panic","Tamper"];
 export const SERVER_ROLES = ["VMS Server","NVR","DVR","Access Control Server","Video Analytics","Storage Array","Workstation","Other"];
+export const SOFTWARE_TYPES = ["VMS License","Access Control License","Cloud Subscription","Firmware","Analytics","Integration","Monitoring","Other"];
 
 // ── Platform lists per system type ───────────────────────────────────────────
 export const CCTV_PLATFORMS = ["Avigilon (Motorola)","Milestone","Genetec","Digital Watchdog","Hanwha WAVE","Verkada","Rhombus","ExacqVision","Hikvision iVMS","UniView EZStation","Other"];

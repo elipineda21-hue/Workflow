@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { saveWorkOrder, loadWorkOrder, listLibrary, listCatalog, getSpecSheetUrl, listProjectFiles, catalogDevices } from "./supabase";
 import { C, SOP_VLANS, SOP_SSIDS, SOP_FIREWALL, normalizeBrand } from "./constants";
 import NetworkTab from "./components/NetworkTab";
-import { uid, mkCamGroup, mkSwGrp, mkSrvGrp, mkDoorGrp, mkZoneGrp, mkSpkGrp, getNextIpStart } from "./models";
+import { uid, mkCamGroup, mkSwGrp, mkSrvGrp, mkDoorGrp, mkZoneGrp, mkSpkGrp, mkSoftGrp, getNextIpStart } from "./models";
 import { fetchProjects, pushMondayUpdate } from "./api/monday";
 import { parseCSVLine, parseProposalCSV, buildGroupsFromRows } from "./api/portal";
 import { buildCSV } from "./utils/buildCSV";
@@ -27,6 +27,7 @@ import SwitchesTab from "./tabs/SwitchesTab";
 import FilesTab from "./tabs/FilesTab";
 import LibraryTab from "./tabs/LibraryTab";
 import ExportTab from "./tabs/ExportTab";
+import SoftwareTab from "./tabs/SoftwareTab";
 // ── Toast helper (simple alert fallback) ─────────────────────────────────────
 const showToast = (msg) => alert(msg);
 
@@ -97,6 +98,7 @@ function AppContent({ user, signOut }) {
   const [doorGroups,    setDoorGroups]    = useState([]);
   const [zoneGroups,    setZoneGroups]    = useState([]);
   const [speakerGroups, setSpeakerGroups] = useState([]);
+  const [softwareGroups, setSoftwareGroups] = useState([]);
   // collapse state per group
   const [collapsed, setCollapsed] = useState({});
   const toggleCollapse = (id) => setCollapsed(s => ({ ...s, [id]: !s[id] }));
@@ -113,7 +115,7 @@ function AppContent({ user, signOut }) {
   // move group between categories
   const categorySetters = {
     camera: setCameraGroups, switch: setSwitchGroups, server: setServerGroups,
-    door: setDoorGroups, zone: setZoneGroups, speaker: setSpeakerGroups,
+    door: setDoorGroups, zone: setZoneGroups, speaker: setSpeakerGroups, software: setSoftwareGroups,
   };
   const moveGroup = (group, fromCat, toCat) => {
     if (fromCat === toCat) return;
@@ -133,7 +135,8 @@ function AppContent({ user, signOut }) {
     ...doorGroups.map(g => ({ ...g, _cat: "door" })),
     ...zoneGroups.map(g => ({ ...g, _cat: "zone" })),
     ...speakerGroups.map(g => ({ ...g, _cat: "speaker" })),
-  ], [cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups]);
+    ...softwareGroups.map(g => ({ ...g, _cat: "software" })),
+  ], [cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, softwareGroups]);
   // proposal import
   const [importPreview, setImportPreview] = useState(null); // { proposalId, rows, overrideCats: {index: category} }
   const [pdfImportOpen, setPdfImportOpen] = useState(false);
@@ -161,7 +164,7 @@ function AppContent({ user, signOut }) {
     setPanel({ panelBrand: "", panelModel: "", panelSerial: "", panelFirmware: "" });
     setAccess({ accessPlatform: "", controllerBrand: "", controllerModel: "", controllerIp: "", controllerSerial: "", firmware: "", totalDoors: "", credentialFormat: "" });
     setCameraGroups([]); setSwitchGroups([]); setServerGroups([]);
-    setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]);
+    setDoorGroups([]); setZoneGroups([]); setSpeakerGroups([]); setSoftwareGroups([]);
     setLaborBudget(emptyLabor()); setLaborActual(emptyLabor());
     setCollapsed({}); setDashCollapsed({}); setSaveStatus("idle");
     setSpecSheetUrls({}); setCoverPageFile(null); setLibUploadForm(null);
@@ -175,7 +178,8 @@ function AppContent({ user, signOut }) {
   const doorCount = doorGroups.reduce((s, g) => s + g.devices.length, 0);
   const zoneCount = zoneGroups.reduce((s, g) => s + g.devices.length, 0);
   const spkCount  = speakerGroups.reduce((s, g) => s + g.devices.length, 0);
-  const totalDevices = camCount + swCount + srvCount + doorCount + zoneCount + spkCount;
+  const softCount = softwareGroups.reduce((s, g) => s + g.devices.length, 0);
+  const totalDevices = camCount + swCount + srvCount + doorCount + zoneCount + spkCount + softCount;
   // field setters
   const setI   = (k, v) => setInfo(s => ({ ...s, [k]: v }));
   const setNV  = (k, v) => setNVR(s => ({ ...s, [k]: v }));
@@ -614,6 +618,7 @@ function AppContent({ user, signOut }) {
             camCount={camCount} collapsed={collapsed} toggleCollapse={toggleCollapse}
             addLog={addLog}
             moveGroup={moveGroup} networkConfig={networkConfig} allGroupsTagged={allGroupsTagged} deviceCatalog={deviceCatalog}
+            nvrInfo={nvrInfo}
           />
         )}
         {/* ─ ACCESS ─ */}

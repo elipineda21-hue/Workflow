@@ -44,7 +44,7 @@ export default function ModelSelector({ db, catalog, brand, model, onBrand, onMo
   };
   return (
     <div className="grid gap-2.5" style={{ gridTemplateColumns: "1fr 2fr" }}>
-      <F label="Brand">
+      <F label="Manufacturer">
         <Sel value={brand} onChange={e => handleBrand(e.target.value)}>
           <option value="">-- Select Brand --</option>
           {brandList.map(b => <option key={b}>{b}</option>)}

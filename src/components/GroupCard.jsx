@@ -1,10 +1,11 @@
 const CATEGORIES = [
-  { value: "camera",  label: "CCTV / Cameras", icon: "📷" },
-  { value: "door",    label: "Access Control", icon: "🚪" },
-  { value: "zone",    label: "Intrusion",      icon: "🔔" },
-  { value: "speaker", label: "Audio",          icon: "🔊" },
-  { value: "switch",  label: "Switching",      icon: "🔀" },
-  { value: "server",  label: "Server / NVR",   icon: "🖥" },
+  { value: "camera",   label: "CCTV / Cameras",      icon: "📷" },
+  { value: "door",     label: "Access Control",       icon: "🚪" },
+  { value: "zone",     label: "Intrusion",            icon: "🔔" },
+  { value: "speaker",  label: "Audio",                icon: "🔊" },
+  { value: "switch",   label: "Switching",            icon: "🔀" },
+  { value: "server",   label: "Server / NVR",         icon: "🖥" },
+  { value: "software", label: "Software & Licenses",  icon: "💿" },
 ];
 
 export default function GroupCard({ icon, title, idx, devCount, collapsed, onToggle, onRemove, onMove, currentCategory, children }) {
@@ -29,7 +30,8 @@ export default function GroupCard({ icon, title, idx, devCount, collapsed, onTog
               value=""
               onClick={e => e.stopPropagation()}
               onChange={e => { e.stopPropagation(); if (e.target.value) onMove(e.target.value); }}
-              className="bg-white/[0.08] text-white/60 border border-white/10 rounded-md text-[10px] font-medium cursor-pointer py-1 px-2">
+              className="bg-white/[0.08] text-white border border-white/10 rounded-md text-[11px] font-medium cursor-pointer py-1 px-2.5"
+              style={{ colorScheme: "dark" }}>
               <option value="">Move to…</option>
               {CATEGORIES.filter(c => c.value !== currentCategory).map(c => (
                 <option key={c.value} value={c.value}>{c.icon} {c.label}</option>

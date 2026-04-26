@@ -5,9 +5,10 @@ import { planSections, buildSubmittalPDF } from "../utils/buildSubmittalPDF";
 import { parseSystemSurveyorXlsx, buildSystemSurveyorXlsx } from "../utils/systemSurveyor";
 import { FileDown, FileUp, Package } from "lucide-react";
 import { buildAsBuiltPDF } from "../utils/buildAsBuilt";
+import { buildDeviceConfigCSV } from "../utils/buildDeviceConfig";
 
 export default function ExportTab({
-  cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups,
+  cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, softwareGroups,
   camCount, swCount, srvCount, doorCount, zoneCount, spkCount, totalDevices,
   generating, sdkReady, pdfLibReady,
   handleCSV, handleGenerate, buildOEMManual,
@@ -193,6 +194,20 @@ export default function ExportTab({
             <button onClick={handleGenerate} disabled={generating || !sdkReady}
               className={`border-none rounded-lg py-2.5 px-5 text-[13px] font-extrabold cursor-pointer text-navy ${generating ? "bg-muted" : "bg-gold"}`}>
               {generating ? "⏳ Building PDF..." : "⬇ Export PDF Report"}
+            </button>
+            <button onClick={() => {
+              const st = {
+                cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups,
+                softwareGroups: softwareGroups || [],
+                date: info?.date || "",
+              };
+              const pm = { name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" };
+              buildDeviceConfigCSV(st, pm);
+            }}
+              disabled={totalDevices === 0}
+              className="bg-steel text-white border-none rounded-lg py-2.5 px-5 text-[13px] font-extrabold cursor-pointer"
+              style={{ opacity: totalDevices === 0 ? 0.5 : 1 }}>
+              ⬇ Device Config Export
             </button>
           </div>
 

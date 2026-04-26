@@ -30,11 +30,10 @@ export default function GroupCard({ icon, title, idx, devCount, collapsed, onTog
               value=""
               onClick={e => e.stopPropagation()}
               onChange={e => { e.stopPropagation(); if (e.target.value) onMove(e.target.value); }}
-              className="bg-white/[0.08] text-white border border-white/10 rounded-md text-[11px] font-medium cursor-pointer py-1 px-2.5"
-              style={{ colorScheme: "dark" }}>
-              <option value="">Move to…</option>
+              className="bg-white/[0.08] text-white border border-white/10 rounded-md text-[11px] font-medium cursor-pointer py-1 px-2.5">
+              <option value="" className="bg-white text-navy">Move to…</option>
               {CATEGORIES.filter(c => c.value !== currentCategory).map(c => (
-                <option key={c.value} value={c.value}>{c.icon} {c.label}</option>
+                <option key={c.value} value={c.value} className="bg-white text-navy text-[13px] py-1">{c.icon} {c.label}</option>
               ))}
             </select>
           )}

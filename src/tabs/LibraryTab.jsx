@@ -559,6 +559,7 @@ export default function LibraryTab({
                     </button>
                   </td>
                   <td className="px-3 py-2 text-muted text-[11px]">--</td>
+                  <td className="px-2 py-2 text-center">--</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-1.5">
                       <button

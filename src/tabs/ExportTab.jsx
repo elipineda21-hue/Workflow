@@ -4,6 +4,7 @@ import { getSpecSheetUrl } from "../supabase";
 import { planSections, buildSubmittalPDF } from "../utils/buildSubmittalPDF";
 import { parseSystemSurveyorXlsx, buildSystemSurveyorXlsx } from "../utils/systemSurveyor";
 import { FileDown, FileUp, Package } from "lucide-react";
+import { buildAsBuiltPDF } from "../utils/buildAsBuilt";
 
 export default function ExportTab({
   cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups,
@@ -236,7 +237,7 @@ export default function ExportTab({
           <div className="bg-bg rounded-xl border border-border p-[22px] mt-6">
             <div className="font-extrabold text-navy text-[15px] mb-1.5">📦 OEM Manual</div>
             <div className="text-muted text-xs mb-4">
-              Compiles a single PDF: <strong>Cover page</strong> → <strong>Close-out report</strong> → <strong>Spec sheets</strong> for every model on this project that exists in the library.
+              Compiles a single PDF: <strong>Cover page</strong> → <strong>Close-out report</strong> → <strong>Spec sheets</strong> for every model on this project that exists in the library. Or generate an <strong>As-Built</strong> PDF with all device configurations in formatted tables.
             </div>
             <div className="bg-surface rounded-lg py-3 px-4 mb-4 flex items-center gap-3">
               <span className="text-muted text-xs font-bold min-w-[90px]">Cover page</span>
@@ -261,6 +262,15 @@ export default function ExportTab({
               <button onClick={buildOEMManual} disabled={!pdfLibReady || !sdkReady}
                 className="ml-auto bg-gold text-navy border-none rounded-lg py-2.5 px-7 text-sm font-extrabold cursor-pointer" style={{ opacity: (!pdfLibReady || !sdkReady) ? 0.5 : 1 }}>
                 📦 Export OEM Manual
+              </button>
+              <button onClick={() => {
+                const st = { cameraGroups, switchGroups, serverGroups, doorGroups, zoneGroups, speakerGroups, networkConfig };
+                const pm = { name: selectedProject?.name || "Project", projectId: selectedProject?.projectId || "—" };
+                buildAsBuiltPDF(st, pm);
+              }}
+                disabled={totalDevices === 0}
+                className="bg-accent text-white border-none rounded-lg py-2.5 px-7 text-sm font-extrabold cursor-pointer" style={{ opacity: totalDevices === 0 ? 0.5 : 1 }}>
+                📋 As-Built Documentation
               </button>
             </div>
           </div>

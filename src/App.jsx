@@ -153,6 +153,7 @@ function AppContent({ user, signOut }) {
   const [deviceCatalog, setDeviceCatalog] = useState([]);
   const [libUploadForm,  setLibUploadForm]  = useState(null); // null | { category, brand, model, displayName, file, uploading, error }
   const [libShowAll,     setLibShowAll]     = useState(false); // false = show only project-matched entries
+  const [submittalIds,   setSubmittalIds]   = useState(new Set()); // device IDs selected for submittal package
   // network config
   const emptyNetworkConfig = () => ({ useDefaults: true, sitePrefix: "", routerModel: "", apCount: "", isp: "", itContact: "", controllerType: "cloud", vlans: SOP_VLANS.map(v => ({ ...v })), ssids: SOP_SSIDS.map(s => ({ ...s })), firewall: { rows: SOP_FIREWALL.rows, cols: SOP_FIREWALL.cols, matrix: SOP_FIREWALL.matrix.map(r => [...r]) }, checklist: {} });
   const [networkConfig, setNetworkConfig] = useState(emptyNetworkConfig());
@@ -732,6 +733,7 @@ function AppContent({ user, signOut }) {
             speakerGroups={speakerGroups} switchGroups={switchGroups} serverGroups={serverGroups}
             softwareGroups={softwareGroups}
             selectedProject={selectedProject}
+            onSubmittalChange={setSubmittalIds}
           />
         )}
 
